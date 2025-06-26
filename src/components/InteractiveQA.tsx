@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarContent, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Send, Bot, User, Sparkles, ArrowRight } from 'lucide-react';
 
 interface InteractiveQAProps {
@@ -168,9 +168,9 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
                 >
                   {message.type === 'ai' && (
                     <Avatar className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500">
-                      <AvatarContent>
+                      <AvatarImage>
                         <Bot className="w-4 h-4 text-white" />
-                      </AvatarContent>
+                      </AvatarImage>
                       <AvatarFallback>AI</AvatarFallback>
                     </Avatar>
                   )}
@@ -187,9 +187,9 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
                   
                   {message.type === 'user' && (
                     <Avatar className="w-8 h-8 bg-gray-600">
-                      <AvatarContent>
+                      <AvatarImage>
                         <User className="w-4 h-4 text-white" />
-                      </AvatarContent>
+                      </AvatarImage>
                       <AvatarFallback>You</AvatarFallback>
                     </Avatar>
                   )}
@@ -199,9 +199,9 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
               {isLoading && (
                 <div className="flex gap-3 justify-start">
                   <Avatar className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500">
-                    <AvatarContent>
+                    <AvatarImage>
                       <Bot className="w-4 h-4 text-white" />
-                    </AvatarContent>
+                    </AvatarImage>
                     <AvatarFallback>AI</AvatarFallback>
                   </Avatar>
                   <div className="bg-gray-100 p-4 rounded-lg">

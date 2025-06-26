@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { ProjectData } from '@/pages/Index';
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
     industry: '',
     description: '',
     slideCount: 12,
-    template: 'essentials' as ProjectData['template'],
+    template: '' as ProjectData['template'] | '',
   });
 
   const totalSteps = 3;
@@ -60,7 +59,13 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
-      onComplete(formData);
+      // Ensure template is properly typed before passing to onComplete
+      if (formData.template) {
+        onComplete({
+          ...formData,
+          template: formData.template as ProjectData['template']
+        });
+      }
     }
   };
 
