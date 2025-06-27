@@ -138,12 +138,10 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="technology">Technology</SelectItem>
-                    <SelectItem value="healthcare">Healthcare</SelectItem>
+                    <SelectItem value="startu[">Startup</SelectItem>
                     <SelectItem value="finance">Finance</SelectItem>
-                    <SelectItem value="education">Education</SelectItem>
-                    <SelectItem value="retail">Retail</SelectItem>
-                    <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                    <SelectItem value="consulting">Consulting</SelectItem>
+                    <SelectItem value="edtech">EdTech</SelectItem>
+                    <SelectItem value="e-commerce">E-commerce</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
