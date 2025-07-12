@@ -6,19 +6,19 @@
   ],
   "compilerOptions": {
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "Node",  // Consider "Bundler" for Vite integration
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
-    "noImplicitAny": false,
-    "noUnusedParameters": false,
+    "strict": true,  // Enables strict mode (includes noImplicitAny, strictNullChecks, etc.)
     "skipLibCheck": true,
     "allowJs": true,
     "noUnusedLocals": false,
-    "strictNullChecks": false
+    "noUnusedParameters": false,
+    "target": "ES2022"  // Added for modern Node.js compatibility
   },
   "ts-node": {
-    "esm": true          // tells ts-node to hook ESM
+    "esm": true
   }
 }

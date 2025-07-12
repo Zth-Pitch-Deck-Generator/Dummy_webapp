@@ -2,8 +2,10 @@ openapi: 3.1.0
 info:
   title: Pitch Deck Generator API
   version: 1.0.0
+
 servers:
   - url: http://localhost:3000/api
+
 paths:
   /qa:
     post:
@@ -20,52 +22,43 @@ paths:
                   items:
                     type: object
                     properties:
-                      role:
-                        type: string
-                      content:
-                        type: string
+                      role:    { type: string }
+                      content: { type: string }
       responses:
         '200':
-          description: Chat response and generated outline/SWOT
+          description: Chat response plus outline & SWOT
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  reply:
-                    type: string
-                  outline:
-                    type: array
-                    items:
-                      type: object
-                  swot:
-                    type: object
+                  reply:   { type: string }
+                  outline: { type: array, items: { type: object } }
+                  swot:    { type: object }
 
-  /template:
+  /decktype:
     get:
-      summary: Recommend template slug based on project details
+      summary: Recommend deck-type slug based on project details
       parameters:
         - name: sector
           in: query
           required: true
-          schema:
-            type: string
-        - name: deckType
+          schema: { type: string }
+        - name: decktype
           in: query
           required: true
           schema:
             type: string
-            enum: [free, matrix, complete]
+            enum: [essentials, matrix, complete_deck]
       responses:
         '200':
-          description: A recommended template slug
+          description: Recommended deck-type slug
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  templateSlug:
-                    type: string
+                  decktypeSlug: { type: string }
 
   /slides:
     post:
@@ -77,37 +70,30 @@ paths:
             schema:
               type: object
               properties:
-                outline:
-                  type: array
-                  items:
-                    type: object
-                metrics:
-                  type: object
-                templateSlug:
-                  type: string
+                outline:      { type: array,  items: { type: object } }
+                metrics:      { type: object }
+                decktypeSlug: { type: string }
       responses:
         '200':
-          description: A job ID for the deck generation task
+          description: Job ID for deck generation
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  jobId:
-                    type: string
+                  jobId: { type: string }
 
   /deck/{jobId}/status:
     get:
-      summary: Check the status of a deck generation job
+      summary: Check deck-generation job status
       parameters:
         - name: jobId
           in: path
           required: true
-          schema:
-            type: string
+          schema: { type: string }
       responses:
         '200':
-          description: The job status and a download URL if ready
+          description: Job status & download URL
           content:
             application/json:
               schema:
