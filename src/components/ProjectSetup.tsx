@@ -35,7 +35,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
       description: 'Perfect for initial presentations and team alignments',
       icon: Briefcase,
       badge: 'Popular',
-      slides: '8-12 slides',
+      slides: '5-8 slides',
     },
     {
       id: 'matrix',
@@ -43,15 +43,15 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
       description: 'Comprehensive analysis for strategic planning',
       icon: TrendingUp,
       badge: 'Detailed',
-      slides: '12-18 slides',
+      slides: '7-10 slides',
     },
     {
-      id: 'investor',
-      name: 'Investor',
-      description: 'Investor-ready presentations with financial focus',
+      id: 'complete_deck',
+      name: 'Complete Deck',
+      description: 'Comprehensive presentations covering all aspects',
       icon: Users,
       badge: 'Professional',
-      slides: '15-20 slides',
+      slides: '12-14 slides',
     },
   ];
 
@@ -207,15 +207,11 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                 <Slider
                   value={[formData.slideCount]}
                   onValueChange={(value) => setFormData(prev => ({...prev, slideCount: value[0]}))}
-                  max={25}
+                  max={14}
                   min={5}
                   step={1}
                   className="w-full"
                 />
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>5 slides</span>
-                  <span>25 slides</span>
-                </div>
               </div>
             </>
           )}
