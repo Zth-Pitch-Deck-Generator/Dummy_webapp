@@ -1,18 +1,19 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import "dotenv/config";
-
 import projectsRouter from "./routes/projects";
+import qaRouter from "./routes/qa";  // Import from qa.ts (adjust path if needed)
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 3000;
 
 /* ──────────────  MIDDLEWARE  ────────────── */
 app.use(cors());
 app.use(express.json());
 
-/* Mount project CRUD routes just once */
+/* Mount routes */
 app.use("/api/projects", projectsRouter);
+app.use("/api/qa", qaRouter);  // Now correctly mounts qa.ts router
 
 /* ──────────────  HEALTH CHECK  ────────────── */
 app.get("/health", (_req: Request, res: Response) => {
@@ -20,26 +21,7 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 /* ──────────────  STUB ENDPOINTS  (Day-2) ────────────── */
-
-/* POST /api/qa  – simulated chat turn */
-app.post("/api/qa", (_req: Request, res: Response) => {
-  console.log("✅ Hit: POST /api/qa");
-  setTimeout(() => {
-    res.status(200).json({
-      reply:   "That's a fantastic starting point! What makes your solution unique?",
-      outline: [
-        { id: 1, title: "Problem",  bullets: ["The current market solutions are slow and expensive."] },
-        { id: 2, title: "Solution", bullets: ["Our product is 10× faster and 50 % cheaper."] }
-      ],
-      swot: {
-        strengths:    ["Experienced team", "Proprietary technology"],
-        weaknesses:   ["New brand, low awareness"],
-        opportunities:["Untapped international markets"],
-        threats:      ["Potential for new regulations"]
-      }
-    });
-  }, 1_000);
-});
+// Remove the stub app.post("/api/qa", ...) since real qaRouter handles it
 
 /* GET /api/decktype  – simulated deck-type recommendation */
 app.get("/api/decktype", (req: Request, res: Response) => {
@@ -58,7 +40,7 @@ app.get("/api/deck/:jobId/status", (req: Request, res: Response) => {
   const { jobId } = req.params;
   console.log(`✅ Hit: GET /api/deck/${jobId}/status`);
   res.status(200).json({
-    status:      "complete",
+    status: "complete",
     downloadUrl: `https://example.com/decks/${jobId}.pptx`
   });
 });
