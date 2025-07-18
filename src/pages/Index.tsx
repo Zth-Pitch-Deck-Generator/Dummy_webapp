@@ -14,7 +14,7 @@ export type ProjectData = {
   industry: string;
   description: string;
   slideCount: number;
-  decktype: 'essentials' | 'matrix' | 'investor';
+  decktype: 'essentials' | 'matrix' | 'complete_deck';
 };
 
 export type QAData = {

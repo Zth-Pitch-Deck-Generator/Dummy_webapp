@@ -1,4 +1,3 @@
-// InteractiveQA.tsx
 import { useState, useRef, useEffect } from 'react';
 import { ProjectData, QAData } from '@/pages/Index';
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import { Send, Bot, User, Sparkles, ArrowRight } from 'lucide-react';
 
 interface InteractiveQAProps {
@@ -28,15 +27,41 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   const [questionCount, setQuestionCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const maxQuestions = 8;
+  // 1. MAKE maxQuestions DYNAMIC
+  const getMaxQuestions = (decktype: ProjectData['decktype']) => {
+    switch (decktype) {
+      case 'essentials':
+        return 7; // Shorter, foundational session
+      case 'matrix':
+        return 10; // More questions to extract data
+      case 'complete_deck':
+        return 12; // The most comprehensive session
+      default:
+        return 8; // A safe default
+    }
+  };
+  const maxQuestions = getMaxQuestions(projectData.decktype);
   const progress = (questionCount / maxQuestions) * 100;
 
-  // Initialize with a simple, static welcome message from the AI
+  // 2. MAKE THE INITIAL QUESTION MORE CONTEXTUAL
   useEffect(() => {
+    let introText = '';
+    switch (projectData.decktype) {
+        case 'essentials':
+            introText = "We'll focus on the core narrative of your business.";
+            break;
+        case 'matrix':
+            introText = "We'll be diving deep into the key metrics and competitive landscape.";
+            break;
+        case 'complete_deck':
+            introText = "We'll cover both your story and the data that backs it up for a comprehensive deck.";
+            break;
+    }
+
     setMessages([{
       id: 'initial',
       type: 'ai',
-      content: `Hi! I'm ready to build a compelling pitch deck for "${projectData.projectName}".\n\nTo start, what is the single most important problem your project solves?`,
+      content: `Hi! I'm ready to build your "${projectData.decktype}" deck for "${projectData.projectName}". ${introText}\n\nLet's start with the first question: What is the single most important problem your project solves?`,
       timestamp: Date.now(),
     }]);
   }, [projectData]);
@@ -48,10 +73,11 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
     }
   }, [messages]);
 
+  // 3. USE REAL API CALL INSTEAD OF SIMULATION
   const handleSendMessage = async () => {
     if (!currentInput.trim()) return;
 
-    // --- Part 1: Optimistic UI updates ---
+    // Part 1: Optimistic UI updates
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       type: 'user',
@@ -64,7 +90,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
     setCurrentInput('');
     setIsLoading(true);
 
-    // --- Part 2: Real API call ---
+    // Part 2: Real API call
     try {
       const projectId = localStorage.getItem("projectId");
       if (!projectId) {
@@ -88,7 +114,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
         throw new Error('API request failed');
       }
 
-      // --- Part 3: Handle the streaming response ---
+      // Part 3: Handle the streaming response
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       
@@ -148,8 +174,6 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   };
 
   return (
-    // ... The entire JSX part of your component remains unchanged ...
-    // It will now correctly display the streaming messages.
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -186,7 +210,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
                 >
                   {message.type === 'ai' && (
                     <Avatar className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500">
-                      <AvatarFallback>AI</AvatarFallback>
+                      <Bot className="w-4 h-4 text-white p-1" />
                     </Avatar>
                   )}
                   
@@ -202,7 +226,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
                   
                   {message.type === 'user' && (
                     <Avatar className="w-8 h-8 bg-gray-600">
-                      <AvatarFallback>You</AvatarFallback>
+                      <User className="w-4 h-4 text-white p-1" />
                     </Avatar>
                   )}
                 </div>
@@ -211,7 +235,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
               {isLoading && (
                  <div className="flex gap-3 justify-start">
                   <Avatar className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500">
-                    <AvatarFallback>AI</AvatarFallback>
+                    <Bot className="w-4 h-4 text-white p-1" />
                   </Avatar>
                   <div className="bg-gray-100 p-4 rounded-lg">
                     <div className="flex gap-1">
