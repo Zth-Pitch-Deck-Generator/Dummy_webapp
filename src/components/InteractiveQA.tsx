@@ -1,4 +1,4 @@
-
+// InteractiveQA.tsx
 import { useState, useRef, useEffect } from 'react';
 import { ProjectData, QAData } from '@/pages/Index';
 import { Button } from "@/components/ui/button";
@@ -31,32 +31,12 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   const maxQuestions = 8;
   const progress = (questionCount / maxQuestions) * 100;
 
-  // Generate AI questions based on project data and previous answers
-  const generateAIQuestion = (context: { projectData: ProjectData; previousMessages: Message[] }) => {
-    const questions = [
-      "What specific problem does your project solve? Can you give me a concrete example?",
-      "Who is your target audience? Describe your ideal customer in detail.",
-      "What makes your solution unique compared to existing alternatives?",
-      "What's your business model? How do you plan to generate revenue?",
-      "What evidence or validation do you have that there's demand for your solution?",
-      "What are the biggest risks or challenges you foresee, and how will you address them?",
-      "What are your key milestones for the next 12-18 months?",
-      "If you need funding, how much are you seeking and what will you use it for?",
-    ];
-
-    // Simple logic to select next question
-    return questions[context.previousMessages.filter(m => m.type === 'ai').length] || 
-           "Is there anything else important about your project that we should include in your pitch deck?";
-  };
-
-  // Initialize with first AI question
+  // Initialize with a simple, static welcome message from the AI
   useEffect(() => {
-    const initialQuestion = `Hi! I'm excited to help you build a compelling pitch deck for "${projectData.projectName}". Let's start with some strategic questions to make sure we cover all the important aspects.\n\n${generateAIQuestion({ projectData, previousMessages: [] })}`;
-    
     setMessages([{
       id: 'initial',
       type: 'ai',
-      content: initialQuestion,
+      content: `Hi! I'm ready to build a compelling pitch deck for "${projectData.projectName}".\n\nTo start, what is the single most important problem your project solves?`,
       timestamp: Date.now(),
     }]);
   }, [projectData]);
@@ -71,6 +51,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   const handleSendMessage = async () => {
     if (!currentInput.trim()) return;
 
+    // --- Part 1: Optimistic UI updates ---
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       type: 'user',
@@ -78,41 +59,76 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
       timestamp: Date.now(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setCurrentInput('');
     setIsLoading(true);
-    setQuestionCount(prev => prev + 1);
 
-    // Simulate AI response delay
-    setTimeout(() => {
-      const newMessages = [...messages, userMessage];
-      
-      if (questionCount >= maxQuestions - 1) {
-        // Final message
-        const finalMessage: Message = {
-          id: `ai-final`,
-          type: 'ai',
-          content: "Perfect! I have all the information I need to create your pitch deck. You've provided excellent insights that will help create a compelling presentation. Let's move on to preview your deck!",
-          timestamp: Date.now(),
-        };
-        setMessages(prev => [...prev, finalMessage]);
-      } else {
-        // Generate next question
-        const nextQuestion = generateAIQuestion({ projectData, previousMessages: newMessages });
-        const aiMessage: Message = {
-          id: `ai-${Date.now()}`,
-          type: 'ai',
-          content: `Great answer! That's really helpful context.\n\n${nextQuestion}`,
-          timestamp: Date.now(),
-        };
-        setMessages(prev => [...prev, aiMessage]);
+    // --- Part 2: Real API call ---
+    try {
+      const projectId = localStorage.getItem("projectId");
+      if (!projectId) {
+        alert("Error: Project ID not found. Please start over.");
+        setIsLoading(false);
+        return;
       }
       
+      const payload = {
+        projectId,
+        messages: newMessages.map(m => ({ role: m.type, content: m.content })),
+      };
+
+      const response = await fetch('http://localhost:3000/api/qa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('API request failed');
+      }
+
+      // --- Part 3: Handle the streaming response ---
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      
+      const aiResponseId = `ai-${Date.now()}`;
+      setMessages(prev => [...prev, { id: aiResponseId, type: 'ai', content: '', timestamp: Date.now() }]);
+      setQuestionCount(prev => prev + 1);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        setMessages(prev => prev.map(m => 
+          m.id === aiResponseId ? { ...m, content: m.content + chunk } : m
+        ));
+      }
+
+    } catch (error) {
+      console.error("Failed to get AI response:", error);
+      // Optional: Add an error message to the chat UI
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
+    const projectId = localStorage.getItem("projectId");
+    if (!projectId) return alert("Project ID is missing!");
+
+    // Tell the backend the session is complete and save the transcript
+    await fetch('http://localhost:3000/api/qa/session/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            projectId,
+            messages: messages.map(m => ({ role: m.type, content: m.content }))
+        })
+    });
+    
+    // Format the data for the next step in the UI
     const qaData: QAData = messages
       .filter(m => m.type === 'ai' && !m.content.includes("Perfect! I have all"))
       .map(m => ({
@@ -123,15 +139,17 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
     
     onComplete(qaData);
   };
-
+  
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
   return (
+    // ... The entire JSX part of your component remains unchanged ...
+    // It will now correctly display the streaming messages.
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -168,9 +186,6 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
                 >
                   {message.type === 'ai' && (
                     <Avatar className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500">
-                      <AvatarImage>
-                        <Bot className="w-4 h-4 text-white" />
-                      </AvatarImage>
                       <AvatarFallback>AI</AvatarFallback>
                     </Avatar>
                   )}
@@ -187,9 +202,6 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
                   
                   {message.type === 'user' && (
                     <Avatar className="w-8 h-8 bg-gray-600">
-                      <AvatarImage>
-                        <User className="w-4 h-4 text-white" />
-                      </AvatarImage>
                       <AvatarFallback>You</AvatarFallback>
                     </Avatar>
                   )}
@@ -197,11 +209,8 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
               ))}
               
               {isLoading && (
-                <div className="flex gap-3 justify-start">
+                 <div className="flex gap-3 justify-start">
                   <Avatar className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500">
-                    <AvatarImage>
-                      <Bot className="w-4 h-4 text-white" />
-                    </AvatarImage>
                     <AvatarFallback>AI</AvatarFallback>
                   </Avatar>
                   <div className="bg-gray-100 p-4 rounded-lg">
