@@ -108,27 +108,6 @@ const qaHandler: RequestHandler = async (req: Request, res: Response) => {
   }
   res.end();
 
-  const lastUser = messages[messages.length - 1];
-  await supabase.from("answers").insert([
-    {
-      project_id: projectId,
-      question: lastUser.content, // This is technically the AI's previous question
-      answer: assistantText      // This is the user's answer
-    }
-  ]);
-};
-router.post("/", qaHandler);
-
-/* ---------- POST /api/qa/session/complete  ── Save full transcript ---------- */
-const completeHandler: RequestHandler = async (req: Request, res: Response) => {
-  const parsed = bodySchema.safeParse(req.body);
-  if (!parsed.success) {
-    console.log("zod errors:", parsed.error.flatten());
-    res.status(400).json({ error: "Invalid payload" });
-    return;
-  }
-  const { projectId, messages } = parsed.data;
-
   await supabase.from("qa_sessions").upsert([{
     project_id: projectId,
     transcript: messages.map(m => ({
@@ -142,6 +121,5 @@ const completeHandler: RequestHandler = async (req: Request, res: Response) => {
   res.status(204).end();
   return;
 };
-router.post("/session/complete", completeHandler);
 
 export default router;
