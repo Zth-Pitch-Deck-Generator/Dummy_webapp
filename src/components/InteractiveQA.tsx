@@ -98,7 +98,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
         setIsLoading(false);
         return;
       }
-      
+
       const payload = {
         projectId,
         messages: newMessages.map(m => ({ role: m.type, content: m.content })),
@@ -117,7 +117,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
       // Part 3: Handle the streaming response
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      
+
       const aiResponseId = `ai-${Date.now()}`;
       setMessages(prev => [...prev, { id: aiResponseId, type: 'ai', content: '', timestamp: Date.now() }]);
       setQuestionCount(prev => prev + 1);
@@ -153,7 +153,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
             messages: messages.map(m => ({ role: m.type, content: m.content }))
         })
     });
-    
+
     // Format the data for the next step in the UI
     const qaData: QAData = messages
       .filter(m => m.type === 'ai' && !m.content.includes("Perfect! I have all"))
@@ -162,10 +162,10 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
         answer: messages.find(msg => msg.type === 'user' && msg.timestamp > m.timestamp)?.content || '',
         timestamp: m.timestamp,
       }));
-    
+
     onComplete(qaData);
   };
-  
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
       e.preventDefault();
@@ -174,6 +174,8 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   };
 
   return (
+
+
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -199,7 +201,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
             AI Assistant
           </CardTitle>
         </CardHeader>
-        
+
         <CardContent className="flex-1 p-0 flex flex-col">
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
             <div className="space-y-4">
@@ -213,7 +215,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
                       <Bot className="w-4 h-4 text-white p-1" />
                     </Avatar>
                   )}
-                  
+
                   <div
                     className={`max-w-[80%] p-4 rounded-lg ${
                       message.type === 'user'
@@ -223,7 +225,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
                   >
                     <p className="whitespace-pre-wrap">{message.content}</p>
                   </div>
-                  
+
                   {message.type === 'user' && (
                     <Avatar className="w-8 h-8 bg-gray-600">
                       <User className="w-4 h-4 text-white p-1" />
@@ -231,7 +233,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
                   )}
                 </div>
               ))}
-              
+
               {isLoading && (
                  <div className="flex gap-3 justify-start">
                   <Avatar className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500">
@@ -248,7 +250,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
               )}
             </div>
           </ScrollArea>
-          
+
           <div className="border-t p-4">
             {questionCount >= maxQuestions ? (
               <div className="flex justify-center">
