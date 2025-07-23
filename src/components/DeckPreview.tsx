@@ -110,7 +110,7 @@ const DeckPreview = ({ projectData, qaData }: DeckPreviewProps) => {
     ];
 
     // Add template-specific slides
-    if (projectData.template === 'investor') {
+    if (projectData.decktype === 'complete_deck') {
       baseSlides.push(
         {
           id: 'financials',
@@ -131,7 +131,7 @@ const DeckPreview = ({ projectData, qaData }: DeckPreviewProps) => {
       );
     }
 
-    if (projectData.template === 'matrix') {
+    if (projectData.decktype === 'matrix') {
       baseSlides.push(
         {
           id: 'swot',
@@ -175,7 +175,7 @@ const DeckPreview = ({ projectData, qaData }: DeckPreviewProps) => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Deck Preview</h1>
             <p className="text-gray-600">
-              {projectData.projectName} • {slides.length} slides • {projectData.template} template
+              {projectData.projectName} • {slides.length} slides • {projectData.decktype} template
             </p>
           </div>
           <div className="flex gap-2">
@@ -272,7 +272,7 @@ const DeckPreview = ({ projectData, qaData }: DeckPreviewProps) => {
               Crucial Slides ({crucialSlides.length})
             </h3>
             <p className="text-gray-600">
-              These slides are essential for your {projectData.template} presentation and should be given extra attention.
+              These slides are essential for your {projectData.decktype} presentation and should be given extra attention.
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-4">

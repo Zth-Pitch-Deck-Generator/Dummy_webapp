@@ -8,6 +8,7 @@ import DeckPreview from '@/components/DeckPreview';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from '@/components/AppSidebar';
 import { Sparkles, Presentation, Users } from 'lucide-react';
+import Outline from '@/components/Outline';
 
 export type ProjectData = {
   projectName: string;
@@ -24,7 +25,7 @@ export type QAData = {
 }[];
 
 const Index = () => {
-  const [currentStep, setCurrentStep] = useState<'landing' | 'setup' | 'qa' | 'preview'>('landing');
+  const [currentStep, setCurrentStep] = useState<'landing' | 'setup' | 'qa' | 'outline' | 'preview'>('landing');
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [qaData, setQAData] = useState<QAData>([]);
 
@@ -39,7 +40,7 @@ const Index = () => {
 
   const handleQAComplete = (data: QAData) => {
     setQAData(data);
-    setCurrentStep('preview');
+    setCurrentStep('outline');
   };
 
   if (currentStep === 'landing') {
@@ -144,6 +145,12 @@ const Index = () => {
             />
           )}
           
+          {currentStep === 'outline' && projectData && (
+            <Outline 
+            onAccept={() => setCurrentStep('preview')} 
+            />
+          )}
+
           {currentStep === 'preview' && projectData && (
             <DeckPreview 
               projectData={projectData}

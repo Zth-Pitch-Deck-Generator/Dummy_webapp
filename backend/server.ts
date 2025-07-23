@@ -3,6 +3,7 @@ import cors from "cors";
 import "dotenv/config";
 import projectsRouter from "./routes/projects";
 import qaRouter from "./routes/qa";  // Import from qa.ts (adjust path if needed)
+import outlineRouter from "./routes/outline";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,7 +15,7 @@ app.use(express.json());
 /* Mount routes */
 app.use("/api/projects", projectsRouter);
 app.use("/api/qa", qaRouter);  // Now correctly mounts qa.ts router
-
+app.use("/api/outline", outlineRouter);
 /* ──────────────  HEALTH CHECK  ────────────── */
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok" });

@@ -35,6 +35,13 @@ export function AppSidebar({ currentStep, onStepChange, projectData }: AppSideba
       disabled: !projectData,
     },
     {
+      id: 'outline',
+      title: 'Outline',
+      icon: FileText,
+      completed: false,
+      disabled: !projectData
+    },
+    {
       id: 'preview',
       title: 'Deck Preview',
       icon: Eye,

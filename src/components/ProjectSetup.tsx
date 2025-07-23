@@ -48,7 +48,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
       slides: "7-10 slides"
     },
     {
-      id: "investor",
+      id: "complete_deck",
       name: "Complete Deck",
       description: "Comprehensive presentations covering all aspects",
       icon: Users,
