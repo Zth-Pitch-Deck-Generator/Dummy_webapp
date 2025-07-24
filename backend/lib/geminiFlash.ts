@@ -2,7 +2,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const MODEL = "gemini-2.0-flash";
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI( process.env.GEMINI_API_KEY || "");
 /**
  * Call Gemini-Flash and return parsed JSON.
  * Strips markdown code-fences if the model wraps its answer.
