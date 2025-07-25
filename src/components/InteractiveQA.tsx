@@ -28,20 +28,32 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // 1. MAKE maxQuestions DYNAMIC
-  const getMaxQuestions = (decktype: ProjectData['decktype']) => {
-    switch (decktype) {
-      case 'essentials':
-        return 7; // Shorter, foundational session
-      case 'matrix':
-        return 10; // More questions to extract data
-      case 'complete_deck':
-        return 12; // The most comprehensive session
-      default:
-        return 8; // A safe default
-    }
-  };
-  const maxQuestions = getMaxQuestions(projectData.decktype);
-  const progress = (questionCount / maxQuestions) * 100;
+  const getMaxQuestions = (
+  decktype: ProjectData['decktype'],
+  slideCount: ProjectData['slideCount']                // <── comes from ProjectSetup
+) => {
+  /*
+    Baseline rule:
+      questions ≈ 60 % of requested slides (rounded)
+
+    Deck-type adjustment:
+      essentials      → -1 question
+      matrix          →   0
+      complete_deck   → +1 question
+
+    Finally clamp to [5 … 12]
+  */
+  let q = Math.round(slideCount * 0.9);
+
+  if (decktype === 'essentials')     q -= 1;
+  if (decktype === 'complete_deck')  q += 1;
+
+  return Math.min(12, Math.max(5, q));
+};
+
+/* compute once at render */
+const maxQuestions = getMaxQuestions(projectData.decktype, projectData.slideCount);
+const progress     = (questionCount / maxQuestions) * 100;
 
   // 2. MAKE THE INITIAL QUESTION MORE CONTEXTUAL
   useEffect(() => {
