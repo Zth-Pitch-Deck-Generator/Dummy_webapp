@@ -1,44 +1,77 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
+type Slide = {
+  title: string;
+  bullet_points?: string[];   // may be absent → guarded below
+  data_needed?: string[];
+};
+
 const Outline = ({ onAccept }: { onAccept: () => void }) => {
-  const [outline, setOutline] = useState<any[] | null>(null);
-  const [review, setReview] = useState<any | null>(null);
+  const [outline, setOutline] = useState<Slide[]>([]);
+  const [review,  setReview]  = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
   const projectId = localStorage.getItem("projectId");
 
-  /* fetch or generate outline on mount */
+  /* ───────── fetch outline on mount ───────── */
   useEffect(() => {
+    if (!projectId) {
+      setError("Project ID missing");
+      setLoading(false);
+      return;
+    }
+
     (async () => {
-      const res = await fetch("/api/outline", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId })
-      });
-       const json = await res.json();
-      // json can be either the pure array OR { id, outline }
-      setOutline(Array.isArray(json) ? json : json.outline);
+      try {
+        const res = await fetch("/api/outline", {
+          method : "POST",
+          headers: { "Content-Type": "application/json" },
+          body   : JSON.stringify({ projectId })
+        });
+        if (!res.ok) throw new Error(`Server ${res.status}`);
+
+        const json   = await res.json();
+        const slides = json.outline || json.outline_json || json; // accept any shape
+
+        if (!Array.isArray(slides)) throw new Error("Outline format invalid");
+        setOutline(slides as Slide[]);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [projectId]);
 
+  /* ───────── run evaluation ───────── */
   const handleImprove = async () => {
-    const res = await fetch("/api/outline/eval", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId })
-    });
-    if (res.ok) setReview(await res.json());
-    else alert("Evaluation failed");
+    try {
+      const res = await fetch("/api/outline/eval", {
+        method : "POST",
+        headers: { "Content-Type": "application/json" },
+        body   : JSON.stringify({ projectId })
+      });
+      if (!res.ok) throw new Error();
+      setReview(await res.json());
+    } catch {
+      alert("Evaluation failed");
+    }
   };
 
-  if (!outline) return <p>Loading outline…</p>;
+  /* ───────── render ───────── */
+  if (loading) return <p>Loading outline…</p>;
+  if (error)   return <p className="text-red-500">Error: {error}</p>;
+  if (!outline.length) return <p>No slides returned.</p>;
 
   return (
     <div className="space-y-6">
       {outline.map((s, i) => (
         <div key={i} className="border p-4 rounded">
           <h3 className="font-semibold">{i + 1}. {s.title}</h3>
+
           <ul className="list-disc pl-6 text-sm">
-            {s.bullet_points.map((b: string) => <li key={b}>{b}</li>)}
+            {(s.bullet_points ?? []).map(bp => <li key={bp}>{bp}</li>)}
           </ul>
         </div>
       ))}
@@ -53,9 +86,9 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
           <h4 className="font-medium mb-2">Coach feedback</h4>
           <p className="mb-2">{review.summary}</p>
           <ul className="list-disc pl-6 text-sm space-y-1">
-            {review.missing_slides.map((m: string) => <li key={m}>{m}</li>)}
-            {review.clarity_issues.map((m: string) => <li key={m}>{m}</li>)}
-            {review.data_gaps.map((m: string) => <li key={m}>{m}</li>)}
+            {review.missing_slides?.map((m: string)  => <li key={m}>{m}</li>)}
+            {review.clarity_issues?.map((m: string)  => <li key={m}>{m}</li>)}
+            {review.data_gaps?.map((m: string)       => <li key={m}>{m}</li>)}
           </ul>
         </div>
       )}
