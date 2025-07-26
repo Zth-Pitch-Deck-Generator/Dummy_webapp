@@ -8,6 +8,7 @@ const router = Router();
 const bodySchema = z.object({
   projectName: z.string().min(1),
   industry:    z.string().min(1),
+  stage:       z.enum(["pre-seed","seed","series-a","series-b","series-c","other"]),
   description: z.string().min(5),
   slideCount:  z.number().int().min(5).max(14),
   decktype:    z.enum(["essentials", "matrix", "complete_deck"])
@@ -23,7 +24,7 @@ router.post("/", async (req, res) => {
     res.status(400).json({ error: "Invalid payload" });
     return;
   }
-const { projectName, industry, description, slideCount, decktype } = parsed.data;  // Changed from 'template'
+const { projectName, industry, stage, description, slideCount, decktype } = parsed.data;  // Changed from 'template'
 
 
   /* 2. insert row */
@@ -33,6 +34,7 @@ const { projectName, industry, description, slideCount, decktype } = parsed.data
       {
         name:         projectName,
         industry,
+        stage,
         description,
         slide_count:  slideCount,
         decktype

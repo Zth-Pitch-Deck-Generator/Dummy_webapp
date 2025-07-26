@@ -21,6 +21,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
   const [formData, setFormData] = useState({
     projectName: "",
     industry: "",
+    stage: "",
     description: "",
     slideCount: 12,
     decktype: "" as ProjectData["decktype"] | ""
@@ -95,7 +96,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
   const isStepValid = () => {
     switch (step) {
       case 1:
-        return formData.projectName.trim() && formData.industry.trim();
+        return formData.projectName.trim() && formData.industry.trim() && formData.stage.trim();
       case 2:
         return !!formData.description.trim();
       case 3:
@@ -167,6 +168,28 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                     <SelectItem value="finance">Finance</SelectItem>
                     <SelectItem value="edtech">EdTech</SelectItem>
                     <SelectItem value="e-commerce">E-commerce</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="stage">Stage of Funding</Label>
+                <Select
+                  value={formData.stage}
+                  onValueChange={value =>
+                    setFormData(prev => ({ ...prev, stage: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pre-seed">Pre-Seed (Ideation)</SelectItem>
+                    <SelectItem value="seed">Seed (Ideation-development)</SelectItem>
+                    <SelectItem value="series-a">Series A (Development)</SelectItem>
+                    <SelectItem value="series-b">Series B (Growth)</SelectItem>
+                    <SelectItem value="series-c">Series C (Exception Exit)</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
