@@ -13,8 +13,11 @@ import Outline from '@/components/Outline';
 export type ProjectData = {
   projectName: string;
   industry: string;
+  stage: string;
   description: string;
-  slideCount: number;
+  revenue: 'pre-revenue' | 'revenue';
+  slide_mode: 'manual' | 'ai'; // 'manual' or 'ai'
+  slide_count: number;
   decktype: 'essentials' | 'matrix' | 'complete_deck';
 };
 
