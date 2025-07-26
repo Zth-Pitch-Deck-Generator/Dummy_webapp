@@ -22,8 +22,10 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
     projectName: "",
     industry: "",
     stage: "",
+    revenue: "",
     description: "",
     slideCount: 12,
+    slideMode: "manual", // "manual" or "ai"
     decktype: "" as ProjectData["decktype"] | ""
   });
 
@@ -81,9 +83,9 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
       const { id } = await res.json();          // ⇠ Supabase row id
       localStorage.setItem("projectId", id);
 
-      onComplete({ 
-        ...formData, 
-        decktype: formData.decktype as ProjectData["decktype"] 
+      onComplete({
+        ...formData,
+        decktype: formData.decktype as ProjectData["decktype"]
       });
     } catch (err: any) {
       console.error(err);
@@ -96,11 +98,11 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
   const isStepValid = () => {
     switch (step) {
       case 1:
-        return formData.projectName.trim() && formData.industry.trim() && formData.stage.trim();
+        return formData.projectName.trim() && formData.industry.trim() && formData.stage.trim() && formData.revenue.trim();
       case 2:
         return !!formData.description.trim();
       case 3:
-        return !!formData.decktype;
+        return !!formData.decktype && (formData.slideMode === "ai" || (formData.slideCount >= 5 && formData.slideCount <= 14));
       default:
         return false;
     }
@@ -174,7 +176,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="stage">Stage of Funding</Label>
+                <Label htmlFor="stage">Stage of Company</Label>
                 <Select
                   value={formData.stage}
                   onValueChange={value =>
@@ -194,6 +196,26 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="revenue">Revenue Status</Label>
+                <Select
+                  value={formData.revenue}
+                  onValueChange={value =>
+                    setFormData(prev => ({ ...prev, revenue: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select revenue status" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    <SelectItem value="pre-revenue">Pre-Revenue</SelectItem>
+                    <SelectItem value="revenue">Revenue-Generating</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
             </>
           )}
 
@@ -231,9 +253,8 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                       onClick={() =>
                         setFormData(prev => ({ ...prev, decktype: dt.id as ProjectData["decktype"] }))
                       }
-                      className={`cursor-pointer transition-all ${
-                        selected ? "ring-2 ring-purple-500 bg-purple-50" : "hover:shadow-md"
-                      }`}
+                      className={`cursor-pointer transition-all ${selected ? "ring-2 ring-purple-500 bg-purple-50" : "hover:shadow-md"
+                        }`}
                     >
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
@@ -251,19 +272,41 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                 })}
               </div>
 
-              {/* slide-count slider */}
-              <div className="space-y-3">
-                <Label>Target Slide Count: {formData.slideCount}</Label>
-                <Slider
-                  max={14}
-                  min={5}
-                  step={1}
-                  value={[formData.slideCount]}
-                  onValueChange={([val]) =>
-                    setFormData(prev => ({ ...prev, slideCount: val }))
-                  }
-                />
-              </div>
+              {/* slide-count preference ------------------------------------ */}
+<div className="space-y-2">
+  <Label>Slide Count Preference *</Label>
+  <Select
+    value={formData.slideMode}
+    onValueChange={value =>
+      setFormData(prev => ({ ...prev, slideMode: value as "manual" | "ai" }))
+    }
+  >
+    <SelectTrigger>
+      <SelectValue placeholder="Select preference" />
+    </SelectTrigger>
+
+    <SelectContent>
+      <SelectItem value="manual">I'll choose the number of slides</SelectItem>
+      <SelectItem value="ai">Let AI decide for me</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+
+{/* manual slider – visible only when needed ------------------- */}
+{formData.slideMode === "manual" && (
+  <div className="space-y-3">
+    <Label>Target Slide Count: {formData.slideCount}</Label>
+    <Slider
+      max={14}
+      min={5}
+      step={1}
+      value={[formData.slideCount]}
+      onValueChange={([val]) =>
+        setFormData(prev => ({ ...prev, slideCount: val }))
+      }
+    />
+  </div>
+)}
             </>
           )}
         </CardContent>
