@@ -11,6 +11,13 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Briefcase, TrendingUp, Users } from 'lucide-react';
 
+
+/* 1.  NEW – form-specific type                                        */
+export type FormData = Omit<ProjectData, 'revenue' | 'decktype'> & {
+  revenue  : '' | ProjectData['revenue'];        // “not chosen” allowed
+  decktype : '' | ProjectData['decktype'];          // “not chosen” allowed
+};
+
 interface ProjectSetupProps {
   onComplete: (data: ProjectData) => void;
 }
@@ -22,10 +29,10 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
     projectName: "",
     industry: "",
     stage: "",
-    revenue: "",
+    revenue: "" ,
     description: "",
-    slideCount: 12,
-    slideMode: "manual", // "manual" or "ai"
+    slide_count: 12,
+    slide_mode: "manual", // "manual" or "ai"
     decktype: "" as ProjectData["decktype"] | ""
   });
 
@@ -83,10 +90,8 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
       const { id } = await res.json();          // ⇠ Supabase row id
       localStorage.setItem("projectId", id);
 
-      onComplete({
-        ...formData,
-        decktype: formData.decktype as ProjectData["decktype"]
-      });
+      onComplete(formData as ProjectData);
+
     } catch (err: any) {
       console.error(err);
       alert(`Error creating project: ${err.message}`);
@@ -102,7 +107,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
       case 2:
         return !!formData.description.trim();
       case 3:
-        return !!formData.decktype && (formData.slideMode === "ai" || (formData.slideCount >= 5 && formData.slideCount <= 14));
+        return !!formData.decktype && (formData.slide_mode === "ai" || (formData.slide_count >= 5 && formData.slide_count <= 14));
       default:
         return false;
     }
@@ -276,9 +281,9 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
 <div className="space-y-2">
   <Label>Slide Count Preference *</Label>
   <Select
-    value={formData.slideMode}
+    value={formData.slide_mode}
     onValueChange={value =>
-      setFormData(prev => ({ ...prev, slideMode: value as "manual" | "ai" }))
+      setFormData(prev => ({ ...prev, slide_mode: value as "manual" | "ai" }))
     }
   >
     <SelectTrigger>
@@ -293,16 +298,16 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
 </div>
 
 {/* manual slider – visible only when needed ------------------- */}
-{formData.slideMode === "manual" && (
+{formData.slide_mode === "manual" && (
   <div className="space-y-3">
-    <Label>Target Slide Count: {formData.slideCount}</Label>
+    <Label>Target Slide Count: {formData.slide_count}</Label>
     <Slider
       max={14}
       min={5}
       step={1}
-      value={[formData.slideCount]}
+      value={[formData.slide_count]}
       onValueChange={([val]) =>
-        setFormData(prev => ({ ...prev, slideCount: val }))
+        setFormData(prev => ({ ...prev, slide_count: val }))
       }
     />
   </div>
