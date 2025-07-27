@@ -14,8 +14,8 @@ import { Briefcase, TrendingUp, Users } from 'lucide-react';
 
 /* 1.  NEW – form-specific type                                        */
 export type FormData = Omit<ProjectData, 'revenue' | 'decktype'> & {
-  revenue  : '' | ProjectData['revenue'];        // “not chosen” allowed
-  decktype : '' | ProjectData['decktype'];          // “not chosen” allowed
+  revenue: '' | ProjectData['revenue'];        // “not chosen” allowed
+  decktype: '' | ProjectData['decktype'];          // “not chosen” allowed
 };
 
 interface ProjectSetupProps {
@@ -29,7 +29,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
     projectName: "",
     industry: "",
     stage: "",
-    revenue: "" ,
+    revenue: "",
     description: "",
     slide_count: 12,
     slide_mode: "manual", // "manual" or "ai"
@@ -76,6 +76,11 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
 
     /* final step – POST to backend */
     try {
+      const payload = {
+        ...formData,
+        slide_count: formData.slide_mode === "ai" ? undefined : formData.slide_count
+      };
+      
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -278,40 +283,40 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
               </div>
 
               {/* slide-count preference ------------------------------------ */}
-<div className="space-y-2">
-  <Label>Slide Count Preference *</Label>
-  <Select
-    value={formData.slide_mode}
-    onValueChange={value =>
-      setFormData(prev => ({ ...prev, slide_mode: value as "manual" | "ai" }))
-    }
-  >
-    <SelectTrigger>
-      <SelectValue placeholder="Select preference" />
-    </SelectTrigger>
+              <div className="space-y-2">
+                <Label>Slide Count Preference *</Label>
+                <Select
+                  value={formData.slide_mode}
+                  onValueChange={value =>
+                    setFormData(prev => ({ ...prev, slide_mode: value as "manual" | "ai" }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select preference" />
+                  </SelectTrigger>
 
-    <SelectContent>
-      <SelectItem value="manual">I'll choose the number of slides</SelectItem>
-      <SelectItem value="ai">Let AI decide for me</SelectItem>
-    </SelectContent>
-  </Select>
-</div>
+                  <SelectContent>
+                    <SelectItem value="manual">I'll choose the number of slides</SelectItem>
+                    <SelectItem value="ai">Let AI decide for me</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-{/* manual slider – visible only when needed ------------------- */}
-{formData.slide_mode === "manual" && (
-  <div className="space-y-3">
-    <Label>Target Slide Count: {formData.slide_count}</Label>
-    <Slider
-      max={14}
-      min={5}
-      step={1}
-      value={[formData.slide_count]}
-      onValueChange={([val]) =>
-        setFormData(prev => ({ ...prev, slide_count: val }))
-      }
-    />
-  </div>
-)}
+              {/* manual slider – visible only when needed ------------------- */}
+              {formData.slide_mode === "manual" && (
+                <div className="space-y-3">
+                  <Label>Target Slide Count: {formData.slide_count}</Label>
+                  <Slider
+                    max={14}
+                    min={5}
+                    step={1}
+                    value={[formData.slide_count]}
+                    onValueChange={([val]) =>
+                      setFormData(prev => ({ ...prev, slide_count: val }))
+                    }
+                  />
+                </div>
+              )}
             </>
           )}
         </CardContent>

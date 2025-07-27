@@ -12,10 +12,10 @@ const bodySchema = z.object({
   revenue: z.enum(["pre-revenue", "revenue"]),
   description: z.string().min(5),
   slide_mode: z.enum(["manual", "ai"]),  // Optional for AI mode
-  slide_count:  z.number().int().min(5).max(14).optional(),  // Optional for AI mode
+  slide_count:  z.number().int().min(5).max(14).nullable().optional(),  // Optional for AI mode
   decktype:    z.enum(["essentials", "matrix", "complete_deck"])
 }).refine( 
-  d=> (d.slide_mode === "manual" && d.slide_count !== undefined), {
+  d=> (d.slide_mode === "ai" && d.slide_count !== null), {
   message: "slide_count is required when slide_mode is manual",
   path: ["slide_count"]
 }
