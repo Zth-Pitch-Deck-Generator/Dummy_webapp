@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect,useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { ProjectData, QAData } from '@/pages/Index';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,11 +20,6 @@ interface Message {
   timestamp: number;
 }
 
-const resolveSlideCount = (
-  mode: ProjectData['slide_mode'],
-  raw : number                           // can be 0 / null in DB but TS says number
-) => (mode === 'ai' ? 12 : raw); 
-
 const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
@@ -32,62 +27,67 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   const [questionCount, setQuestionCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const resolveSlideCount = (
+    mode: ProjectData['slide_mode'],
+    raw: number                           // can be 0 / null in DB but TS says number
+  ) => (mode === 'ai' ? 12 : raw);
+
+  // 1. MAKE maxQuestions DYNAMIC
+  const getMaxQuestions = (
+    decktype: ProjectData['decktype'],
+    slide_count: number                // <── comes from ProjectSetup
+  ) => {
+    /*
+      Baseline rule:
+        questions ≈ 90 % of requested slides (rounded)
+  
+      Deck-type adjustment:
+        essentials      → -1 question
+        matrix          →   0
+        complete_deck   → +1 question
+  
+      Finally clamp to [5 … 12]
+    */
+    let q = Math.round(slide_count * 0.9);
+
+    if (decktype === 'essentials') q -= 1;
+    if (decktype === 'complete_deck') q += 1;
+
+    return Math.min(12, Math.max(5, q));
+  };
+
     const effectiveSlideCount = resolveSlideCount(
     projectData.slide_mode,
     projectData.slide_count
   );
 
-  // 1. MAKE maxQuestions DYNAMIC
-  const getMaxQuestions = (
-  decktype: ProjectData['decktype'],
-  slide_count: number                // <── comes from ProjectSetup
-) => {
-  /*
-    Baseline rule:
-      questions ≈ 90 % of requested slides (rounded)
-
-    Deck-type adjustment:
-      essentials      → -1 question
-      matrix          →   0
-      complete_deck   → +1 question
-
-    Finally clamp to [5 … 12]
-  */
-  let q = Math.round(slide_count * 0.9);
-
-  if (decktype === 'essentials')     q -= 1;
-  if (decktype === 'complete_deck')  q += 1;
-
-  return Math.min(12, Math.max(5, q));
-};
-
-/* compute once at render */
-  const maxQuestions = useMemo(
-    () => getMaxQuestions(projectData.decktype, effectiveSlideCount),
-    [projectData.decktype, effectiveSlideCount]
+  const maxQuestions = getMaxQuestions(
+    projectData.decktype,
+    effectiveSlideCount
   );
-const progress     = (questionCount / maxQuestions) * 100;
+
+  const progress = (questionCount / maxQuestions) * 100;
 
   // 2. MAKE THE INITIAL QUESTION MORE CONTEXTUAL
   useEffect(() => {
     let introText = '';
     switch (projectData.decktype) {
-        case 'essentials':
-            introText = "We'll focus on the core narrative of your business.";
-            break;
-        case 'matrix':
-            introText = "We'll be diving deep into the key metrics and competitive landscape.";
-            break;
-        case 'complete_deck':
-            introText = "We'll cover both your story and the data that backs it up for a comprehensive deck.";
-            break;
+      case 'essentials':
+        introText = "We'll focus on the core narrative of your business.";
+        break;
+      case 'matrix':
+        introText = "We'll be diving deep into the key metrics and competitive landscape.";
+        break;
+      case 'complete_deck':
+        introText = "We'll cover both your story and the data that backs it up for a comprehensive deck.";
+        break;
     }
 
     setMessages([{
       id: 'initial',
       type: 'ai',
       content: `Hi! I'm ready to build your "${projectData.decktype}" deck for "${projectData.projectName}". 
-      ${introText}\n\nLet's start with the first question: What is the single most important problem your project solves?`,
+      ${introText}\nLet's start with the first question: What is the single most important problem your project solves?`,
       timestamp: Date.now(),
     }]);
   }, [projectData]);
@@ -153,7 +153,7 @@ const progress     = (questionCount / maxQuestions) * 100;
         if (done) break;
 
         const chunk = decoder.decode(value);
-        setMessages(prev => prev.map(m => 
+        setMessages(prev => prev.map(m =>
           m.id === aiResponseId ? { ...m, content: m.content + chunk } : m
         ));
       }
@@ -172,12 +172,12 @@ const progress     = (questionCount / maxQuestions) * 100;
 
     // Tell the backend the session is complete and save the transcript
     await fetch('http://localhost:3000/api/qa/session/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            projectId,
-            messages: messages.map(m => ({ role: m.type, content: m.content }))
-        })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId,
+        messages: messages.map(m => ({ role: m.type, content: m.content }))
+      })
     });
 
     // Format the data for the next step in the UI
@@ -211,7 +211,7 @@ const progress     = (questionCount / maxQuestions) * 100;
           </Badge>
         </div>
         <div className="bg-gray-200 rounded-full h-2">
-          <div 
+          <div
             className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
@@ -243,11 +243,10 @@ const progress     = (questionCount / maxQuestions) * 100;
                   )}
 
                   <div
-                    className={`max-w-[80%] p-4 rounded-lg ${
-                      message.type === 'user'
+                    className={`max-w-[80%] p-4 rounded-lg ${message.type === 'user'
                         ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
                         : 'bg-gray-100 text-gray-900'
-                    }`}
+                      }`}
                   >
                     <p className="whitespace-pre-wrap">{message.content}</p>
                   </div>
@@ -261,7 +260,7 @@ const progress     = (questionCount / maxQuestions) * 100;
               ))}
 
               {isLoading && (
-                 <div className="flex gap-3 justify-start">
+                <div className="flex gap-3 justify-start">
                   <Avatar className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500">
                     <Bot className="w-4 h-4 text-white p-1" />
                   </Avatar>
