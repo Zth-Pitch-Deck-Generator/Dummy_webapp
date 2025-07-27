@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect,useMemo } from 'react';
 import { ProjectData, QAData } from '@/pages/Index';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,11 @@ interface Message {
   timestamp: number;
 }
 
+const resolveSlideCount = (
+  mode: ProjectData['slide_mode'],
+  raw : number                           // can be 0 / null in DB but TS says number
+) => (mode === 'ai' ? 12 : raw); 
+
 const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
@@ -27,14 +32,19 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   const [questionCount, setQuestionCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+    const effectiveSlideCount = resolveSlideCount(
+    projectData.slide_mode,
+    projectData.slide_count
+  );
+
   // 1. MAKE maxQuestions DYNAMIC
   const getMaxQuestions = (
   decktype: ProjectData['decktype'],
-  slideCount: ProjectData['slideCount']                // <── comes from ProjectSetup
+  slide_count: number                // <── comes from ProjectSetup
 ) => {
   /*
     Baseline rule:
-      questions ≈ 60 % of requested slides (rounded)
+      questions ≈ 90 % of requested slides (rounded)
 
     Deck-type adjustment:
       essentials      → -1 question
@@ -43,7 +53,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
 
     Finally clamp to [5 … 12]
   */
-  let q = Math.round(slideCount * 0.9);
+  let q = Math.round(slide_count * 0.9);
 
   if (decktype === 'essentials')     q -= 1;
   if (decktype === 'complete_deck')  q += 1;
@@ -52,7 +62,10 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
 };
 
 /* compute once at render */
-const maxQuestions = getMaxQuestions(projectData.decktype, projectData.slideCount);
+  const maxQuestions = useMemo(
+    () => getMaxQuestions(projectData.decktype, effectiveSlideCount),
+    [projectData.decktype, effectiveSlideCount]
+  );
 const progress     = (questionCount / maxQuestions) * 100;
 
   // 2. MAKE THE INITIAL QUESTION MORE CONTEXTUAL
@@ -73,7 +86,8 @@ const progress     = (questionCount / maxQuestions) * 100;
     setMessages([{
       id: 'initial',
       type: 'ai',
-      content: `Hi! I'm ready to build your "${projectData.decktype}" deck for "${projectData.projectName}". ${introText}\n\nLet's start with the first question: What is the single most important problem your project solves?`,
+      content: `Hi! I'm ready to build your "${projectData.decktype}" deck for "${projectData.projectName}". 
+      ${introText}\n\nLet's start with the first question: What is the single most important problem your project solves?`,
       timestamp: Date.now(),
     }]);
   }, [projectData]);
