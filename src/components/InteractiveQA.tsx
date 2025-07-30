@@ -27,10 +27,24 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   const [questionCount, setQuestionCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const resolveSlideCount = (
-    mode: ProjectData['slide_mode'],
-    raw: number                           // can be 0 / null in DB but TS says number
-  ) => (mode === 'ai' ? 12 : raw);
+const autoSlideCount = (
+  decktype : 'essentials' | 'matrix' | 'complete_deck',
+  revenue  : 'pre-revenue' | 'revenue'
+) => {
+  switch (decktype) {
+    case 'essentials':     return revenue === 'revenue' ? 8  : 6;  // 6-8
+    case 'matrix':         return revenue === 'revenue' ? 10 : 8;  // 8-10
+    case 'complete_deck':  return revenue === 'revenue' ? 13 : 12; // 12-13
+    default:               return 10;
+  }
+};
+
+const resolveSlideCount = (
+  mode     : 'manual' | 'ai',
+  raw      : number,
+  decktype : 'essentials' | 'matrix' | 'complete_deck',
+  revenue  : 'pre-revenue' | 'revenue'
+) => (mode === 'manual' ? raw : autoSlideCount(decktype, revenue));
 
   // 1. MAKE maxQuestions DYNAMIC
   const getMaxQuestions = (
@@ -56,10 +70,12 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
     return Math.min(12, Math.max(5, q));
   };
 
-    const effectiveSlideCount = resolveSlideCount(
-    projectData.slide_mode,
-    projectData.slide_count
-  );
+const effectiveSlideCount = resolveSlideCount(
+  projectData.slide_mode,
+  projectData.slide_count,
+  projectData.decktype,
+  projectData.revenue
+);
 
   const maxQuestions = getMaxQuestions(
     projectData.decktype,
