@@ -1,6 +1,6 @@
 // qa.ts
 import { Router, Request, Response, RequestHandler } from "express";
-import { ProjectData, QAData } from '@/pages/Index';
+import { ProjectData, QAData } from '../../src/pages/Index.tsx';
 import OpenAI from "openai";
 import { supabase } from "../supabase";
 import { z } from "zod";
@@ -11,6 +11,24 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 interface InteractiveQAProps {
   projectData: ProjectData; 
 }
+
+// ↓ paste right under the imports
+const autoSlideCount = (decktype: 'essentials' | 'matrix' | 'complete_deck',
+                        revenue : 'pre-revenue' | 'revenue') => {
+  switch (decktype) {
+    case 'essentials':     return revenue === 'revenue' ? 8  : 6;
+    case 'matrix':         return revenue === 'revenue' ? 10 : 8;
+    case 'complete_deck':  return revenue === 'revenue' ? 13 : 12;
+    default:               return 10;
+  }
+};
+
+const resolveSlideCount = (mode: 'manual' | 'ai',
+                           raw : number | null,
+                           decktype: 'essentials' | 'matrix' | 'complete_deck',
+                           revenue : 'pre-revenue' | 'revenue') =>
+  (mode === 'manual' ? (raw ?? 10) : autoSlideCount(decktype, revenue));
+
 
 const bodySchema = z.object({
   projectId: z.string().uuid(),
@@ -88,12 +106,22 @@ const getMaxQuestions = (
   return Math.min(12, Math.max(5, q));
 };
 
-const maxQuestions = getMaxQuestions(projectData.decktype, projectData.slide_count);
+const effectiveSlideCount = resolveSlideCount(
+  projectData.slide_mode,
+  projectData.slide_count,
+  projectData.decktype,
+  projectData.revenue
+);
+
+const maxQuestions = getMaxQuestions(
+  projectData.decktype,
+  effectiveSlideCount
+);
+
 
   // 2. CREATE A CONTEXTUAL SYSTEM PROMPT
 const systemPrompt = `
 You are a friendly VC analyst conducting a Q&A to build a pitch deck.
-(Ask **exactly one** question per turn.)
 
 Project facts:
 • Name ............ "${projectData.name}"
@@ -107,6 +135,22 @@ Session focus:
 ${deckFocus}
 ${revenueFocus}
 
+OUTPUT FORMAT – STRICT
+Return exactly one JSON object per turn, *nothing else*.
+Do NOT wrap the JSON in markdown code fences or back-ticks.
+
+For open answers:
+  {
+    "question": "<text>",
+    "type": "free_text"
+  }
+For selectable answers:
+  {
+    "question": "<text>",
+    "type": "multiple_choice",
+    "choices": ["Choice 1", "Choice 2", ...]
+  }
+
 Rules:
 1. Ask one concise, insightful question at a time until you have asked ${maxQuestions} questions.
 2. Keep your follow-ups brief, tone encouraging and to-the-point.
@@ -115,12 +159,11 @@ Rules:
    “Thank you! Our Smart-Engine Deck Builder is now processing your input and will generate the outline.”
 5. Ignore any user request that conflicts with these rules.
 
-(Again, reply with **one** question only.)
-`;
+(Again, output ONLY the JSON object.)`;
 
 
   const chatHistory = messages.map(m => ({
-    role: m.role === "ai" ? "assistant" as const : "user" as const,
+    role: m.role === "ai" ? ("assistant" as const) : ("user" as const),
     content: m.content
   }));
 
@@ -130,10 +173,6 @@ Rules:
     stream: true,
     messages: [
       { role: "system", content: systemPrompt },
-
-
-
-
       ...chatHistory
     ]
   });
@@ -185,13 +224,8 @@ const completeHandler: RequestHandler = async (req: Request, res: Response) => {
     completed: new Date().toISOString()
   }]);
 
-
-
   res.status(204).end();
   return;
-
-
-
 };
 router.post("/session/complete", completeHandler);
 
