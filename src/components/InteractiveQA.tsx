@@ -8,7 +8,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { Send, Bot, User, Sparkles, ArrowRight } from 'lucide-react';
 
-// --- UPDATED: New types for AI messages ---
 type AIMessage = {
   id: string;
   type: 'ai';
@@ -32,7 +31,11 @@ interface InteractiveQAProps {
   onComplete: (qaData: QAData) => void;
 }
 
+/* ---------- constants ---------- */
+const questionsByDeck = { essentials: 8, matrix: 10, complete_deck: 12 } as const;
+
 const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
+  /* -------- state -------- */
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
@@ -41,144 +44,71 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   const [questionCount, setQuestionCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // --- Utility functions and setup ---
-
-  const autoSlideCount = (
-    decktype: 'essentials' | 'matrix' | 'complete_deck',
-    revenue: 'pre-revenue' | 'revenue'
-  ) => {
-    switch (decktype) {
-      case 'essentials': return revenue === 'revenue' ? 8 : 6;
-      case 'matrix': return revenue === 'revenue' ? 10 : 8;
-      case 'complete_deck': return revenue === 'revenue' ? 13 : 12;
-      default: return 10;
-    }
-  };
-
-  const resolveSlideCount = (
-    mode: 'manual' | 'ai',
-    raw: number,
-    decktype: 'essentials' | 'matrix' | 'complete_deck',
-    revenue: 'pre-revenue' | 'revenue'
-  ) => (mode === 'manual' ? raw : autoSlideCount(decktype, revenue));
-
-  const getMaxQuestions = (
-    decktype: ProjectData['decktype'],
-    slide_count: number
-  ) => {
-    let q = Math.round(slide_count * 0.9);
-    if (decktype === 'essentials') q -= 1;
-    if (decktype === 'complete_deck') q += 1;
-    return Math.min(12, Math.max(5, q));
-  };
-
-  const effectiveSlideCount = resolveSlideCount(
-    projectData.slide_mode,
-    projectData.slide_count,
-    projectData.decktype,
-    projectData.revenue
-  );
-
-  const maxQuestions = getMaxQuestions(
-    projectData.decktype,
-    effectiveSlideCount
-  );
-
+  const maxQuestions = questionsByDeck[projectData.decktype];
   const progress = (questionCount / maxQuestions) * 100;
 
-  // --- Modified: Initial greeting + first question fetch ---
+  /* -------- initial greeting + Q1 -------- */
   useEffect(() => {
-    // Only set the greeting; let the backend provide the first question (of AI JSON shape) after user responds
-    let introText = '';
-    switch (projectData.decktype) {
-      case 'essentials':
-        introText = "We'll focus on the core narrative of your business.";
-        break;
-      case 'matrix':
-        introText = "We'll be diving deep into the key metrics and competitive landscape.";
-        break;
-      case 'complete_deck':
-        introText = "We'll cover both your story and the data that backs it up for a comprehensive deck.";
-        break;
-    }
-    setMessages([
-      {
-        id: 'greeting',
-        type: 'ai',
-        question: `Hi! I'm ready to build your "${projectData.decktype}" deck for "${projectData.projectName}". ${introText}\nLet's get started!`,
-        answerType: "free_text",
-        timestamp: Date.now(),
-      }
-    ]);
+    const firstMsg =
+      `Hi there! Let’s understand your idea better to help us build your "${projectData.decktype}" pitch deck.\n\n` +
+      ` What problem does your company solve?`;
+    setMessages([{
+      id: 'greeting',
+      type: 'ai',
+      question: firstMsg,
+      answerType: 'free_text',
+      timestamp: Date.now()
+    }]);
     setQuestionCount(0);
   }, [projectData]);
 
-  // Auto-scroll
+  /* -------- auto-scroll -------- */
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current)
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, isLoading]);
+
+  /* -------- helpers -------- */
+  function parseAIResponse(raw: string): AIMessage {
+    try {
+      const cleaned = raw.replace(/``````/g, '').trim();
+      const obj = JSON.parse(cleaned);
+      return {
+        id: `ai-${Date.now()}`,
+        type: 'ai',
+        question: obj.question,
+        answerType: obj.type,
+        choices: obj.choices,
+        timestamp: Date.now()
+      };
+    } catch {
+      return {
+        id: `ai-${Date.now()}`,
+        type: 'ai',
+        question: raw,
+        answerType: 'free_text',
+        timestamp: Date.now()
+      };
     }
-  }, [messages]);
-
-  // --- Helper: Parse streamed AI JSON response ---
-function parseAIResponse(raw: string): AIMessage {
-  try {
-
-const withoutFences = raw
-  .replace(/```json\s*/gi, '')
-  .replace(/```/g, '')
-  .trim();
-
-    // 2. extract the first {...} block
-    const firstCurly = withoutFences.indexOf('{');
-    const lastCurly  = withoutFences.lastIndexOf('}');
-    if (firstCurly === -1 || lastCurly === -1) {
-      throw new Error('No JSON found');
-    }
-
-    const jsonString = withoutFences.slice(firstCurly, lastCurly + 1);
-    const obj = JSON.parse(jsonString);
-
-    return {
-      id: `ai-${Date.now()}`,
-      type: 'ai',
-      question: obj.question,
-      answerType: obj.type as 'free_text' | 'multiple_choice',
-      choices: obj.choices,
-      timestamp: Date.now()
-    };
-  } catch (err) {
-    console.error('✗ Could not parse AI JSON → falling back to free-text', err);
-    return {
-      id: `ai-${Date.now()}`,
-      type: 'ai',
-      question: raw,
-      answerType: 'free_text',
-      timestamp: Date.now()
-    };
   }
-}
 
-
-  // --- UPDATED: Send message (supports both text and choice) ---
+  /* -------- send message -------- */
   const handleSendMessage = async (choiceOverride?: string) => {
-    // Find the latest AI question
-    const aiMessages = messages.filter(m => m.type === 'ai') as AIMessage[];
-    const latestAI = aiMessages.length > 0 ? aiMessages[aiMessages.length - 1] : undefined;
+    const content = choiceOverride ?? currentInput.trim();
 
-    let toSend = choiceOverride ?? currentInput.trim();
-    if (!toSend && !showOther) return;
+    /* garbage check */
+    if (/^(idk|n\/?a|🤷|[\s\?]{0,3})$/i.test(content))
+      return alert("Let’s stay focused so I can help you generate a great pitch deck! Please answer the question.");
 
-    // Add user message
-    setMessages(prev => [
-      ...prev,
-      {
-        id: `user-${Date.now()}`,
-        type: 'user',
-        content: toSend,
-        timestamp: Date.now(),
-      }
-    ]);
+    if (!content && !showOther) return;
+
+    const userMsg: UserMessage = {
+      id: `user-${Date.now()}`,
+      type: 'user',
+      content,
+      timestamp: Date.now()
+    };
+    setMessages(prev => [...prev, userMsg]);
     setCurrentInput('');
     setSelectedChoice(null);
     setShowOther(false);
@@ -186,114 +116,96 @@ const withoutFences = raw
 
     try {
       const projectId = localStorage.getItem("projectId");
-      if (!projectId) {
-        alert("Error: Project ID not found. Please start over.");
-        setIsLoading(false);
-        return;
-      }
-      // Prepare chat history as per backend requirement
+      if (!projectId) throw new Error("Project ID missing");
+
       const payload = {
         projectId,
-        messages: [...messages, {
-          id: `user-${Date.now()}`,
-          type: 'user',
-          content: toSend,
-          timestamp: Date.now()
-        }].filter(m => m.type === 'user' || (m.type === 'ai' && (m as AIMessage).question)).map(m =>
-          m.type === 'user'
-            ? { role: 'user', content: m.content }
-            : { role: 'ai', content: (m as AIMessage).question }
-        ),
+        messages: [...messages, userMsg]
+          .filter(m => m.type === 'user' || m.type === 'ai')
+          .map(m =>
+            m.type === 'user'
+              ? { role: 'user', content: m.content }
+              : { role: 'ai', content: (m as AIMessage).question }
+          )
       };
 
-      const response = await fetch('http://localhost:3000/api/qa', {
+      const res = await fetch('/api/qa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payload)
       });
+      if (!res.ok || !res.body) throw new Error("API error");
 
-      if (!response.ok || !response.body) {
-        throw new Error('API request failed');
-      }
-
-      // Read full stream & parse as JSON
-      const reader = response.body.getReader();
+      /* read stream */
+      const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let resultText = '';
+      let txt = '';
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        resultText += decoder.decode(value);
+        txt += decoder.decode(value);
       }
 
-      // Final AI question (parsed as JSON)
-      const aiMsg = parseAIResponse(resultText);
-
+      const aiMsg = parseAIResponse(txt);
       setMessages(prev => [...prev, aiMsg]);
-      setQuestionCount(prev => prev + 1);
-
-    } catch (error) {
-      console.error("Failed to get AI response:", error);
-      // Optionally, show error message in chat
+      setQuestionCount(c => c + 1);
+    } catch (err) {
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- Handle session completion as before ---
+  /* -------- complete session -------- */
   const handleComplete = async () => {
     const projectId = localStorage.getItem("projectId");
-    if (!projectId) return alert("Project ID is missing!");
-    await fetch('http://localhost:3000/api/qa/session/complete', {
+    if (!projectId) return alert("Project ID missing");
+
+    await fetch('/api/qa/session/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         projectId,
         messages: messages.map(m =>
           m.type === 'user'
-            ? { role: m.type, content: m.content }
-            : { role: m.type, content: (m as AIMessage).question }
+            ? { role: 'user', content: m.content }
+            : { role: 'ai', content: (m as AIMessage).question }
         )
       })
     });
-    const qaData: QAData = [];
+
+    /* build QAData */
+    const qa: QAData = [];
     for (let i = 0; i < messages.length; i++) {
       if (messages[i].type === 'ai') {
-        qaData.push({
+        qa.push({
           question: (messages[i] as AIMessage).question,
-          answer: messages[i + 1]?.type === 'user' ? (messages[i + 1] as UserMessage).content : '',
-          timestamp: messages[i].timestamp,
+          answer: messages[i + 1]?.type === 'user'
+            ? (messages[i + 1] as UserMessage).content
+            : '',
+          timestamp: messages[i].timestamp
         });
       }
     }
-    onComplete(qaData);
+    onComplete(qa);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
+  /* -------- input area renderer -------- */
+  const renderInputArea = () => {
+    const aiMsgs = messages.filter(m => m.type === 'ai') as AIMessage[];
+    const latest = aiMsgs[aiMsgs.length - 1];
+    if (!latest) return null;
 
-  // --- NEW: Render answer area dynamically ---
-  function renderInputArea() {
-    // Find the latest AI question message (skip greeting)
-    const aiMessages = messages.filter(m => m.type === 'ai') as AIMessage[];
-    const latestAI = aiMessages.length > 0 ? aiMessages[aiMessages.length - 1] : undefined;
-    if (!latestAI) return null;
-
-    // multiple_choice: show buttons
-    if (latestAI.answerType === 'multiple_choice' && Array.isArray(latestAI.choices)) {
+    /* multiple-choice layout */
+    if (latest.answerType === 'multiple_choice' && latest.choices) {
       return (
         <div className="flex flex-wrap gap-2 items-center">
-          {latestAI.choices.map(choice =>
-            // If user picks "Other", show text input
-            choice.toLowerCase() === "other" ? (
+          {latest.choices.map(choice =>
+            choice.toLowerCase() === 'other' ? (
               <Button
                 key={choice}
                 variant={showOther ? "default" : "outline"}
-                onClick={() => setShowOther(!showOther)}
+                onClick={() => setShowOther(v => !v)}
                 disabled={isLoading}
               >Other</Button>
             ) : (
@@ -310,29 +222,29 @@ const withoutFences = raw
               <Input
                 value={currentInput}
                 onChange={e => setCurrentInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Enter your answer..."
+                placeholder="Enter your answer…"
                 disabled={isLoading}
                 className="min-w-[180px]"
+                onKeyPress={e => e.key === 'Enter' && !isLoading && handleSendMessage()}
               />
-              <Button
-                onClick={() => handleSendMessage()}
-                disabled={!currentInput.trim() || isLoading}
-              ><Send className="w-4 h-4" /></Button>
+              <Button onClick={() => handleSendMessage()} disabled={!currentInput.trim() || isLoading}>
+                <Send className="w-4 h-4" />
+              </Button>
             </>
           )}
         </div>
       );
     }
-    // default: free_text
+
+    /* free-text layout */
     return (
       <div className="flex gap-2">
         <Input
           value={currentInput}
           onChange={e => setCurrentInput(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Type your answer here..."
+          placeholder="Type your answer here…"
           disabled={isLoading}
+          onKeyPress={e => e.key === 'Enter' && !isLoading && handleSendMessage()}
         />
         <Button
           onClick={() => handleSendMessage()}
@@ -343,17 +255,12 @@ const withoutFences = raw
         </Button>
       </div>
     );
-  }
+  };
 
-  // --- UPDATED: Render messages: AI using .question; User as .content ---
-  function renderMessageText(m: Message) {
-    if (m.type === 'user') return m.content;
-    return (m as AIMessage).question;
-  }
-
-  // --- Main JSX ---
+  /* ================================================================= */
   return (
     <div className="max-w-4xl mx-auto">
+      {/* header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-3xl font-bold text-gray-900">Interactive Q&A Session</h1>
@@ -368,6 +275,8 @@ const withoutFences = raw
           />
         </div>
       </div>
+
+      {/* chat card */}
       <Card className="shadow-lg h-[600px] flex flex-col">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2">
@@ -377,34 +286,34 @@ const withoutFences = raw
             AI Assistant
           </CardTitle>
         </CardHeader>
+
         <CardContent className="flex-1 p-0 flex flex-col">
+          {/* messages */}
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
             <div className="space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {message.type === 'ai' && (
+              {messages.map(m => (
+                <div key={m.id} className={`flex gap-3 ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {m.type === 'ai' && (
                     <Avatar className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500">
                       <Bot className="w-4 h-4 text-white p-1" />
                     </Avatar>
                   )}
-                  <div
-                    className={`max-w-[80%] p-4 rounded-lg ${message.type === 'user'
-                      ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-900'
-                      }`}
-                  >
-                    <p className="whitespace-pre-wrap">{renderMessageText(message)}</p>
+                  <div className={`max-w-[80%] p-4 rounded-lg ${m.type === 'user'
+                    ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-900'}`}>
+                    <p className="whitespace-pre-wrap">
+                      {m.type === 'user' ? m.content : (m as AIMessage).question}
+                    </p>
                   </div>
-                  {message.type === 'user' && (
+                  {m.type === 'user' && (
                     <Avatar className="w-8 h-8 bg-gray-600">
                       <User className="w-4 h-4 text-white p-1" />
                     </Avatar>
                   )}
                 </div>
               ))}
+
+              {/* typing dots */}
               {isLoading && (
                 <div className="flex gap-3 justify-start">
                   <Avatar className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500">
@@ -421,6 +330,8 @@ const withoutFences = raw
               )}
             </div>
           </ScrollArea>
+
+          {/* footer input */}
           <div className="border-t p-4">
             {questionCount >= maxQuestions ? (
               <div className="flex justify-center">
@@ -428,13 +339,10 @@ const withoutFences = raw
                   onClick={handleComplete}
                   className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
                 >
-                  Preview Your Deck
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                  Preview Your Deck <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
-            ) : (
-              renderInputArea()
-            )}
+            ) : renderInputArea()}
           </div>
         </CardContent>
       </Card>
