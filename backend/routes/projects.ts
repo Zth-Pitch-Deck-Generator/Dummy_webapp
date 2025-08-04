@@ -14,11 +14,15 @@ const bodySchema = z.object({
   slide_mode: z.enum(["manual", "ai"]),  // Optional for AI mode
   slide_count:  z.number().int().min(5).max(14).nullable().optional(),  // Optional for AI mode
   decktype:    z.enum(["essentials", "matrix", "complete_deck"])
-}).refine( 
-  d=> (d.slide_mode === "ai" && d.slide_count !== null), {
-  message: "slide_count is required when slide_mode is manual",
-  path: ["slide_count"]
-}
+}).refine(
+  d => {
+    if (d.slide_mode === "manual") return d.slide_count !== null && d.slide_count !== undefined;
+    return true;                    // AI mode → ignore slide_count
+  },
+  {
+    message: "slide_count is required when slide_mode is manual",
+    path: ["slide_count"]
+  }
 );
 
 

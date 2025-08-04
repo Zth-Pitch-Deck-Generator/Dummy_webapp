@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { Send, Bot, User, Sparkles, ArrowRight } from 'lucide-react';
+import TextareaAutosize from 'react-textarea-autosize';
 
+/* ---------- types ---------- */
 type AIMessage = {
   id: string;
   type: 'ai';
@@ -34,6 +36,7 @@ interface InteractiveQAProps {
 /* ---------- constants ---------- */
 const questionsByDeck = { essentials: 8, matrix: 10, complete_deck: 12 } as const;
 
+/* =================================================================== */
 const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   /* -------- state -------- */
   const [messages, setMessages] = useState<Message[]>([]);
@@ -50,8 +53,8 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   /* -------- initial greeting + Q1 -------- */
   useEffect(() => {
     const firstMsg =
-      `Hi there! Let’s understand your idea better to help us build your "${projectData.decktype}" pitch deck.\n\n` +
-      ` What problem does your company solve?`;
+      `Hi there! Let’s understand your idea better to help us build your "${projectData.decktype}" pitch deck.\n` +
+      `What problem does your company solve?`;
     setMessages([{
       id: 'greeting',
       type: 'ai',
@@ -71,7 +74,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   /* -------- helpers -------- */
   function parseAIResponse(raw: string): AIMessage {
     try {
-      const cleaned = raw.replace(/``````/g, '').trim();
+      const cleaned = raw.replace(/``````/gi, '').trim();
       const obj = JSON.parse(cleaned);
       return {
         id: `ai-${Date.now()}`,
@@ -118,16 +121,15 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
       const projectId = localStorage.getItem("projectId");
       if (!projectId) throw new Error("Project ID missing");
 
-      const payload = {
-        projectId,
-        messages: [...messages, userMsg]
-          .filter(m => m.type === 'user' || m.type === 'ai')
-          .map(m =>
-            m.type === 'user'
-              ? { role: 'user', content: m.content }
-              : { role: 'ai', content: (m as AIMessage).question }
-          )
-      };
+const payload = {
+  projectId,
+  messages: [...messages, userMsg]             // ⬅️ keep every turn
+    .map(m =>
+      m.type === 'user'
+        ? { role: 'user', content: m.content }
+        : { role: 'ai', content: (m as AIMessage).question }
+    )
+};
 
       const res = await fetch('/api/qa', {
         method: 'POST',
@@ -166,11 +168,11 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         projectId,
-        messages: messages.map(m =>
-          m.type === 'user'
-            ? { role: 'user', content: m.content }
-            : { role: 'ai', content: (m as AIMessage).question }
-        )
+    messages: messages.map(m =>               
+      m.type === 'user'
+        ? { role: 'user', content: m.content }
+        : { role: 'ai', content: (m as AIMessage).question }
+    )
       })
     });
 
@@ -196,7 +198,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
     const latest = aiMsgs[aiMsgs.length - 1];
     if (!latest) return null;
 
-    /* multiple-choice layout */
+    /* multiple-choice */
     if (latest.answerType === 'multiple_choice' && latest.choices) {
       return (
         <div className="flex flex-wrap gap-2 items-center">
@@ -217,6 +219,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
               >{choice}</Button>
             )
           )}
+
           {showOther && (
             <>
               <Input
@@ -236,25 +239,37 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
       );
     }
 
-    /* free-text layout */
+    /* free-text */
     return (
       <div className="flex gap-2">
-        <Input
-          value={currentInput}
-          onChange={e => setCurrentInput(e.target.value)}
-          placeholder="Type your answer here…"
-          disabled={isLoading}
-          onKeyPress={e => e.key === 'Enter' && !isLoading && handleSendMessage()}
-        />
-        <Button
-          onClick={() => handleSendMessage()}
-          disabled={!currentInput.trim() || isLoading}
-          className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-        >
-          <Send className="w-4 h-4" />
-        </Button>
-      </div>
-    );
+    <TextareaAutosize
+      minRows={1}
+      maxRows={6}// stop growing after 6 lines
+      value={currentInput}
+      onChange={e => setCurrentInput(e.target.value)}
+      placeholder="Type your answer here…"
+      disabled={isLoading}
+      onKeyDown={e => {
+        if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+          e.preventDefault();// allow Shift+Enter for newline
+          handleSendMessage();
+        }
+      }}
+      className="
+        flex-1 resize-none rounded-md border px-3 py-2 text-sm
+        focus:ring-2 focus:ring-purple-500 focus:border-purple-500
+        disabled:bg-gray-100 disabled:cursor-not-allowed
+      "
+    />
+    <Button
+      onClick={() => handleSendMessage()}
+      disabled={!currentInput.trim() || isLoading}
+      className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+    >
+      <Send className="w-4 h-4" />
+    </Button>
+  </div>
+);
   };
 
   /* ================================================================= */

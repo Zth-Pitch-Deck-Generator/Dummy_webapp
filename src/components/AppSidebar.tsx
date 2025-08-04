@@ -1,4 +1,3 @@
-
 import { ProjectData } from '@/pages/Index';
 import {
   Sidebar,
@@ -12,43 +11,45 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Settings, MessageSquare, Eye, FileText, CheckCircle, Circle } from 'lucide-react';
+import { useState } from 'react';
 
 interface AppSidebarProps {
   currentStep: string;
-  onStepChange: (step: 'setup' | 'qa' | 'preview') => void;
+  onStepChange: (step: 'setup' | 'qa' | 'outline' | 'preview') => void;
   projectData: ProjectData | null;
+  qaDone: boolean;
 }
 
-export function AppSidebar({ currentStep, onStepChange, projectData }: AppSidebarProps) {
+export function AppSidebar({ currentStep, onStepChange, projectData, qaDone }: AppSidebarProps) {
   const steps = [
-    {
-      id: 'setup',
-      title: 'Project Setup',
-      icon: Settings,
-      completed: !!projectData,
-    },
-    {
-      id: 'qa',
-      title: 'Interactive Q&A',
-      icon: MessageSquare,
-      completed: false,
-      disabled: !projectData,
-    },
-    {
-      id: 'outline',
-      title: 'Outline',
-      icon: FileText,
-      completed: false,
-      disabled: !projectData
-    },
-    {
-      id: 'preview',
-      title: 'Deck Preview',
-      icon: Eye,
-      completed: false,
-      disabled: !projectData,
-    },
-  ];
+  {
+    id: 'setup',
+    title: 'Project Setup',
+    icon: Settings,
+    completed: !!projectData,
+  },
+  {
+    id: 'qa',
+    title: 'Interactive Q&A',
+    icon: MessageSquare,
+    completed: qaDone, // <- dynamic
+    disabled: !projectData,
+  },
+  {
+    id: 'outline',
+    title: 'Outline',
+    icon: FileText,
+    completed: false, // you will later wire this up
+    disabled: !qaDone, // gate by previous step
+  },
+  {
+    id: 'preview',
+    title: 'Deck Preview',
+    icon: Eye,
+    completed: false,
+    disabled: true,// enable when outline ready
+  },
+];
 
   return (
     <Sidebar className="border-r border-gray-200">
@@ -57,7 +58,7 @@ export function AppSidebar({ currentStep, onStepChange, projectData }: AppSideba
           <div className="bg-gradient-to-r from-purple-500 to-blue-500 w-8 h-8 rounded-lg flex items-center justify-center">
             <FileText className="w-4 h-4 text-white" />
           </div>
-          <h2 className="font-semibold text-lg">Pitch Deck Builder</h2>
+          <h2 className="font-semibold text-lg">Smart Engine Deck Generator</h2>
         </div>
         {projectData && (
           <div className="mt-4 p-3 bg-gray-50 rounded-lg">

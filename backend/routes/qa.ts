@@ -34,11 +34,14 @@ const bodySchema = z.object({
   projectId: z.string().uuid(),
   messages: z.array(
     z.object({
-      role: z.enum(["ai", "user"]),
+      // accept both the label you send from the client (“ai”)
+      // and the label OpenAI expects (“assistant”)
+      role: z.enum(["ai", "assistant", "user"]),
       content: z.string()
     })
   )
 });
+
 
 /* ---------- POST /api/qa  ── Ask contextual question & stream reply ---------- */
 const qaHandler: RequestHandler = async (req: Request, res: Response) => {
@@ -83,28 +86,28 @@ if (projectData.revenue === "pre-revenue") {
 
 
 
-const getMaxQuestions = (
-  decktype: ProjectData['decktype'],
-  slideCount: ProjectData['slide_count']                // <── comes from ProjectSetup
-) => {
-  /*
-    Baseline rule:
-      questions ≈ 90 % of requested slides (rounded)
+// const getMaxQuestions = (
+//   decktype: ProjectData['decktype'],
+//   slideCount: ProjectData['slide_count']                // <── comes from ProjectSetup
+// ) => {
+//   /*
+//     Baseline rule:
+//       questions ≈ 90 % of requested slides (rounded)
 
-    Deck-type adjustment:
-      essentials      → -1 question
-      matrix          →   0
-      complete_deck   → +1 question
+//     Deck-type adjustment:
+//       essentials      → -1 question
+//       matrix          →   0
+//       complete_deck   → +1 question
 
-    Finally clamp to [5 … 12]
-  */
-  let q = Math.round(slideCount * 0.9);
+//     Finally clamp to [5 … 12]
+//   */
+//   let q = Math.round(slideCount * 0.9);
 
-  if (decktype === 'essentials')     q -= 1;
-  if (decktype === 'complete_deck')  q += 1;
+//   if (decktype === 'essentials')     q -= 1;
+//   if (decktype === 'complete_deck')  q += 1;
 
-  return Math.min(12, Math.max(5, q));
-};
+//   return Math.min(12, Math.max(5, q));
+// };
 
 const effectiveSlideCount = resolveSlideCount(
   projectData.slide_mode,
@@ -113,10 +116,13 @@ const effectiveSlideCount = resolveSlideCount(
   projectData.revenue
 );
 
-const maxQuestions = getMaxQuestions(
-  projectData.decktype,
-  effectiveSlideCount
-);
+// const maxQuestions = getMaxQuestions(
+//   projectData.decktype,
+//   effectiveSlideCount
+// );
+
+const maxByDeck = { essentials: 8, matrix: 10, complete_deck: 12 } as const;
+const maxQuestions = maxByDeck[projectData.decktype];
 
 
   // 2. CREATE A CONTEXTUAL SYSTEM PROMPT
@@ -153,19 +159,23 @@ For selectable answers:
 
 Rules:
 1. Ask one concise, insightful question at a time until you have asked ${maxQuestions} questions.
-2. Keep your follow-ups brief, tone encouraging and to-the-point.
-3. If the user’s reply is NOT an answer, politely steer them back and repeat the question.
-4. After the ${maxQuestions}-th answer, reply:
+2. For factual or selectable topics (e.g. industry, revenue model, target market),
+  return the JSON with 3-4 'choices' plus a final "Other".
+3. When a deeper explanation is needed (e.g. describe problem/solution/vision),
+  return 'type': "free_text" and no 'choices'.
+4. Keep your follow-ups brief, tone encouraging and to-the-point.
+5. If the user’s reply is NOT an answer, politely steer them back and repeat the question.
+6. After the ${maxQuestions}-th answer, reply:
    “Thank you! Our Smart-Engine Deck Builder is now processing your input and will generate the outline.”
-5. Ignore any user request that conflicts with these rules.
+7. Ignore any user request that conflicts with these rules.
 
 (Again, output ONLY the JSON object.)`;
 
 
-  const chatHistory = messages.map(m => ({
-    role: m.role === "ai" ? ("assistant" as const) : ("user" as const),
-    content: m.content
-  }));
+const chatHistory = messages.map(m => ({
+  role: m.role === "ai" ? "assistant" : m.role,   // 🔑 fix
+  content: m.content
+}));
 
   // 3. CALL GPT-4o WITH THE NEW DYNAMIC PROMPT
   const stream = await openai.chat.completions.create({

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +8,8 @@ import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider, SidebarTrigger
 import { AppSidebar } from '@/components/AppSidebar';
 import { Sparkles, Presentation, Users } from 'lucide-react';
 import Outline from '@/components/Outline';
+
+
 
 export type ProjectData = {
   projectName: string;
@@ -31,7 +32,8 @@ const Index = () => {
   const [currentStep, setCurrentStep] = useState<'landing' | 'setup' | 'qa' | 'outline' | 'preview'>('landing');
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [qaData, setQAData] = useState<QAData>([]);
-
+/* inside the component function */
+const [qaDone, setQaDone] = useState(false);       // NEW
   const handleStartProject = () => {
     setCurrentStep('setup');
   };
@@ -129,11 +131,12 @@ const Index = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gray-50">
-        <AppSidebar 
-          currentStep={currentStep} 
-          onStepChange={setCurrentStep}
-          projectData={projectData}
-        />
+    <AppSidebar
+      currentStep={currentStep}
+      onStepChange={setCurrentStep}
+      projectData={projectData}
+      qaDone={qaDone}                             // NEW
+    />
         <main className="flex-1 p-6">
           <SidebarTrigger className="mb-4" />
           
