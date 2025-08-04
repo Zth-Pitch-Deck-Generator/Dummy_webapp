@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ProjectSetup from '@/components/ProjectSetup';
-import InteractiveQA from '@/components/InteractiveQA';
+import InteractiveQA from '@/components/interactive-qa/InteractiveQA';
 import DeckPreview from '@/components/DeckPreview';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from '@/components/AppSidebar';
