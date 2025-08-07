@@ -1,20 +1,20 @@
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type Slide = {
   title: string;
-  bullet_points?: string[];   // may be absent → guarded below
+  bullet_points?: string[];
   data_needed?: string[];
 };
 
 const Outline = ({ onAccept }: { onAccept: () => void }) => {
   const [outline, setOutline] = useState<Slide[]>([]);
-  const [review,  setReview]  = useState<any | null>(null);
+  const [review, setReview] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const projectId = localStorage.getItem("projectId");
 
-  /* ───────── fetch outline on mount ───────── */
   useEffect(() => {
     if (!projectId) {
       setError("Project ID missing");
@@ -25,14 +25,14 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
     (async () => {
       try {
         const res = await fetch("/api/outline", {
-          method : "POST",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body   : JSON.stringify({ projectId })
+          body: JSON.stringify({ projectId })
         });
         if (!res.ok) throw new Error(`Server ${res.status}`);
 
-        const json   = await res.json();
-        const slides = json.outline || json.outline_json || json; // accept any shape
+        const json = await res.json();
+        const slides = json.outline || json.outline_json || json;
 
         if (!Array.isArray(slides)) throw new Error("Outline format invalid");
         setOutline(slides as Slide[]);
@@ -44,13 +44,12 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
     })();
   }, [projectId]);
 
-  /* ───────── run evaluation ───────── */
   const handleImprove = async () => {
     try {
       const res = await fetch("/api/outline/eval", {
-        method : "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body   : JSON.stringify({ projectId })
+        body: JSON.stringify({ projectId })
       });
       if (!res.ok) throw new Error();
       setReview(await res.json());
@@ -59,36 +58,47 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
     }
   };
 
-  /* ───────── render ───────── */
   if (loading) return <p>Loading outline…</p>;
-  if (error)   return <p className="text-red-500">Error: {error}</p>;
+  if (error) return <p className="text-red-500">Error: {error}</p>;
   if (!outline.length) return <p>No slides returned.</p>;
 
   return (
-    <div className="space-y-6">
-      {outline.map((s, i) => (
-        <div key={i} className="border p-4 rounded">
-          <h3 className="font-semibold">{i + 1}. {s.title}</h3>
-
-          <ul className="list-disc pl-6 text-sm">
-            {(s.bullet_points ?? []).map(bp => <li key={bp}>{bp}</li>)}
-          </ul>
+    <div className="max-w-4xl mx-auto py-10 px-4 space-y-6">
+      {outline.map((_, i) => (
+        <div key={i} className="border rounded-xl shadow-md p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-semibold flex items-center justify-center">
+              {i + 1}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Slide Title</h3>
+              <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
+                <li>Bullet point example 1</li>
+                <li>Bullet point example 2</li>
+                <li>Bullet point example 3</li>
+              </ul>
+            </div>
+          </div>
         </div>
       ))}
 
-      <div className="flex gap-4">
-        <Button onClick={handleImprove}>Improve Outline</Button>
-        <Button variant="secondary" onClick={onAccept}>Looks good →</Button>
+      <div className="flex justify-center gap-4 mt-10">
+        <Button onClick={handleImprove} className="bg-gray-100 hover:bg-gray-200 text-gray-800 border">
+          Improve Outline
+        </Button>
+        <Button variant="secondary" onClick={onAccept} className="bg-blue-600 hover:bg-blue-700 text-white">
+          Looks good →
+        </Button>
       </div>
 
       {review && (
-        <div className="border rounded p-4 bg-gray-50">
+        <div className="border rounded-xl shadow-sm p-6 bg-gray-50">
           <h4 className="font-medium mb-2">Coach feedback</h4>
-          <p className="mb-2">{review.summary}</p>
-          <ul className="list-disc pl-6 text-sm space-y-1">
-            {review.missing_slides?.map((m: string)  => <li key={m}>{m}</li>)}
-            {review.clarity_issues?.map((m: string)  => <li key={m}>{m}</li>)}
-            {review.data_gaps?.map((m: string)       => <li key={m}>{m}</li>)}
+          <p className="mb-2 text-sm text-gray-700">{review.summary}</p>
+          <ul className="list-disc pl-6 text-sm space-y-1 text-gray-700">
+            {review.missing_slides?.map((m: string) => <li key={m}>{m}</li>)}
+            {review.clarity_issues?.map((m: string) => <li key={m}>{m}</li>)}
+            {review.data_gaps?.map((m: string) => <li key={m}>{m}</li>)}
           </ul>
         </div>
       )}
