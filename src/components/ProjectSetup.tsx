@@ -185,7 +185,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
         <StepDots />
 
         {/* Progress Bar */}
-        <Progress value={progress} className="h-3 rounded-full mb-10" />
+        {/* <Progress value={progress} className="h-3 rounded-full mb-10" /> */}
 
         {/* Main Card */}
         <Card>
