@@ -76,6 +76,7 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4 space-y-6">
+      <h1 className="text-2xl font-bold mb-6">Your Outline</h1>
       {outline.map((slide, i) => (
         <div key={i} className="border rounded-xl shadow-md p-6">
           <div className="flex items-start gap-4">
@@ -119,7 +120,7 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
 
       {review && (
         <div className="border rounded-xl shadow-sm p-6 bg-gray-50">
-          <h4 className="font-medium mb-2">Coach feedback</h4>
+          <h4 className="font-medium mb-2">Smart Deck Engine Analysis Of Your Idea</h4>
           <p className="mb-2 text-sm text-gray-700">{review.summary}</p>
           <ul className="list-disc pl-6 text-sm space-y-1 text-gray-700">
             {review.missing_slides?.map((m: string)  => <li key={m}>{m}</li>)}
