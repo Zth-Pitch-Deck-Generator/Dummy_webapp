@@ -44,10 +44,10 @@ export default function useQASession(
   }, [messages, isLoading]);
 
   /* helpers */
-  function parseAIResponse(raw: string): AIMessage {
+  function parseAIResponse(raw: any): AIMessage {
     try {
-      const cleaned = raw.replace(/``````/gi, '').trim();
-      const obj = JSON.parse(cleaned);
+      // If raw is already an object, use it directly.
+      const obj = typeof raw === 'string' ? JSON.parse(raw.replace(/```/gi, '').trim()) : raw;
       return {
         id: `ai-${Date.now()}`,
         type: 'ai',
@@ -57,10 +57,11 @@ export default function useQASession(
         timestamp: Date.now()
       };
     } catch {
+      const questionText = typeof raw === 'string' ? raw : JSON.stringify(raw);
       return {
         id: `ai-${Date.now()}`,
         type: 'ai',
-        question: raw,
+        question: questionText,
         answerType: 'free_text',
         timestamp: Date.now()
       };
@@ -68,15 +69,19 @@ export default function useQASession(
   }
 
   /* send message */
-  const handleSend = async (content: string) => {
-    if (!content.trim()) return;
+  const handleSend = async (content: string | string[]) => {
+    const contentString = Array.isArray(content) ? content.join(', ') : content;
+    if (!contentString.trim()) return;
+
     const userMsg: UserMessage = {
       id: `user-${Date.now()}`,
       type: 'user',
-      content,
+      content: contentString,
       timestamp: Date.now()
     };
-    setMessages(prev => [...prev, userMsg]);
+    
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setIsLoading(true);
 
     try {
@@ -85,7 +90,7 @@ export default function useQASession(
 
       const payload = {
         projectId,
-        messages: [...messages, userMsg].map(m =>
+        messages: newMessages.map(m =>
           m.type === 'user'
             ? { role: 'user', content: m.content }
             : { role: 'ai', content: (m as AIMessage).question }
@@ -97,19 +102,10 @@ export default function useQASession(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (!res.ok || !res.body) throw new Error('API error');
+      if (!res.ok) throw new Error('API error');
 
-      /* stream */
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let txt = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        txt += decoder.decode(value);
-      }
-
-      const aiMsg = parseAIResponse(txt);
+      const data = await res.json();
+      const aiMsg = parseAIResponse(data);
       setMessages(prev => [...prev, aiMsg]);
       setQuestionCount(c => c + 1);
     } catch (err) {

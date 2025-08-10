@@ -9,57 +9,74 @@ import type { AIMessage } from './types.ts';
 interface Props {
   lastAI: AIMessage | undefined;
   isLoading: boolean;
-  onSend: (content: string) => void;
+  onSend: (content: string | string[]) => void;
 }
 
 const InputArea = ({ lastAI, isLoading, onSend }: Props) => {
   const [currentInput, setCurrentInput] = useState('');
-  const [selectedChoice, setSelectedChoice] = useState<string|null>(null);
+  const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
   const [showOther, setShowOther] = useState(false);
 
   if (!lastAI) return null;
 
+  const handleChoiceClick = (choice: string) => {
+    if (choice.toLowerCase() === 'other') {
+      setShowOther(v => !v);
+      // Remove "Other" from selections if it's there
+      setSelectedChoices(prev => prev.filter(c => c.toLowerCase() !== 'other'));
+    } else {
+      setSelectedChoices(prev =>
+        prev.includes(choice)
+          ? prev.filter(c => c !== choice)
+          : [...prev, choice]
+      );
+    }
+  };
+
+  const handleSubmitMultipleChoice = () => {
+    const finalChoices = [...selectedChoices];
+    if (showOther && currentInput.trim()) {
+      finalChoices.push(currentInput.trim());
+    }
+    if (finalChoices.length > 0) {
+      onSend(finalChoices);
+      setSelectedChoices([]);
+      setCurrentInput('');
+      setShowOther(false);
+    }
+  };
+
   /* multiple-choice */
   if (lastAI.answerType === 'multiple_choice' && lastAI.choices) {
     return (
-      <div className="flex flex-wrap gap-2 items-center">
-        {lastAI.choices.map(choice =>
-          choice.toLowerCase() === 'other' ? (
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
+          {lastAI.choices.map(choice => (
             <Button
               key={choice}
-              variant={showOther ? 'default' : 'outline'}
-              onClick={() => setShowOther(v => !v)}
-              disabled={isLoading}
-            >
-              Other
-            </Button>
-          ) : (
-            <Button
-              key={choice}
-              variant={selectedChoice === choice ? 'default' : 'outline'}
-              onClick={() => { setSelectedChoice(choice); onSend(choice); }}
+              variant={selectedChoices.includes(choice) || (choice.toLowerCase() === 'other' && showOther) ? 'default' : 'outline'}
+              onClick={() => handleChoiceClick(choice)}
               disabled={isLoading}
             >
               {choice}
             </Button>
-          )
-        )}
+          ))}
+        </div>
 
         {showOther && (
-          <>
+          <div className="flex gap-2 items-center">
             <Input
               value={currentInput}
               onChange={e => setCurrentInput(e.target.value)}
               placeholder="Enter your answer…"
               disabled={isLoading}
               className="min-w-[180px]"
-              onKeyPress={e => e.key === 'Enter' && !isLoading && onSend(currentInput)}
             />
-            <Button onClick={() => onSend(currentInput)} disabled={!currentInput.trim() || isLoading}>
-              <Send className="w-4 h-4" />
-            </Button>
-          </>
+          </div>
         )}
+        <Button onClick={handleSubmitMultipleChoice} disabled={selectedChoices.length === 0 && !currentInput.trim() || isLoading}>
+          Submit
+        </Button>
       </div>
     );
   }
