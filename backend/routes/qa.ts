@@ -1,6 +1,5 @@
-// qa.ts
+// backend/routes/qa.ts
 import { Router, Request, Response, RequestHandler } from "express";
-import { ProjectData } from "../../src/pages/Index.tsx";
 import OpenAI from "openai";
 import { supabase } from "../supabase";
 import { z } from "zod";
@@ -10,103 +9,138 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 /* ─────────── 1. HELPERS & CONSTANTS ─────────── */
 
+type Industry =
+  | "Technology"
+  | "Finance"
+  | "Startup"
+  | "Edtech"
+  | "E-commerce"
+  | "other";
+
 const autoSlideCount = (
-  decktype:"essentials"|"matrix"|"complete_deck",
-  revenue:"pre-revenue"|"revenue"
-) => ({ essentials:revenue==="revenue"?8:6,
-        matrix:revenue==="revenue"?10:8,
-        complete_deck:revenue==="revenue"?13:12 }[decktype]);
+  decktype: "essentials" | "matrix" | "complete_deck",
+  revenue: "pre-revenue" | "revenue"
+) =>
+  (
+    {
+      essentials: revenue === "revenue" ? 8 : 6,
+      matrix: revenue === "revenue" ? 10 : 8,
+      complete_deck: revenue === "revenue" ? 13 : 12
+    } as const
+  )[decktype];
 
 const resolveSlideCount = (
-  mode:"manual"|"ai",
-  raw:number|null,
-  decktype:"essentials"|"matrix"|"complete_deck",
-  revenue:"pre-revenue"|"revenue"
-) => (mode==="manual" ? raw ?? 10 : autoSlideCount(decktype,revenue));
+  mode: "manual" | "ai",
+  raw: number | null,
+  decktype: "essentials" | "matrix" | "complete_deck",
+  revenue: "pre-revenue" | "revenue"
+) => (mode === "manual" ? raw ?? 10 : autoSlideCount(decktype, revenue));
 
 const SUBJECTIVE_COUNT = 3;
-const OBJECTIVE_COUNT  = 3;
+const OBJECTIVE_COUNT = 3;
 
-type Industry = "Technology"|"Finance"|"Startup"|"Edtech"|"E-commerce"|"other";
-
-const BASIC_METRICS:Record<Industry,string[]> = {
-  Technology:["MVP","MAU","DAU","Churn Rate","Adoption Rate","Bug Fix Rate","Latency"],
-  Finance:["Assets","Liabilities","Revenue","Net Profit","ROI","EPS","Interest Rate"],
-  Startup:["Burn Rate","Runway","Bootstrapping","Angel Investor","Seed Funding","Pivot"],
-  Edtech:["Enrollment Rate","Completion Rate","Dropout Rate","Session Duration","Assessment Scores"],
-  "E-commerce":["AOV","Conversion Rate","Cart Abandonment Rate","Refund Rate","Customer Retention Rate"],
-  other:["Revenue","Net Profit","Customer Acquisition Cost","Churn Rate","Runway"]
+const BASIC_METRICS: Record<Industry, string[]> = {
+  Technology: ["MVP", "MAU", "DAU", "Churn Rate", "Adoption Rate", "Bug Fix Rate", "Latency"],
+  Finance: ["Assets", "Liabilities", "Revenue", "Net Profit", "ROI", "EPS", "Interest Rate"],
+  Startup: ["Burn Rate", "Runway", "Bootstrapping", "Angel Investor", "Seed Funding", "Pivot"],
+  Edtech: ["Enrollment Rate", "Completion Rate", "Dropout Rate", "Session Duration", "Assessment Scores"],
+  "E-commerce": ["AOV", "Conversion Rate", "Cart Abandonment Rate", "Refund Rate", "Customer Retention Rate"],
+  other: ["Revenue", "Net Profit", "Customer Acquisition Cost", "Churn Rate", "Runway"]
 };
 
-const INDEPTH_METRICS:Record<Industry,string[]> = {
-  Technology:["LTV","CAC","LTV:CAC Ratio","Retention Cohort Analysis","NPS","ARR/MRR","MTTF/MTTR","Engagement Depth"],
-  Finance:["EBITDA","Debt-to-Equity","Liquidity Ratios","P/E Ratio","Sharpe Ratio","Alpha","Beta","VaR","Free Cash Flow"],
-  Startup:["ARR/MRR Growth Rate","CAC Payback","North Star Metric","Gross Margin","Activation Rate","Retention Rate","Viral Coefficient","Cap Table"],
-  Edtech:["Learner Engagement Index","Active Learning Ratio","Student Acquisition Cost","ARPU","Cohort Progression","Knowledge Retention Rate","Platform Stickiness"],
-  "E-commerce":["GMV","RFM Analysis","ROAS","Inventory Turnover","CAC","LTV","Churn Prediction","Fulfillment SLA"],
-  other:["LTV","CAC","Gross Margin","EBITDA","Liquidity Ratio","Retention Analysis","Free Cash Flow","Sharpe Ratio"]
+const INDEPTH_METRICS: Record<Industry, string[]> = {
+  Technology: ["LTV", "CAC", "LTV:CAC Ratio", "Retention Cohort Analysis", "NPS", "ARR/MRR", "MTTF/MTTR", "Engagement Depth"],
+  Finance: ["EBITDA", "Debt-to-Equity", "Liquidity Ratios", "P/E Ratio", "Sharpe Ratio", "Alpha", "Beta", "VaR", "Free Cash Flow"],
+  Startup: ["ARR/MRR Growth Rate", "CAC Payback", "North Star Metric", "Gross Margin", "Activation Rate", "Retention Rate", "Viral Coefficient", "Cap Table"],
+  Edtech: ["Learner Engagement Index", "Active Learning Ratio", "Student Acquisition Cost", "ARPU", "Cohort Progression", "Knowledge Retention Rate", "Platform Stickiness"],
+  "E-commerce": ["GMV", "RFM Analysis", "ROAS", "Inventory Turnover", "CAC", "LTV", "Churn Prediction", "Fulfillment SLA"],
+  other: ["LTV", "CAC", "Gross Margin", "EBITDA", "Liquidity Ratio", "Retention Analysis", "Free Cash Flow", "Sharpe Ratio"]
 };
 
-const pickRandom = <T,>(arr:T[], n:number)=>
-  arr.map(x=>[Math.random(),x] as const)
-     .sort((a,b)=>a[0]-b[0])
-     .slice(0,n).map(([,v])=>v);
+/* 1.1 – SAFE pickRandom */
+const pickRandom = <T,>(arr: T[] | undefined, n: number): T[] => {
+  if (!Array.isArray(arr) || arr.length === 0) return [];
+  return arr
+    .map(x => [Math.random(), x] as const)
+    .sort((a, b) => a[0] - b[0])
+    .slice(0, n)
+    .map(([, v]) => v);
+};
 
 /* ─────────── 2. ZOD SCHEMA ─────────── */
 
 const bodySchema = z.object({
-  projectId: z.string().uuid(),
-  messages : z.array(z.object({
-    role   : z.enum(["ai","assistant","user"]),
-    content: z.string()
-  }))
+  projectId: z.string().uuid(),     // must be a valid UUID
+  messages : z.array(               // non-empty array
+    z.object({
+      role   : z.enum(["ai","assistant","user"]),
+      content: z.string()
+    })
+  )
 });
+
 
 /* ─────────── 3. /api/qa HANDLER ─────────── */
 
-const qaHandler:RequestHandler = async (req:Request,res:Response)=>{
+const qaHandler: RequestHandler = async (req: Request, res: Response) => {
   const parsed = bodySchema.safeParse(req.body);
-  if(!parsed.success){ res.status(400).json({error:"Invalid payload"}); return; }
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid payload" });
+    return;
+  }
   const { projectId, messages } = parsed.data;
 
   /* 3.1 fetch project */
-  const { data:projectData, error } = await supabase
+  const { data: projectData, error } = await supabase
     .from("projects")
     .select("name, industry, description, decktype, stage, revenue, slide_mode, slide_count")
-    .eq("id",projectId).single();
-  if(error||!projectData){ res.status(404).json({error:"Project not found"}); return; }
+    .eq("id", projectId)
+    .single();
+  if (error || !projectData) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
 
   /* 3.2 narrative helpers */
   const deckFocus =
-    projectData.decktype==="essentials"
+    projectData.decktype === "essentials"
       ? "Emphasise the core narrative. Include a handful of general and industry-specific questions that attract VCs."
-      : projectData.decktype==="matrix"
-        ? "Provide a list of the most relevant financial ratios for cross-industry analysis, tailored to pre-revenue vs revenue status."
-        : "Cover both story and supporting data comprehensively, diving deep into metrics and competitive positioning.";
+      : projectData.decktype === "matrix"
+      ? "Provide a list of the most relevant financial ratios for cross-industry analysis, tailored to pre-revenue vs revenue status."
+      : "Cover both story and supporting data comprehensively, diving deep into metrics and competitive positioning.";
 
   const revenueFocus =
-    projectData.revenue==="pre-revenue"
+    projectData.revenue === "pre-revenue"
       ? "The company is PRE-REVENUE, so focus on market validation, unit-economics assumptions, and projected traction."
       : "The company IS ALREADY GENERATING REVENUE, so dig into growth rates, retention/churn, ARPU, and scalability.";
 
   /* 3.3 QA set */
-  const industry   = (projectData.industry||"other") as Industry;
-  const usingBasic = projectData.decktype==="essentials";
+  const validIndustries = Object.keys(BASIC_METRICS) as Industry[];
+  const rawIndustry = projectData.industry as Industry | undefined;
+  const industry: Industry = validIndustries.includes(rawIndustry!) ? rawIndustry! : "other";
+
+  const usingBasic = projectData.decktype === "essentials";
   const metricPool = usingBasic ? BASIC_METRICS[industry] : INDEPTH_METRICS[industry];
 
-  const subjectiveQs = Array.from({length:SUBJECTIVE_COUNT}).map(()=>({
-    question:`Please explain how ${pickRandom(metricPool,1)[0]} impacts your business strategy.`,
-    type:"free_text" as const
+  /* fail fast if metrics still missing (extremely unlikely) */
+  if (!metricPool || metricPool.length === 0) {
+    res.status(400).json({ error: `No metrics found for industry: ${projectData.industry}` });
+    return;
+  }
+
+  const subjectiveQs = Array.from({ length: SUBJECTIVE_COUNT }).map(() => ({
+    question: `Please explain how ${pickRandom(metricPool, 1)[0]} impacts your business strategy.`,
+    type: "free_text" as const
   }));
 
-  const objectiveQs = Array.from({length:OBJECTIVE_COUNT}).map(()=>({
-    question:`Which of the following ${usingBasic?"basic":"in-depth"} metrics are top priorities for your team? (Select all that apply)`,
-    type:"multiple_choice" as const,
-    choices:[...pickRandom(metricPool,4),"Other"]
+  const objectiveQs = Array.from({ length: OBJECTIVE_COUNT }).map(() => ({
+    question: `Which of the following ${usingBasic ? "basic" : "in-depth"} metrics are top priorities for your team? (Select all that apply)`,
+    type: "multiple_choice" as const,
+    choices: [...pickRandom(metricPool, 4), "Other"]
   }));
 
-  const qaSet = [...subjectiveQs,...objectiveQs];
-  const maxQuestions = {essentials:8,matrix:10,complete_deck:12}[projectData.decktype];
+  const qaSet = [...subjectiveQs, ...objectiveQs];
+  const maxQuestions = { essentials: 8, matrix: 10, complete_deck: 12 }[projectData.decktype];
 
   /* 3.4 reusable prompt blocks */
   const basicTerms = `
@@ -165,7 +199,7 @@ Third-party analytics tools (e.g., Mixpanel, Amplitude)
 Other: _______
 `;
 
-  /* 3.5 system prompt */
+  /* 3.5 system prompt (left unchanged because it is only sent to OpenAI) */
   const systemPrompt = `
 You are a friendly VC analyst conducting a Q&A to build a pitch deck.
 
@@ -204,9 +238,11 @@ Rules:
 `;
 
   /* 3.6 decide next action */
-  const answeredCount = messages.filter(m=>m.role==="user").length;
-  if(answeredCount >= qaSet.length){
-    res.json({message:"Thank you! Our Smart-Engine Deck Builder is now processing your input and will generate the outline."});
+  const answeredCount = messages.filter(m => m.role === "user").length;
+  if (answeredCount >= qaSet.length) {
+    res.json({
+      message: "Thank you! Our Smart-Engine Deck Builder is now processing your input and will generate the outline."
+    });
     return;
   }
 
@@ -218,17 +254,26 @@ router.post("/", qaHandler);
 
 /* ─────────── 4. /api/qa/session/complete ─────────── */
 
-const completeHandler:RequestHandler = async (req:Request,res:Response)=>{
+const completeHandler: RequestHandler = async (req: Request, res: Response) => {
   const parsed = bodySchema.safeParse(req.body);
-  if(!parsed.success){ res.status(400).json({error:"Invalid payload"}); return; }
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid payload" });
+    return;
+  }
 
   const { projectId, messages } = parsed.data;
 
-  await supabase.from("qa_sessions").upsert([{
-    project_id: projectId,
-    transcript: messages.map(m=>({role:m.role,content:m.content,timestamp:Date.now()})),
-    completed : new Date().toISOString()
-  }]);
+  await supabase.from("qa_sessions").upsert([
+    {
+      project_id: projectId,
+      transcript: messages.map(m => ({
+        role: m.role,
+        content: m.content,
+        timestamp: Date.now()
+      })),
+      completed: new Date().toISOString()
+    }
+  ]);
 
   res.status(204).end();
 };
