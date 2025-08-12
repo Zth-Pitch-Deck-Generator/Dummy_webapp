@@ -32,7 +32,7 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
 
     (async () => {
       try {
-        const res = await fetch("/api/outline", {
+        const res = await fetch("http://localhost:3000/api/outline", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ projectId }),
@@ -62,7 +62,7 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
   const handleImprove = async () => {
     if (!projectId) return;
     try {
-      const res = await fetch("/api/outline/eval", {
+      const res = await fetch("http://localhost:3000/api/outline/eval", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId }),

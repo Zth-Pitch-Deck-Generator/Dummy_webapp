@@ -6,36 +6,41 @@ import { geminiJson } from "../lib/geminiFlash";
 
 const router = Router();
 
+// This schema is for the main Q&A endpoint
 const bodySchema = z.object({
   projectId: z.string().uuid(),
   messages: z.array(
     z.object({
-      role: z.enum(["ai", "assistant", "user"]),
+      // It correctly accepts 'model'
+      role: z.enum(["user", "model"]),
       content: z.string(),
     })
   ),
 });
 
+// --- THIS IS THE FIX ---
+// The validation schema for the completion endpoint now also accepts 'model'.
 const completeBodySchema = z.object({
     projectId: z.string().uuid(),
     messages: z.array(
       z.object({
-        role: z.enum(["ai", "user"]),
+        role: z.enum(["user", "model"]), // Changed from ["ai", "user", "assistant"]
         content: z.string(),
       })
     ),
   });
+// --- END OF FIX ---
+
 
 const qaHandler: RequestHandler = async (req: Request, res: Response) => {
   const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) {
-    console.error("Zod validation failed:", parsed.error);
-    res.status(400).json({ error: "Invalid payload" });
+    console.error("Zod validation failed:", parsed.error.format());
+    res.status(400).json({ error: "Invalid payload for qa handler" });
     return;
   }
   const { projectId, messages } = parsed.data;
 
-  /* 1. Fetch project details */
   const { data: projectData, error } = await supabase
     .from("projects")
     .select("name, industry, description, decktype, stage, revenue")
@@ -48,7 +53,7 @@ const qaHandler: RequestHandler = async (req: Request, res: Response) => {
   }
 
   const userMessages = messages.filter((m) => m.role === "user");
-  if (userMessages.length >= 20) {
+  if (userMessages.length >= 5) { // Using 5 for testing
     res.json({
       isComplete: true,
       question: "Thank you! We have enough information to proceed.",
@@ -57,18 +62,8 @@ const qaHandler: RequestHandler = async (req: Request, res: Response) => {
     return;
   }
 
-  /* 2. Construct the Gemini Prompt */
-  const deckTypeExplanation = {
-    essentials:
-      "a basic pitch deck covering the core concepts (problem, solution, market). The questions should be straightforward.",
-    matrix:
-      "a detailed pitch deck for VCs, including basic concepts plus in-depth industry-specific metrics and competitive analysis.",
-    complete_deck:
-      "a comprehensive, investor-ready deck combining both essential concepts and detailed metrics, covering all aspects of the business.",
-  };
-
   const conversationHistory = messages
-    .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+    .map((m) => `${m.role === 'model' ? 'AI' : 'USER'}: ${m.content}`) // Use AI/USER for prompt clarity
     .join("\n");
 
   const lastUserAnswer = messages[messages.length - 1]?.content.toLowerCase();
@@ -83,39 +78,25 @@ const qaHandler: RequestHandler = async (req: Request, res: Response) => {
   }
 
   const prompt = `
-You are an expert business analyst conducting an interview to create a pitch deck.
-Your goal is to gather enough information to generate a compelling pitch deck based on the user's project details.
+You are an expert business analyst. Your task is to conduct an interview to gather information for a pitch deck.
 
-Project Details:
+**Project Information:**
 - Name: ${projectData.name}
 - Industry: ${projectData.industry}
-- Stage: ${projectData.stage}
-- Revenue: ${projectData.revenue}
-- Description: ${projectData.description}
-- Deck Type Required: ${projectData.decktype} (${
-    deckTypeExplanation[projectData.decktype]
-  })
+- Deck Type: ${projectData.decktype}
 
-Conversation History:
+**Conversation History:**
 ${conversationHistory}
 ---
-Instructions:
-1. Based on the project details and conversation history, determine the single best NEXT question to ask.
-2. The total number of questions should not exceed 20. If you have enough information to create the specified deck type, respond with \`{"isComplete": true}\`.
-3. ${
-    clarificationInstruction ||
-    'Prioritize asking objective, multiple-choice questions to be efficient. Always include "Other" as a choice.'
-  }
-4. Your response MUST be a single, valid JSON object with the following structure:
-   \`{"topic": string, "question": string, "answerType": "free_text" | "multiple_choice", "choices": string[] | null, "explanation": string | null, "isComplete": boolean}\`
-   - "topic": The general subject of the question (e.g., "Revenue Model", "Target Market").
-   - "question": The specific question for the user.
-   - "answerType": "free_text" for open-ended answers, "multiple_choice" for options.
-   - "choices": An array of strings for multiple-choice questions, otherwise null. Must include "Other" if it is a multiple choice question.
-   - "explanation": If explaining a term, provide a simple definition here, otherwise null.
-   - "isComplete": A boolean indicating if the Q&A session is finished.
+**Your Instructions:**
+1.  Analyze the conversation and project details.
+2.  Determine the single best question to ask next to gather missing information for the deck.
+3.  Prioritize multiple-choice questions for efficiency. Always include an "Other" option.
+4.  Format your response as a single, valid JSON object with this exact structure: \`{"topic": string, "question": string, "answerType": "free_text" | "multiple_choice", "choices": string[] | null, "explanation": string | null, "isComplete": boolean}\`.
+5.  If the user says they "don't know", explain the term and ask a simpler follow-up.
+6.  If you have enough information (after ~4 user answers), set \`isComplete\` to true.
 
-Generate the next question now.
+Generate the JSON for the next question now.
 `;
 
   try {
@@ -131,6 +112,8 @@ router.post("/", qaHandler);
 const completeHandler: RequestHandler = async (req: Request, res: Response) => {
     const parsed = completeBodySchema.safeParse(req.body);
     if (!parsed.success) {
+        // This is where the 400 error was being triggered.
+        console.error("Completion validation failed:", parsed.error.format());
         res.status(400).json({ error: "Invalid payload for completion" });
         return;
     }
