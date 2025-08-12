@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, RequestHandler } from "express";
 import { z } from "zod";
 import { supabase } from "../supabase";
 import { geminiJson } from "../lib/geminiFlash";
@@ -6,91 +6,105 @@ import { geminiJson } from "../lib/geminiFlash";
 const router = Router();
 
 /* ---------- POST /api/outline ---------- */
-router.post("/", async (req: Request, res: Response) => {
+const handleOutline: RequestHandler = async (req, res) => {
   const schema = z.object({
-    projectId : z.string().uuid(),
-    regenerate: z.boolean().optional()
+    projectId: z.string().uuid(),
+    regenerate: z.boolean().optional(),
   });
   const parse = schema.safeParse(req.body);
-  if (!parse.success) return void res.status(400).json({ error: "Bad payload" });
+  if (!parse.success) {
+    res.status(400).json({ error: "Bad payload" });
+    return;
+  }
 
   const { projectId, regenerate } = parse.data;
 
-  /* 1. Return cached outline unless regenerate === true */
   if (!regenerate) {
     const { data } = await supabase
       .from("outlines")
       .select("outline_json")
       .eq("project_id", projectId)
       .maybeSingle();
-    if (data) return void res.json(data.outline_json);
+    if (data) {
+      res.json(data.outline_json);
+      return;
+    }
   }
 
-  /* 2. Fetch Q&A transcript */
-  const { data: qas } = await supabase
-    .from("qa_sessions")
-    .select("transcript")
-    .eq("project_id", projectId)
+  const { data: project } = await supabase
+    .from("projects")
+    .select("slide_count, qa_sessions(transcript)")
+    .eq("id", projectId)
     .single();
-  if (!qas)
-    return void res.status(404).json({ error: "Q&A session missing" });
 
-  const transcriptTxt = qas.transcript
-    .map((m: any) => `${m.role.toUpperCase()}: ${m.content}`)
+  if (!project || !project.qa_sessions || project.qa_sessions.length === 0) {
+    res.status(404).json({ error: "Project or Q&A session missing" });
+    return;
+  }
+
+  const slideCount = project.slide_count || 10;
+  const transcript = (project.qa_sessions as any[])[0].transcript;
+  const transcriptTxt = transcript
+    .map((m: any) => `${m.role === "user" ? "Founder" : "Analyst"}: ${m.content}`)
     .join("\n");
 
-  /* 3. Gemini prompt */
   const prompt = `
-Using the following interview transcript, create a 12-slide seed-deck outline.
-Return ONLY valid JSON array:
+Using the following interview transcript, create a ${slideCount}-slide pitch deck outline.
+The outline should intelligently synthesize the user's answers into coherent slide content.
+Return ONLY a valid JSON array of exactly ${slideCount} slide objects:
 [
   { "title": string, "bullet_points": string[], "data_needed": string[] },
   ...
-]  (12 elements)
+]
 
 Transcript:"""${transcriptTxt}"""`;
 
-  /* 4. Generate outline */
   let outline: any;
   try {
     outline = await geminiJson(prompt);
   } catch (e) {
     console.error("Gemini failure:", e);
-    return void res.status(502).json({ error: "Gemini did not return JSON" });
+    res.status(502).json({ error: "Gemini did not return JSON" });
+    return;
   }
 
-  /* 5. Validate outline */
-  const slideSchema   = z.object({
-    title        : z.string(),
+  const slideSchema = z.object({
+    title: z.string(),
     bullet_points: z.array(z.string()),
-    data_needed  : z.array(z.string())
+    data_needed: z.array(z.string()),
   });
-  const outlineSchema = z.array(slideSchema).length(12);
+  const outlineSchema = z.array(slideSchema).length(slideCount);
   const valid = outlineSchema.safeParse(outline);
+
   if (!valid.success) {
     console.error(valid.error.format());
-    return void res.status(502).json({ error: "Outline JSON schema invalid" });
+    res.status(502).json({ error: "Outline JSON schema invalid or wrong slide count" });
+    return;
   }
 
-  /* 6. Upsert + respond */
   const { error, data: upserted } = await supabase
     .from("outlines")
     .upsert({ project_id: projectId, outline_json: outline })
     .select("id")
     .single();
+
   if (error) {
     console.error(error);
-    return void res.status(500).json({ error: "DB upsert failed" });
+    res.status(500).json({ error: "DB upsert failed" });
+    return;
   }
 
   res.json({ id: upserted.id, outline });
-});
+};
 
 /* ---------- POST /api/outline/eval ---------- */
-router.post("/eval", async (req: Request, res: Response) => {
+const handleEval: RequestHandler = async (req, res) => {
   const schema = z.object({ projectId: z.string().uuid() });
-  const parse  = schema.safeParse(req.body);
-  if (!parse.success) return void res.status(400).json({ error: "Bad payload" });
+  const parse = schema.safeParse(req.body);
+  if (!parse.success) {
+    res.status(400).json({ error: "Bad payload" });
+    return;
+  }
 
   const { projectId } = parse.data;
 
@@ -99,16 +113,21 @@ router.post("/eval", async (req: Request, res: Response) => {
     .select("id, outline_json")
     .eq("project_id", projectId)
     .single();
-  if (!outlineRow)
-    return void res.status(404).json({ error: "Outline not found" });
+
+  if (!outlineRow) {
+    res.status(404).json({ error: "Outline not found" });
+    return;
+  }
 
   const evalPrompt = `
-You are YC Pitch Coach. Review the outline (JSON) and respond ONLY:
+You are a VC Pitch Coach. Review the provided pitch deck outline and perform a SWOT analysis based on the information within it.
+Respond ONLY with a valid JSON object with four keys: "strength", "weakness", "opportunities", and "threats". Each key should have an array of strings as its value.
+
 {
-  "summary": string,
-  "missing_slides": string[],
-  "clarity_issues": string[],
-  "data_gaps": string[]
+  "strength": string[],
+  "weakness": string[],
+  "opportunities": string[],
+  "threats": string[]
 }
 
 Outline:${JSON.stringify(outlineRow.outline_json)}`;
@@ -116,21 +135,22 @@ Outline:${JSON.stringify(outlineRow.outline_json)}`;
   let review;
   try {
     review = await geminiJson(evalPrompt);
+    const swotSchema = z.object({
+      strength: z.array(z.string()),
+      weakness: z.array(z.string()),
+      opportunities: z.array(z.string()),
+      threats: z.array(z.string()),
+    });
+    review = swotSchema.parse(review);
   } catch (e) {
-    return void res.status(502).json({ error: "Gemini evaluation failed" });
+    res.status(502).json({ error: "Gemini evaluation failed or returned invalid SWOT format." });
+    return;
   }
 
-  await supabase.from("outline_reviews").insert({
-    outline_id : outlineRow.id,
-    summary    : review.summary,
-    improvements: {
-      missing_slides : review.missing_slides,
-      clarity_issues : review.clarity_issues,
-      data_gaps      : review.data_gaps
-    }
-  });
-
   res.json(review);
-});
+};
+
+router.post("/", handleOutline);
+router.post("/eval", handleEval);
 
 export default router;

@@ -1,113 +1,97 @@
-// src/features/interactive-qa/useQASession.ts
 import { useEffect, useRef, useState } from 'react';
-import type {
-  AIMessage, UserMessage, InteractiveQAProps, Message, QAData
-} from './types.ts';
+import { QAData, ProjectData } from '@/pages/Index';
 
-const questionsByDeck = { essentials: 8, matrix: 10, complete_deck: 12 } as const;
+export interface AIQuestion {
+  topic: string;
+  question: string;
+  answerType: 'free_text' | 'multiple_choice' | 'complete';
+  choices?: string[] | null;
+  explanation?: string | null;
+  isComplete: boolean;
+}
 
 export default function useQASession(
-  projectData: InteractiveQAProps['projectData'],
-  onComplete: InteractiveQAProps['onComplete']
+  projectData: ProjectData,
+  onComplete: (qaData: QAData) => void
 ) {
-  /* state */
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [currentInput, setCurrentInput] = useState('');          // for InputArea
-  const [selectedChoice, setSelectedChoice] = useState<string|null>(null);
-  const [showOther, setShowOther] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [questionCount, setQuestionCount] = useState(0);
+  const [history, setHistory] = useState<QAData>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<AIQuestion | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const maxQuestions = questionsByDeck[projectData.decktype];
-  const progress = (questionCount / maxQuestions) * 100;
-
-  /* greet + first question */
   useEffect(() => {
-    const firstMsg =
-      `Hi there! Let’s understand your idea better to help us build your "${projectData.decktype}" pitch deck.\n` +
-      `What problem does your company solve?`;
-    setMessages([{
-      id: 'greeting',
-      type: 'ai',
-      question: firstMsg,
-      answerType: 'free_text',
-      timestamp: Date.now()
-    }]);
-    setQuestionCount(0);
-  }, [projectData]);
-
-  /* auto-scroll */
-  useEffect(() => {
-    if (scrollRef.current)
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, isLoading]);
-
-  /* helpers */
-  function parseAIResponse(raw: any): AIMessage {
-    try {
-      // If raw is already an object, use it directly.
-      const obj = typeof raw === 'string' ? JSON.parse(raw.replace(/```/gi, '').trim()) : raw;
-      return {
-        id: `ai-${Date.now()}`,
-        type: 'ai',
-        question: obj.question,
-        answerType: obj.type,
-        choices: obj.choices,
-        timestamp: Date.now()
-      };
-    } catch {
-      const questionText = typeof raw === 'string' ? raw : JSON.stringify(raw);
-      return {
-        id: `ai-${Date.now()}`,
-        type: 'ai',
-        question: questionText,
-        answerType: 'free_text',
-        timestamp: Date.now()
-      };
-    }
-  }
-
-  /* send message */
-  const handleSend = async (content: string | string[]) => {
-    const contentString = Array.isArray(content) ? content.join(', ') : content;
-    if (!contentString.trim()) return;
-
-    const userMsg: UserMessage = {
-      id: `user-${Date.now()}`,
-      type: 'user',
-      content: contentString,
-      timestamp: Date.now()
+    const initialMessage = {
+      role: 'ai' as const,
+      content: `Let’s understand your idea better to help us build your "${projectData.decktype}" pitch deck.`
     };
     
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+    const fetchFirstQuestion = async () => {
+      try {
+        const projectId = localStorage.getItem('projectId');
+        if (!projectId) throw new Error('Project ID missing');
+        
+        const res = await fetch('/api/qa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectId, messages: [initialMessage] })
+        });
+
+        if (!res.ok) throw new Error('API error on first question');
+        
+        const questionData: AIQuestion = await res.json();
+        setCurrentQuestion(questionData);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFirstQuestion();
+  }, [projectData]);
+
+  const handleSend = async (answer: string | string[]) => {
+    if (!currentQuestion) return;
+
+    const answerContent = Array.isArray(answer) ? answer.join(', ') : answer;
+    if (!answerContent.trim()) return;
+
     setIsLoading(true);
+
+    const newHistoryEntry = {
+      question: currentQuestion.question,
+      answer: answerContent,
+      timestamp: Date.now()
+    };
+    const updatedHistory = [...history, newHistoryEntry];
+    setHistory(updatedHistory);
+
+    const messagesForApi = [
+        { role: 'ai' as const, content: `Let’s understand your idea better...` },
+        ...updatedHistory.flatMap(h => [
+            { role: 'ai' as const, content: h.question },
+            { role: 'user' as const, content: h.answer }
+        ])
+    ];
 
     try {
       const projectId = localStorage.getItem('projectId');
       if (!projectId) throw new Error('Project ID missing');
 
-      const payload = {
-        projectId,
-        messages: newMessages.map(m =>
-          m.type === 'user'
-            ? { role: 'user', content: m.content }
-            : { role: 'ai', content: (m as AIMessage).question }
-        )
-      };
-
       const res = await fetch('/api/qa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ projectId, messages: messagesForApi })
       });
-      if (!res.ok) throw new Error('API error');
+      if (!res.ok) throw new Error('API error on next question');
+      
+      const nextQuestionData: AIQuestion = await res.json();
 
-      const data = await res.json();
-      const aiMsg = parseAIResponse(data);
-      setMessages(prev => [...prev, aiMsg]);
-      setQuestionCount(c => c + 1);
+      if (nextQuestionData.isComplete) {
+        await handleComplete(updatedHistory);
+      } else {
+        setCurrentQuestion(nextQuestionData);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -115,57 +99,33 @@ export default function useQASession(
     }
   };
 
-  /* complete */
-  const handleComplete = async () => {
+  const handleComplete = async (finalHistory: QAData) => {
     const projectId = localStorage.getItem('projectId');
-    if (!projectId) return alert('Project ID missing');
+    if (!projectId) {
+      alert('Project ID missing');
+      return;
+    }
+    
+    const messagesForApi = finalHistory.flatMap(h => [
+        { role: 'ai' as const, content: h.question },
+        { role: 'user' as const, content: h.answer }
+    ]);
 
     await fetch('/api/qa/session/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        projectId,
-        messages: messages.map(m =>
-          m.type === 'user'
-            ? { role: 'user', content: m.content }
-            : { role: 'ai', content: (m as AIMessage).question }
-        )
-      })
+      body: JSON.stringify({ projectId, messages: messagesForApi })
     });
 
-    /* build QAData */
-    const qa: QAData = [];
-    for (let i = 0; i < messages.length; i++) {
-      if (messages[i].type === 'ai') {
-        qa.push({
-          question: (messages[i] as AIMessage).question,
-          answer: messages[i + 1]?.type === 'user'
-            ? (messages[i + 1] as UserMessage).content
-            : '',
-          timestamp: messages[i].timestamp
-        });
-      }
-    }
-    onComplete(qa);
+    onComplete(finalHistory);
   };
-
-  const aiMsgs = messages.filter(m => m.type === 'ai') as AIMessage[];
-  const lastAI = aiMsgs[aiMsgs.length - 1];
-
+  
   return {
-    /* state exposed to UI */
-    messages, lastAI,
-    questionCount, maxQuestions, progress,
+    currentQuestion,
     isLoading,
-
-    /* handlers */
     handleSend,
-    handleComplete,
-
-    /* refs and helpers the UI might need */
     scrollRef,
-    currentInput, setCurrentInput,
-    selectedChoice, setSelectedChoice,
-    showOther, setShowOther
+    history,
+    questionCount: history.length + 1,
   };
 }

@@ -1,25 +1,28 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-/* ─── Types ────────────────────────────────────────────────────── */
 type Slide = {
   title: string;
   bullet_points?: string[];
   data_needed?: string[];
 };
 
-/* ─── Component ───────────────────────────────────────────────── */
+type SWOT = {
+    strength: string[];
+    weakness: string[];
+    opportunities: string[];
+    threats: string[];
+}
+
 const Outline = ({ onAccept }: { onAccept: () => void }) => {
   const [outline, setOutline] = useState<Slide[]>([]);
-  const [review,  setReview ] = useState<any | null>(null);
+  const [review, setReview] = useState<SWOT | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError  ] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const projectId = typeof window !== "undefined"
-    ? localStorage.getItem("projectId")
-    : null;
+  const projectId =
+    typeof window !== "undefined" ? localStorage.getItem("projectId") : null;
 
-  /* ── Fetch outline on mount ── */
   useEffect(() => {
     if (!projectId) {
       setError("Project ID missing");
@@ -30,20 +33,23 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
     (async () => {
       try {
         const res = await fetch("/api/outline", {
-          method : "POST",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body   : JSON.stringify({ projectId })
+          body: JSON.stringify({ projectId }),
         });
 
         if (res.status === 404) {
-          throw new Error("Run the founder interview first – no transcript found");
+          throw new Error(
+            "Run the founder interview first – no transcript found"
+          );
         }
         if (!res.ok) throw new Error(`Server ${res.status}`);
 
-        const json   = await res.json();
+        const json = await res.json();
         const slides = json.outline || json.outline_json || json;
 
-        if (!Array.isArray(slides)) throw new Error("Outline format invalid");
+        if (!Array.isArray(slides))
+          throw new Error("Outline format invalid");
         setOutline(slides as Slide[]);
       } catch (err: any) {
         setError(err.message);
@@ -53,14 +59,13 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
     })();
   }, [projectId]);
 
-  /* ── Trigger Gemini review ── */
   const handleImprove = async () => {
     if (!projectId) return;
     try {
       const res = await fetch("/api/outline/eval", {
-        method : "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body   : JSON.stringify({ projectId })
+        body: JSON.stringify({ projectId }),
       });
       if (!res.ok) throw new Error("Evaluation failed");
       setReview(await res.json());
@@ -69,10 +74,9 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
     }
   };
 
-  /* ── Render ── */
-  if (loading)          return <p>Loading outline…</p>;
-  if (error)            return <p className="text-red-500">Error: {error}</p>;
-  if (!outline.length)  return <p>No slides returned.</p>;
+  if (loading) return <p>Loading outline…</p>;
+  if (error) return <p className="text-red-500">Error: {error}</p>;
+  if (!outline.length) return <p>No slides returned.</p>;
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4 space-y-6">
@@ -80,9 +84,11 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
       {outline.map((slide, i) => (
         <div key={i} className="border rounded-xl shadow-md p-6">
           <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100
+            <div
+              className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100
                             text-blue-700 font-semibold flex items-center
-                            justify-center">
+                            justify-center"
+            >
               {i + 1}
             </div>
 
@@ -93,7 +99,9 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
 
               {!!slide.bullet_points?.length && (
                 <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
-                  {slide.bullet_points.map(bp => <li key={bp}>{bp}</li>)}
+                  {slide.bullet_points.map((bp) => (
+                    <li key={bp}>{bp}</li>
+                  ))}
                 </ul>
               )}
             </div>
@@ -106,7 +114,7 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
           onClick={handleImprove}
           className="bg-gray-100 hover:bg-gray-200 text-gray-800 border"
         >
-          Improve Outline
+          Improve Outline (SWOT)
         </Button>
 
         <Button
@@ -119,14 +127,34 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
       </div>
 
       {review && (
-        <div className="border rounded-xl shadow-sm p-6 bg-gray-50">
-          <h4 className="font-medium mb-2">Smart Deck Engine Analysis Of Your Idea</h4>
-          <p className="mb-2 text-sm text-gray-700">{review.summary}</p>
-          <ul className="list-disc pl-6 text-sm space-y-1 text-gray-700">
-            {review.missing_slides?.map((m: string)  => <li key={m}>{m}</li>)}
-            {review.clarity_issues?.map((m: string)  => <li key={m}>{m}</li>)}
-            {review.data_gaps?.map((m: string)       => <li key={m}>{m}</li>)}
-          </ul>
+        <div className="mt-10 border rounded-xl shadow-sm p-6 bg-gray-50 space-y-6">
+            <h4 className="text-xl font-semibold text-center">SWOT Analysis</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-4 bg-green-50 rounded-lg">
+                    <h5 className="font-bold text-green-800 mb-2">Strengths</h5>
+                    <ul className="list-disc pl-5 text-sm space-y-1 text-green-700">
+                        {review.strength?.map((item: string) => <li key={item}>{item}</li>)}
+                    </ul>
+                </div>
+                <div className="p-4 bg-red-50 rounded-lg">
+                    <h5 className="font-bold text-red-800 mb-2">Weaknesses</h5>
+                    <ul className="list-disc pl-5 text-sm space-y-1 text-red-700">
+                        {review.weakness?.map((item: string) => <li key={item}>{item}</li>)}
+                    </ul>
+                </div>
+                <div className="p-4 bg-blue-50 rounded-lg">
+                    <h5 className="font-bold text-blue-800 mb-2">Opportunities</h5>
+                    <ul className="list-disc pl-5 text-sm space-y-1 text-blue-700">
+                        {review.opportunities?.map((item: string) => <li key={item}>{item}</li>)}
+                    </ul>
+                </div>
+                <div className="p-4 bg-yellow-50 rounded-lg">
+                    <h5 className="font-bold text-yellow-800 mb-2">Threats</h5>
+                    <ul className="list-disc pl-5 text-sm space-y-1 text-yellow-700">
+                        {review.threats?.map((item: string) => <li key={item}>{item}</li>)}
+                    </ul>
+                </div>
+            </div>
         </div>
       )}
     </div>

@@ -4,10 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import ProjectSetup from '@/components/ProjectSetup';
 import InteractiveQA from '@/components/interactive-qa/InteractiveQA';
 import DeckPreview from '@/components/DeckPreview';
-import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from '@/components/AppSidebar';
 import { Sparkles, Presentation, Users } from 'lucide-react';
 import Outline from '@/components/Outline';
+import Template from '@/components/Template';
 
 
 
@@ -29,11 +30,12 @@ export type QAData = {
 }[];
 
 const Index = () => {
-  const [currentStep, setCurrentStep] = useState<'landing' | 'setup' | 'qa' | 'outline' | 'preview'>('landing');
+  const [currentStep, setCurrentStep] = useState<'landing' | 'setup' | 'qa' | 'outline' | 'template' | 'preview'>('landing');
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [qaData, setQAData] = useState<QAData>([]);
-/* inside the component function */
-const [qaDone, setQaDone] = useState(false);       // NEW
+  const [qaDone, setQaDone] = useState(false);
+  const [outlineDone, setOutlineDone] = useState(false);
+
   const handleStartProject = () => {
     setCurrentStep('setup');
   };
@@ -45,8 +47,19 @@ const [qaDone, setQaDone] = useState(false);       // NEW
 
   const handleQAComplete = (data: QAData) => {
     setQAData(data);
+    setQaDone(true);
     setCurrentStep('outline');
   };
+  
+  const handleOutlineAccept = () => {
+    setOutlineDone(true);
+    setCurrentStep('template');
+  };
+
+  const handleTemplateSelect = () => {
+    setCurrentStep('preview');
+  };
+
 
   if (currentStep === 'landing') {
     return (
@@ -131,12 +144,13 @@ const [qaDone, setQaDone] = useState(false);       // NEW
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gray-50">
-    <AppSidebar
-      currentStep={currentStep}
-      onStepChange={setCurrentStep}
-      projectData={projectData}
-      qaDone={qaDone}                             // NEW
-    />
+        <AppSidebar
+          currentStep={currentStep}
+          onStepChange={setCurrentStep}
+          projectData={projectData}
+          qaDone={qaDone}
+          outlineDone={outlineDone}
+        />
         <main className="flex-1 p-6">
           <SidebarTrigger className="mb-4" />
           
@@ -153,8 +167,12 @@ const [qaDone, setQaDone] = useState(false);       // NEW
           
           {currentStep === 'outline' && projectData && (
             <Outline 
-            onAccept={() => setCurrentStep('preview')} 
+            onAccept={handleOutlineAccept} 
             />
+          )}
+
+          {currentStep === 'template' && (
+            <Template onComplete={handleTemplateSelect} />
           )}
 
           {currentStep === 'preview' && projectData && (

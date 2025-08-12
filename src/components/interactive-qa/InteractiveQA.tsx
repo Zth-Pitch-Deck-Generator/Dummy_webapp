@@ -1,77 +1,145 @@
-// src/features/interactive-qa/InteractiveQA.tsx
-import { ArrowRight, Sparkles } from 'lucide-react';
-
-import {
-  Card, CardHeader, CardTitle, CardContent
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-
-import ChatWindow from './ChatWindow';
-import InputArea from './InputArea';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Info } from 'lucide-react';
 import useQASession from './useQASession';
-
 import type { InteractiveQAProps } from './types';
+import { Skeleton } from '../ui/skeleton';
 
 const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
-  const {
-    messages, lastAI,
-    questionCount, maxQuestions, progress,
-    isLoading, handleSend, handleComplete
-  } = useQASession(projectData, onComplete);
+  const { currentQuestion, isLoading, handleSend, questionCount } = useQASession(projectData, onComplete);
+  const [currentAnswer, setCurrentAnswer] = useState('');
+  const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
 
-  return (
-    <div className="max-w-4xl mx-auto">
-      {/* header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-bold text-gray-900">Interactive Q&A Session</h1>
-          <Badge variant="outline" className="text-sm">
-            Question {Math.min(questionCount + 1, maxQuestions)} of {maxQuestions}
-          </Badge>
-        </div>
-        <div className="bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
+  const handleSubmit = () => {
+    if (isLoading) return;
 
-      {/* chat card */}
-      <Card className="shadow-lg h-[600px] flex flex-col">
-        <CardHeader className="border-b">
-          <CardTitle className="flex items-center gap-2">
-            <div className="bg-gradient-to-r from-purple-500 to-blue-500 w-8 h-8 rounded-full flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            Smart Deck Engine
-          </CardTitle>
-        </CardHeader>
+    if (currentQuestion?.answerType === 'multiple_choice') {
+      const otherChoiceSelected = selectedChoices.includes('Other');
+      let finalChoices = selectedChoices.filter(c => c !== 'Other');
+      
+      if (otherChoiceSelected && currentAnswer.trim()) {
+        finalChoices.push(currentAnswer.trim());
+      }
 
-        <CardContent className="flex-1 p-0 flex flex-col">
-          <ChatWindow messages={messages} isLoading={isLoading} />
+      if (finalChoices.length > 0) {
+        handleSend(finalChoices);
+        setSelectedChoices([]);
+        setCurrentAnswer('');
+      }
+    } else {
+      if (currentAnswer.trim()) {
+        handleSend(currentAnswer);
+        setCurrentAnswer('');
+      }
+    }
+  };
 
-          {/* footer */}
-          <div className="border-t p-4">
-            {questionCount >= maxQuestions ? (
-              <div className="flex justify-center">
+  const handleChoiceClick = (choice: string) => {
+    setSelectedChoices(prev =>
+      prev.includes(choice)
+        ? prev.filter(c => c !== choice)
+        : [...prev, choice]
+    );
+  };
+  
+  const renderInput = () => {
+    if (!currentQuestion) return null;
+
+    switch (currentQuestion.answerType) {
+      case 'multiple_choice':
+        const otherSelected = selectedChoices.includes('Other');
+        return (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {currentQuestion.choices?.map(choice => (
                 <Button
-                  onClick={handleComplete}
-                  className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                  key={choice}
+                  variant={selectedChoices.includes(choice) ? 'default' : 'outline'}
+                  onClick={() => handleChoiceClick(choice)}
                 >
-                  Next<ArrowRight className="w-4 h-4 ml-2" />
+                  {choice}
                 </Button>
-              </div>
-            ) : (
-              <InputArea
-                lastAI={lastAI}
-                isLoading={isLoading}
-                onSend={handleSend}
+              ))}
+            </div>
+            {otherSelected && (
+              <Input
+                placeholder="Please specify"
+                value={currentAnswer}
+                onChange={e => setCurrentAnswer(e.target.value)}
               />
             )}
           </div>
-        </CardContent>
+        );
+      case 'free_text':
+      default:
+        return (
+          <Textarea
+            placeholder="Your answer..."
+            value={currentAnswer}
+            onChange={e => setCurrentAnswer(e.target.value)}
+            rows={4}
+          />
+        );
+    }
+  };
+  
+  const isSubmitDisabled = () => {
+      if (isLoading) return true;
+      if (currentQuestion?.answerType === 'multiple_choice') {
+        const otherSelected = selectedChoices.includes('Other');
+        if (otherSelected) {
+            return currentAnswer.trim() === '' && selectedChoices.length === 1;
+        }
+        return selectedChoices.length === 0;
+      }
+      return currentAnswer.trim() === '';
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto">
+       <div className="mb-6 text-center">
+            <h1 className="text-3xl font-bold text-gray-900">Interactive Q&A Session</h1>
+            <p className="text-gray-500 mt-2">The AI will ask questions to understand your venture. This session won't exceed 20 questions.</p>
+      </div>
+
+      <Card className="shadow-lg">
+        {isLoading && !currentQuestion ? (
+          <CardContent className="p-6">
+            <Skeleton className="h-8 w-1/2 mb-4" />
+            <Skeleton className="h-6 w-full mb-6" />
+            <Skeleton className="h-20 w-full" />
+          </CardContent>
+        ) : currentQuestion && (
+          <>
+            <CardHeader>
+              <Label className="text-sm text-gray-500">Question {questionCount}</Label>
+              <CardTitle className="text-2xl">{currentQuestion.topic}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {currentQuestion.explanation && (
+                 <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>Quick Explanation</AlertTitle>
+                    <AlertDescription>{currentQuestion.explanation}</AlertDescription>
+                 </Alert>
+              )}
+              <p className="text-gray-700 text-lg">{currentQuestion.question}</p>
+              <div className="mt-4">
+                {renderInput()}
+              </div>
+            </CardContent>
+            <CardFooter>
+                <Button onClick={handleSubmit} disabled={isSubmitDisabled()}>
+                    Submit Answer
+                </Button>
+            </CardFooter>
+          </>
+        )}
       </Card>
     </div>
   );
