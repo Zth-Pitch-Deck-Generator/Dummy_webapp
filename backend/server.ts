@@ -1,21 +1,33 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express"; // Added NextFunction for the logger
 import cors from "cors";
 import "dotenv/config";
 import projectsRouter from "./routes/projects";
-import qaRouter from "./routes/qa";  // Import from qa.ts (adjust path if needed)
+import qaRouter from "./routes/qa"; // Import from qa.ts (adjust path if needed)
 import outlineRouter from "./routes/outline";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 /* ──────────────  MIDDLEWARE  ────────────── */
-app.use(cors());
+// This is now more specific to allow requests only from your frontend's origin
+app.use(cors({
+  origin: "http://localhost:8080"
+}));
 app.use(express.json());
+
+// This is the new logger middleware to help debug 404 errors.
+// It will print every incoming request to your backend terminal.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log(`Incoming Request: ${req.method} ${req.url}`);
+  next(); // This passes the request to the next handler
+});
+
 
 /* Mount routes */
 app.use("/api/projects", projectsRouter);
-app.use("/api/qa", qaRouter);  // Now correctly mounts qa.ts router
+app.use("/api/qa", qaRouter); // Now correctly mounts qa.ts router
 app.use("/api/outline", outlineRouter);
+
 /* ──────────────  HEALTH CHECK  ────────────── */
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok" });
