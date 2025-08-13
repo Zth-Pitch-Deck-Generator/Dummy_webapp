@@ -6,11 +6,14 @@ import { geminiJson } from "../lib/geminiFlash";
 
 const router = Router();
 
+// Define the maximum number of questions here
+const MAX_QUESTIONS = 5; // You can change this value for testing
+
 const bodySchema = z.object({
   projectId: z.string().uuid(),
   messages: z.array(
     z.object({
-      role: z.enum(["ai", "user"]),
+      role: z.enum(["ai", "user", "assistant", "model"]), // Added 'model' to the enum
       content: z.string(),
     })
   ),
@@ -20,7 +23,7 @@ const completeBodySchema = z.object({
     projectId: z.string().uuid(),
     messages: z.array(
       z.object({
-        role: z.enum(["ai", "user"]),
+        role: z.enum(["ai", "user", "model"]), // Also updated here for consistency
         content: z.string(),
       })
     ),
@@ -46,7 +49,7 @@ const qaHandler: RequestHandler = async (req: Request, res: Response) => {
   }
 
   const userMessages = messages.filter((m) => m.role === "user");
-  if (userMessages.length >= 20) {
+  if (userMessages.length >= MAX_QUESTIONS) { // Use the constant here
     return void res.json({
       isComplete: true,
       question: "Thank you! We have enough information to proceed.",
@@ -98,7 +101,7 @@ ${conversationHistory}
 ---
 Instructions:
 1. Based on the project details and conversation history, determine the single best NEXT question to ask.
-2. The total number of questions should not exceed 20. If you have enough information to create the specified deck type, respond with \`{"isComplete": true}\`.
+2. The total number of questions should not exceed ${MAX_QUESTIONS}. If you have enough information to create the specified deck type, respond with \`{"isComplete": true}\`.
 3. ${
     clarificationInstruction ||
     'Prioritize asking objective, multiple-choice questions to be efficient. Always include "Other" as a choice.'
