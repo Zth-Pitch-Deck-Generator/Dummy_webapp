@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { QAData, ProjectData } from '@/pages/Index';
 
+// Define the shape of a single message for the API
+interface ApiMessage {
+  // --- FIX 1: The 'assistant' role is removed. ---
+  // The 'model' role is for responses from the Gemini AI.
+  role: 'user' | 'model';
+  content: string;
+}
+
 export interface AIQuestion {
   topic: string;
   question: string;
@@ -14,14 +22,15 @@ export default function useQASession(
   projectData: ProjectData,
   onComplete: (qaData: QAData) => void
 ) {
-  const [history, setHistory] = useState<QAData>([]);
+  const [messages, setMessages] = useState<ApiMessage[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<AIQuestion | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const initialMessage = {
-      role: 'ai' as const,
+    // --- FIX 2: The initial message from the AI now uses the 'model' role. ---
+    const initialMessage: ApiMessage = {
+      role: 'model',
       content: `Let’s understand your idea better to help us build your "${projectData.decktype}" pitch deck.`
     };
     
@@ -36,10 +45,22 @@ export default function useQASession(
           body: JSON.stringify({ projectId, messages: [initialMessage] })
         });
 
-        if (!res.ok) throw new Error('API error on first question');
+        if (!res.ok) {
+            // Log the server's response to see the exact validation error
+            const errorBody = await res.json();
+            console.error("API Error on first question:", errorBody);
+            throw new Error('API error on first question');
+        }
         
         const questionData: AIQuestion = await res.json();
         setCurrentQuestion(questionData);
+
+        // --- FIX 3: Start the message history using the correct 'model' role. ---
+        setMessages([
+            initialMessage,
+            { role: 'model', content: questionData.question }
+        ]);
+
       } catch (err) {
         console.error(err);
       } finally {
@@ -58,21 +79,12 @@ export default function useQASession(
 
     setIsLoading(true);
 
-    const newHistoryEntry = {
-      question: currentQuestion.question,
-      answer: answerContent,
-      timestamp: Date.now()
-    };
-    const updatedHistory = [...history, newHistoryEntry];
-    setHistory(updatedHistory);
-
-    const messagesForApi = [
-        { role: 'ai' as const, content: `Let’s understand your idea better...` },
-        ...updatedHistory.flatMap(h => [
-            { role: 'ai' as const, content: h.question },
-            { role: 'user' as const, content: h.answer }
-        ])
+    const updatedMessages: ApiMessage[] = [
+      ...messages,
+      { role: 'user', content: answerContent }
     ];
+    // We update the state immediately for a responsive UI, but will add the AI's response later
+    setMessages(updatedMessages);
 
     try {
       const projectId = localStorage.getItem('projectId');
@@ -81,16 +93,22 @@ export default function useQASession(
       const res = await fetch('/api/qa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, messages: messagesForApi })
+        body: JSON.stringify({ projectId, messages: updatedMessages })
       });
-      if (!res.ok) throw new Error('API error on next question');
+      if (!res.ok) {
+        const errorBody = await res.json();
+        console.error("API Error on next question:", errorBody);
+        throw new Error('API error on next question');
+      }
       
       const nextQuestionData: AIQuestion = await res.json();
 
       if (nextQuestionData.isComplete) {
-        await handleComplete(updatedHistory);
+        await handleComplete(updatedMessages);
       } else {
         setCurrentQuestion(nextQuestionData);
+        // --- FIX 4: Add the AI's new question to the history with the correct 'model' role. ---
+        setMessages(prev => [...prev, { role: 'model', content: nextQuestionData.question }]);
       }
     } catch (err) {
       console.error(err);
@@ -99,33 +117,56 @@ export default function useQASession(
     }
   };
 
-  const handleComplete = async (finalHistory: QAData) => {
+  const handleComplete = async (finalMessages: ApiMessage[]) => {
     const projectId = localStorage.getItem('projectId');
     if (!projectId) {
-      alert('Project ID missing');
+      alert('Project ID missing. Cannot save session.');
       return;
     }
     
-    const messagesForApi = finalHistory.flatMap(h => [
-        { role: 'ai' as const, content: h.question },
-        { role: 'user' as const, content: h.answer }
-    ]);
+    try {
+      console.log("Attempting to save session...");
+      const res = await fetch('/api/qa/session/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, messages: finalMessages })
+      });
 
-    await fetch('/api/qa/session/complete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ projectId, messages: messagesForApi })
-    });
+      if (!res.ok) {
+        const errorBody = await res.json();
+        console.error("Failed to save session:", errorBody);
+        throw new Error('Failed to save the Q&A session to the database.');
+      }
 
-    onComplete(finalHistory);
+      console.log("Session saved successfully. Proceeding to outline.");
+      onComplete(finalMessages as unknown as QAData);
+
+    } catch (err) {
+      console.error(err);
+      alert("There was an error saving your session. Please try again.");
+    }
   };
   
+  // This part for the UI can be simplified or adjusted as needed
+  const historyForUI: QAData = messages
+    .reduce((acc, msg, i) => {
+        if (msg.role === 'user') {
+            const questionMsg = messages[i-1];
+            acc.push({
+                question: questionMsg ? questionMsg.content : 'Initial context',
+                answer: msg.content,
+                timestamp: Date.now()
+            });
+        }
+        return acc;
+    }, [] as QAData);
+
   return {
     currentQuestion,
     isLoading,
     handleSend,
     scrollRef,
-    history,
-    questionCount: history.length + 1,
+    history: historyForUI,
+    questionCount: historyForUI.length,
   };
 }
