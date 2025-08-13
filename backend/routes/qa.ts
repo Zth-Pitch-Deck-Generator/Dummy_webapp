@@ -10,7 +10,7 @@ const bodySchema = z.object({
   projectId: z.string().uuid(),
   messages: z.array(
     z.object({
-      role: z.enum(["ai", "assistant", "user"]),
+      role: z.enum(["ai", "user"]),
       content: z.string(),
     })
   ),
@@ -29,9 +29,8 @@ const completeBodySchema = z.object({
 const qaHandler: RequestHandler = async (req: Request, res: Response) => {
   const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) {
-    console.error("Zod validation failed:", parsed.error);
-    res.status(400).json({ error: "Invalid payload" });
-    return;
+    console.error("Zod validation failed:", parsed.error.flatten());
+    return void res.status(400).json({ error: "Invalid payload" });
   }
   const { projectId, messages } = parsed.data;
 
@@ -43,18 +42,16 @@ const qaHandler: RequestHandler = async (req: Request, res: Response) => {
     .single();
 
   if (error || !projectData) {
-    res.status(404).json({ error: "Project not found" });
-    return;
+    return void res.status(404).json({ error: "Project not found" });
   }
 
   const userMessages = messages.filter((m) => m.role === "user");
   if (userMessages.length >= 20) {
-    res.json({
+    return void res.json({
       isComplete: true,
       question: "Thank you! We have enough information to proceed.",
       answerType: "complete",
     });
-    return;
   }
 
   /* 2. Construct the Gemini Prompt */
@@ -131,8 +128,7 @@ router.post("/", qaHandler);
 const completeHandler: RequestHandler = async (req: Request, res: Response) => {
     const parsed = completeBodySchema.safeParse(req.body);
     if (!parsed.success) {
-        res.status(400).json({ error: "Invalid payload for completion" });
-        return;
+      return void res.status(400).json({ error: "Invalid payload for completion" });
     }
 
     const { projectId, messages } = parsed.data;
@@ -151,8 +147,7 @@ const completeHandler: RequestHandler = async (req: Request, res: Response) => {
     );
     if (error) {
         console.error("Supabase upsert error:", error);
-        res.status(500).json({error: "Failed to save session transcript"});
-        return;
+        return void res.status(500).json({error: "Failed to save session transcript"});
     }
 
     res.status(204).end();
