@@ -29,9 +29,6 @@ const handleOutline: RequestHandler = async (req, res) => {
     }
   }
 
-  // --- MODIFICATION START ---
-  // More robustly fetch project and session data in two separate queries.
-
   const { data: projectData, error: projectError } = await supabase
     .from('projects')
     .select('slide_count')
@@ -55,7 +52,6 @@ const handleOutline: RequestHandler = async (req, res) => {
 
   const slideCount = projectData.slide_count || 10;
   const transcript = sessionData.transcript;
-  // --- MODIFICATION END ---
 
   const transcriptTxt = transcript
     .map((m: any) => `${m.role === "user" ? "Founder" : "Analyst"}: ${m.content}`)
@@ -156,6 +152,18 @@ const handleEval: RequestHandler = async (req, res) => {
         .json({ error: "Gemini evaluation failed or returned invalid SWOT format." });
     }
   
+    // Save the SWOT analysis to the database
+    const { error: insertError } = await supabase.from("outline_reviews").insert({
+      outline_id: outlineRow.id,
+      summary: "SWOT Analysis", // A generic summary
+      improvements: review, // The full SWOT object
+    });
+
+    if (insertError) {
+        console.error("Failed to save SWOT analysis:", insertError);
+        // We can still return the review to the user even if DB save fails
+    }
+
     res.json(review);
   };
 

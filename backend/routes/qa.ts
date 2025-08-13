@@ -13,7 +13,7 @@ const bodySchema = z.object({
   projectId: z.string().uuid(),
   messages: z.array(
     z.object({
-      role: z.enum(["ai", "user", "assistant", "model"]), // Added 'model' to the enum
+      role: z.enum(["ai", "user", "model"]), // Added 'model' to the enum
       content: z.string(),
     })
   ),
