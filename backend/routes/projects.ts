@@ -1,5 +1,5 @@
-import { Router, Request, Response, RequestHandler } from "express";  // Added RequestHandler
-import { supabase } from "../supabase";  // service-role client
+import { Router, Request, Response, RequestHandler } from "express";
+import { supabase } from "../supabase";
 import { z } from "zod";
 
 const router = Router();
@@ -28,40 +28,43 @@ const bodySchema = z.object({
 
 /* ---------- POST /api/projects ---------- */
 router.post("/", async (req, res) => {
-  /* 1. validate body */
-  const parsed = bodySchema.safeParse(req.body);
-  if (!parsed.success) {
-    console.log("zod errors:", parsed.error.flatten());
-    res.status(400).json({ error: "Invalid payload" });
-    return;
-  }
-const { projectName, industry, stage, revenue, description, slide_mode, slide_count, decktype } = parsed.data;  // Changed from 'template'
+  try {
+    /* 1. validate body */
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      console.log("zod errors:", parsed.error.flatten());
+      res.status(400).json({ error: "Invalid payload" });
+      return;
+    }
+    const { projectName, industry, stage, revenue, description, slide_mode, slide_count, decktype } = parsed.data;
 
+    /* 2. insert row */
+    const { data, error } = await supabase
+      .from("projects")
+      .insert([
+        {
+          name:         projectName,
+          industry,
+          stage,
+          revenue,
+          description,
+          slide_mode,
+          slide_count:  slide_mode === "ai" ? null : slide_count,
+          decktype
+        }
+      ])
+      .select("id")
+      .single();
 
-  /* 2. insert row */
-  const { data, error } = await supabase
-    .from("projects")
-    .insert([
-      {
-        name:         projectName,
-        industry,
-        stage,
-        revenue,
-        description,
-        slide_mode,
-        slide_count:  slide_mode === "ai" ? null : slide_count,
-        decktype
-      }
-    ])
-    .select("id")         // only need the primary key back
-    .single();
-
-  /* 3. error / success response */
-  if (error) {
+    /* 3. error / success response */
+    if (error) {
+      throw new Error(error.message);
+    }
+    res.status(201).json({ id: data.id });
+  } catch (error: any) {
+    console.error("Error creating project:", error);
     res.status(500).json({ error: error.message });
-    return;
   }
-  res.status(201).json({ id: data.id });
 });
 
 export default router;

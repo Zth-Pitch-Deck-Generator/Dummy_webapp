@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 /* ────────────── MIDDLEWARE ────────────── */
 // Enable CORS for your specific frontend origin
 const corsOptions = {
-  origin: 'http://localhost:8081', // Your frontend's origin
+  origin: 'http://localhost:8080', // Corrected port
   optionsSuccessStatus: 200 // For legacy browser support
 };
 app.use(cors(corsOptions));
