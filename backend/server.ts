@@ -8,12 +8,26 @@ import outlineRouter from "./routes/outline";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/* ────────────── MIDDLEWARE ────────────── */
-// Enable CORS for your specific frontend origin
+// --- Your frontend URLs ---
+const allowedOrigins = [
+  'http://localhost:8080',
+  'http://localhost:8081',
+  'https://zthapimodel.vercel.app' // Add your Vercel URL here
+];
+
 const corsOptions = {
-  origin: 'http://localhost:8081', // CORRECTED: Allow requests from port 8081
-  optionsSuccessStatus: 200 // For legacy browser support
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  optionsSuccessStatus: 200
 };
+
 app.use(cors(corsOptions));
 app.use(express.json());
 
