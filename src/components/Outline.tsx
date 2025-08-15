@@ -32,7 +32,8 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
 
     (async () => {
       try {
-        const res = await fetch("http://localhost:3000/api/outline", {
+        // CORRECTED: Use a relative path for the API call
+        const res = await fetch("/api/outline", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ projectId }),
@@ -43,13 +44,17 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
             "Run the founder interview first – no transcript found"
           );
         }
-        if (!res.ok) throw new Error(`Server ${res.status}`);
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || `Server ${res.status}`);
+        }
 
         const json = await res.json();
+        // Vercel might wrap the response, so we check for the actual outline data
         const slides = json.outline || json.outline_json || json;
 
         if (!Array.isArray(slides))
-          throw new Error("Outline format invalid");
+          throw new Error("Outline format from API is invalid");
         setOutline(slides as Slide[]);
       } catch (err: any) {
         setError(err.message);
@@ -62,7 +67,8 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
   const handleImprove = async () => {
     if (!projectId) return;
     try {
-      const res = await fetch("http://localhost:3000/api/outline/eval", {
+      // CORRECTED: Use a relative path for the API call
+      const res = await fetch("/api/outline/eval", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId }),
@@ -118,7 +124,6 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
         </Button>
 
         <Button
-          variant="secondary"
           onClick={onAccept}
           className="bg-blue-600 hover:bg-blue-700 text-white"
         >
