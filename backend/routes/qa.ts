@@ -7,7 +7,7 @@ import { geminiJson } from "../lib/geminiFlash.js";
 const router = Router();
 
 // Define the maximum number of questions here
-const MAX_QUESTIONS = 5; // You can change this value for testing
+const MAX_QUESTIONS = 20; // You can change this value for testing
 
 const bodySchema = z.object({
   projectId: z.string().uuid(),
