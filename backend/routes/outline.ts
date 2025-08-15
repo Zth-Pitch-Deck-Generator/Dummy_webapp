@@ -1,7 +1,7 @@
 import { Router, Request, Response, RequestHandler } from "express";
 import { z } from "zod";
-import { supabase } from "../supabase";
-import { geminiJson } from "../lib/geminiFlash";
+import { supabase } from "../supabase.js";
+import { geminiJson } from "../lib/geminiFlash.js";
 
 const router = Router();
 

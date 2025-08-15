@@ -1,8 +1,8 @@
 // backend/routes/qa.ts
 import { Router, Request, Response, RequestHandler } from "express";
-import { supabase } from "../supabase";
+import { supabase } from "../supabase.js";
 import { z } from "zod";
-import { geminiJson } from "../lib/geminiFlash";
+import { geminiJson } from "../lib/geminiFlash.js";
 
 const router = Router();
 

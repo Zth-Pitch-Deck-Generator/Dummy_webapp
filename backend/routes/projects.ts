@@ -1,5 +1,5 @@
 import { Router, Request, Response, RequestHandler } from "express";
-import { supabase } from "../supabase";
+import { supabase } from "../supabase.js";
 import { z } from "zod";
 
 const router = Router();

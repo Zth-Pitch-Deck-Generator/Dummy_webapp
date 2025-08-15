@@ -1,9 +1,9 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import "dotenv/config";
-import projectsRouter from "./routes/projects";
-import qaRouter from "./routes/qa";
-import outlineRouter from "./routes/outline";
+import projectsRouter from "./routes/projects.js";
+import qaRouter from "./routes/qa.js";
+import outlineRouter from "./routes/outline.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
