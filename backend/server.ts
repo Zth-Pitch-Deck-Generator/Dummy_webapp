@@ -6,27 +6,28 @@ import projectsRouter from "./routes/projects.js";
 import qaRouter from "./routes/qa.js";
 import outlineRouter from "./routes/outline.js";
 import templateRouter from "./routes/template.js";
-import slidesRouter from "./routes/slides.js"; // Import the new slides router
+import generateDeckRouter from "./routes/generate-deck.js"; // Import the new router
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// A basic CORS setup for development
 const corsOptions = {
-  origin: '*', // Allow all origins for simplicity in this example
+  origin: '*', 
   optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Serve static files from the 'public' directory, including our temp decks
+app.use(express.static('public'));
 
 /* Mount routes */
 app.use("/api/projects", projectsRouter);
 app.use("/api/qa", qaRouter);
 app.use("/api/outline", outlineRouter);
 app.use("/api/template", templateRouter);
-app.use("/api/slides", slidesRouter); // This line delegates /api/slides requests to slidesRouter
+app.use("/api/generate-deck", generateDeckRouter); // Use the new deck generation router
 
 /* Health Check Endpoint */
 app.get("/health", (_req, res) => {
