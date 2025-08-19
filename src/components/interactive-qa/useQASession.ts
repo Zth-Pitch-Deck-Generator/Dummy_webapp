@@ -1,10 +1,9 @@
+// src/components/interactive-qa/useQASession.ts
 import { useEffect, useRef, useState } from 'react';
 import { QAData, ProjectData } from '@/pages/Index';
 
 // Define the shape of a single message for the API
 interface ApiMessage {
-  // --- FIX 1: The 'assistant' role is removed. ---
-  // The 'model' role is for responses from the Gemini AI.
   role: 'user' | 'model';
   content: string;
 }
@@ -28,7 +27,6 @@ export default function useQASession(
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // --- FIX 2: The initial message from the AI now uses the 'model' role. ---
     const initialMessage: ApiMessage = {
       role: 'model',
       content: `Let’s understand your idea better to help us build your "${projectData.decktype}" pitch deck.`
@@ -46,7 +44,6 @@ export default function useQASession(
         });
 
         if (!res.ok) {
-            // Log the server's response to see the exact validation error
             const errorBody = await res.json();
             console.error("API Error on first question:", errorBody);
             throw new Error('API error on first question');
@@ -55,7 +52,6 @@ export default function useQASession(
         const questionData: AIQuestion = await res.json();
         setCurrentQuestion(questionData);
 
-        // --- FIX 3: Start the message history using the correct 'model' role. ---
         setMessages([
             initialMessage,
             { role: 'model', content: questionData.question }
@@ -83,7 +79,6 @@ export default function useQASession(
       ...messages,
       { role: 'user', content: answerContent }
     ];
-    // We update the state immediately for a responsive UI, but will add the AI's response later
     setMessages(updatedMessages);
 
     try {
@@ -104,10 +99,10 @@ export default function useQASession(
       const nextQuestionData: AIQuestion = await res.json();
 
       if (nextQuestionData.isComplete) {
-        await handleComplete(updatedMessages);
+        // Pass the final message list to the completion handler
+        await handleComplete([...updatedMessages, { role: 'model', content: nextQuestionData.question }]);
       } else {
         setCurrentQuestion(nextQuestionData);
-        // --- FIX 4: Add the AI's new question to the history with the correct 'model' role. ---
         setMessages(prev => [...prev, { role: 'model', content: nextQuestionData.question }]);
       }
     } catch (err) {
@@ -139,7 +134,25 @@ export default function useQASession(
       }
 
       console.log("Session saved successfully. Proceeding to outline.");
-      onComplete(finalMessages as unknown as QAData);
+      
+      // *** FIX IS HERE ***
+      // Transform the final messages into the correct QAData format before calling onComplete.
+      const formattedQAData: QAData = finalMessages
+        .reduce((acc, msg, i) => {
+            if (msg.role === 'user') {
+                const questionMsg = finalMessages[i-1];
+                if (questionMsg && questionMsg.role === 'model') {
+                    acc.push({
+                        question: questionMsg.content,
+                        answer: msg.content,
+                        timestamp: Date.now()
+                    });
+                }
+            }
+            return acc;
+        }, [] as QAData);
+
+      onComplete(formattedQAData);
 
     } catch (err) {
       console.error(err);
@@ -147,16 +160,17 @@ export default function useQASession(
     }
   };
   
-  // This part for the UI can be simplified or adjusted as needed
   const historyForUI: QAData = messages
     .reduce((acc, msg, i) => {
         if (msg.role === 'user') {
             const questionMsg = messages[i-1];
-            acc.push({
-                question: questionMsg ? questionMsg.content : 'Initial context',
-                answer: msg.content,
-                timestamp: Date.now()
-            });
+            if (questionMsg) {
+              acc.push({
+                  question: questionMsg.content,
+                  answer: msg.content,
+                  timestamp: Date.now()
+              });
+            }
         }
         return acc;
     }, [] as QAData);
@@ -167,6 +181,6 @@ export default function useQASession(
     handleSend,
     scrollRef,
     history: historyForUI,
-    questionCount: historyForUI.length,
+    questionCount: historyForUI.length + 1,
   };
 }

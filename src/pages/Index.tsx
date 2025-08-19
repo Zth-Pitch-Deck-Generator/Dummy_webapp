@@ -41,7 +41,6 @@ const Index = () => {
   const [qaDone, setQaDone] = useState(false);
   const [outlineDone, setOutlineDone] = useState(false);
 
-  // Updated state for direct generation
   const [generatedSlides, setGeneratedSlides] = useState<GeneratedSlide[]>([]);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
@@ -64,13 +63,11 @@ const Index = () => {
     setCurrentStep('template');
   };
 
-  // This function now handles the direct generation and passing of data
   const handleGenerateDeck = (slides: GeneratedSlide[], url: string) => {
     setGeneratedSlides(slides);
     setDownloadUrl(url);
     setCurrentStep('preview');
   };
-
 
   if (currentStep === 'landing') {
     return (
@@ -164,7 +161,14 @@ const Index = () => {
           {currentStep === 'qa' && projectData && <InteractiveQA projectData={projectData} onComplete={handleQAComplete} />}
           {currentStep === 'outline' && <Outline onAccept={handleOutlineAccept} />}
           {currentStep === 'template' && <Template outline={outline} onGenerate={handleGenerateDeck} />}
-          {currentStep === 'preview' && <DeckPreview generatedSlides={generatedSlides} downloadUrl={downloadUrl} />}
+          {currentStep === 'preview' && (
+            <DeckPreview 
+              projectData={projectData}
+              qaData={qaData}
+              generatedSlides={generatedSlides}
+              downloadUrl={downloadUrl}
+            />
+          )}
         </main>
       </div>
     </SidebarProvider>
