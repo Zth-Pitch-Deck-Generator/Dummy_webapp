@@ -1,99 +1,78 @@
-import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, ExternalLink } from 'lucide-react';
+import { ProjectData } from '@/pages/Index';
 
 interface TemplateProps {
   onComplete: () => void;
+  projectData: ProjectData | null; // Keep projectData for context if needed later
 }
 
 const Template = ({ onComplete }: TemplateProps) => {
-  const [loading, setLoading] = useState(true);
-  const [recommended, setRecommended] = useState<string | null>(null);
+  // Hardcoded template based on the provided ZTH PDF
+  const zthTemplate = {
+    id: 'ZTH-template',
+    name: 'ZTH - The Perfect Pitch Deck Flow',
+    description: 'A proven slide sequence to help you build a compelling narrative for investors and stakeholders. This is the recommended template for all projects.',
+    tags: ['Startup Focused', 'Clear Structure', 'Investor Ready'],
+    path: '/ZTH.pdf' // Path to the PDF in the public folder
+  };
 
-  useEffect(() => {
-    // Simulate fetching an AI recommendation
-    const timer = setTimeout(() => {
-      setRecommended('Modern');
-      setLoading(false);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const templates = [
-    { id: 'Modern', name: 'Modern', tags: ['Clean layouts', 'Data visualization', 'Modern look', 'Purple accent'] },
-    { id: 'Modern Tech', name: 'Modern Tech', tags: ['Clean layouts', 'Data visualization', 'Modern look', 'Purple accent'] },
-    { id: 'Business Professional', name: 'Business Professional', tags: ['Professional layouts', 'Chart & graphs', 'Corporate colors', 'Conservative design'] },
-    { id: 'Creative Startup', name: 'Creative Startup', tags: ['Vibrant colors', 'Creative graphics', 'Dynamic layouts'] },
-    { id: 'Minimalist', name: 'Minimalist', tags: ['Simple', 'Text-focused', 'Elegant'] },
-    { id: 'Bold', name: 'Bold', tags: ['High contrast', 'Impactful', 'Strong typography'] },
-  ];
+  const handleSelectTemplate = () => {
+    // Here you would typically save the template choice.
+    // For now, it just moves to the next step.
+    console.log(`Selected template: ${zthTemplate.name}`);
+    onComplete();
+  };
 
   return (
-    <div className="max-w-6xl mx-auto p-4">
+    <div className="max-w-4xl mx-auto p-4">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold mb-2">Choose Your Presentation Template</h1>
-        <p className="text-lg text-gray-600">Select a design that best fits your industry and presentation style.</p>
-        <Badge variant="outline" className="mt-4">Feature Coming Soon: This is a placeholder UI.</Badge>
+        <h1 className="text-4xl font-bold mb-2">Presentation Template</h1>
+        <p className="text-lg text-gray-600">
+          Your pitch deck will be generated using the ZTH template.
+        </p>
       </div>
 
-      {loading ? (
-        <div className="space-y-8">
-            <Skeleton className="h-64 w-full" />
-            <div className="grid md:grid-cols-3 gap-8">
-                <Skeleton className="h-48 w-full" />
-                <Skeleton className="h-48 w-full" />
-                <Skeleton className="h-48 w-full" />
-            </div>
-        </div>
-      ) : (
-        <div className="space-y-12">
-          {/* Recommended Template */}
-          <Card className="border-2 border-purple-500 shadow-lg">
-            <CardHeader>
-                <div className="flex justify-between items-center">
-                    <CardTitle className="text-2xl flex items-center gap-2"><Sparkles className="text-purple-500" /> AI Recommended Template</CardTitle>
-                    <Badge className="bg-purple-500 text-white">Recommended</Badge>
-                </div>
-            </CardHeader>
-            <CardContent className="flex flex-col md:flex-row gap-8 items-center">
-              <div className="w-full md:w-1/2">
-                <h3 className="text-xl font-semibold mb-2">{templates.find(t => t.id === recommended)?.name}</h3>
-                <p className="text-gray-600 mb-4">Perfect for SaaS, tech startups, and digital. Based on your tech-focused solution and target audience, this template emphasizes innovation and scalability while maintaining professional credibility.</p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                    {templates.find(t => t.id === recommended)?.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                </div>
-                <Button onClick={onComplete}>Use This Template</Button>
-              </div>
-              <div className="w-full md:w-1/2 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <p className="text-gray-500">Template Preview</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Other Templates */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {templates.filter(t => t.id !== recommended).map(template => (
-              <Card key={template.id}>
-                <CardHeader>
-                  <CardTitle>{template.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                        <p className="text-gray-500">Template Preview</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                        {template.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>)}
-                    </div>
-                  <Button variant="outline" className="w-full" onClick={onComplete}>Use This Template</Button>
-                </CardContent>
-              </Card>
-            ))}
+      {/* Recommended Template Section */}
+      <Card className="border-2 border-purple-500 shadow-lg">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-2xl flex items-center gap-2">
+              <Sparkles className="text-purple-500" /> {zthTemplate.name}
+            </CardTitle>
+            <Badge className="bg-purple-500 text-white">Selected</Badge>
           </div>
-        </div>
-      )}
+        </CardHeader>
+        <CardContent className="flex flex-col md:flex-row gap-8 items-center">
+          <div className="w-full md:w-1/2">
+            <p className="text-gray-600 mb-4">{zthTemplate.description}</p>
+            <div className="flex flex-wrap gap-2 mb-6">
+              {zthTemplate.tags.map(tag => (
+                <Badge key={tag} variant="secondary">{tag}</Badge>
+              ))}
+            </div>
+            <div className="flex gap-4">
+              <Button onClick={handleSelectTemplate}>
+                Continue to Preview
+              </Button>
+              <Button
+                variant="outline"
+                asChild
+              >
+                <a href={zthTemplate.path} target="_blank" rel="noopener noreferrer">
+                  View Template PDF <ExternalLink className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+            </div>
+          </div>
+          <div className="w-full md:w-1/2 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+            {/* You can place a preview image of the PDF cover here */}
+            <p className="text-gray-500">ZTH Template Preview</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

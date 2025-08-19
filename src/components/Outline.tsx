@@ -1,3 +1,4 @@
+// src/components/Outline.tsx
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -14,7 +15,12 @@ type SWOT = {
     threats: string[];
 }
 
-const Outline = ({ onAccept }: { onAccept: () => void }) => {
+// The onAccept prop now expects the outline data as an argument
+interface OutlineProps {
+  onAccept: (outline: Slide[]) => void;
+}
+
+const Outline = ({ onAccept }: OutlineProps) => {
   const [outline, setOutline] = useState<Slide[]>([]);
   const [review, setReview] = useState<SWOT | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +38,6 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
 
     (async () => {
       try {
-        // CORRECTED: Use a relative path for the API call
         const res = await fetch("/api/outline", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -50,7 +55,6 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
         }
 
         const json = await res.json();
-        // Vercel might wrap the response, so we check for the actual outline data
         const slides = json.outline || json.outline_json || json;
 
         if (!Array.isArray(slides))
@@ -67,7 +71,6 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
   const handleImprove = async () => {
     if (!projectId) return;
     try {
-      // CORRECTED: Use a relative path for the API call
       const res = await fetch("/api/outline/eval", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,8 +126,9 @@ const Outline = ({ onAccept }: { onAccept: () => void }) => {
           Improve Outline (SWOT)
         </Button>
 
+        {/* The onClick handler now passes the outline state up to the parent */}
         <Button
-          onClick={onAccept}
+          onClick={() => onAccept(outline)}
           className="bg-blue-600 hover:bg-blue-700 text-white"
         >
           Looks good →

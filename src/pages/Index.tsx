@@ -1,3 +1,4 @@
+// src/pages/Index.tsx
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,15 +11,13 @@ import { Sparkles, Presentation, Users } from 'lucide-react';
 import Outline from '@/components/Outline';
 import Template from '@/components/Template';
 
-
-
 export type ProjectData = {
   projectName: string;
   industry: string;
   stage: string;
   description: string;
   revenue: 'pre-revenue' | 'revenue';
-  slide_mode: 'manual' | 'ai'; // 'manual' or 'ai'
+  slide_mode: 'manual' | 'ai';
   slide_count: number;
   decktype: 'essentials' | 'matrix' | 'complete_deck';
 };
@@ -29,16 +28,24 @@ export type QAData = {
   timestamp: number;
 }[];
 
+export type GeneratedSlide = {
+  title: string;
+  content: string[];
+};
+
 const Index = () => {
   const [currentStep, setCurrentStep] = useState<'landing' | 'setup' | 'qa' | 'outline' | 'template' | 'preview'>('landing');
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [qaData, setQAData] = useState<QAData>([]);
+  const [outline, setOutline] = useState<any[]>([]);
   const [qaDone, setQaDone] = useState(false);
   const [outlineDone, setOutlineDone] = useState(false);
 
-  const handleStartProject = () => {
-    setCurrentStep('setup');
-  };
+  // Updated state for direct generation
+  const [generatedSlides, setGeneratedSlides] = useState<GeneratedSlide[]>([]);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+
+  const handleStartProject = () => setCurrentStep('setup');
 
   const handleProjectSetup = (data: ProjectData) => {
     setProjectData(data);
@@ -50,13 +57,17 @@ const Index = () => {
     setQaDone(true);
     setCurrentStep('outline');
   };
-  
-  const handleOutlineAccept = () => {
+
+  const handleOutlineAccept = (outlineData: any[]) => {
+    setOutline(outlineData);
     setOutlineDone(true);
     setCurrentStep('template');
   };
 
-  const handleTemplateSelect = () => {
+  // This function now handles the direct generation and passing of data
+  const handleGenerateDeck = (slides: GeneratedSlide[], url: string) => {
+    setGeneratedSlides(slides);
+    setDownloadUrl(url);
     setCurrentStep('preview');
   };
 
@@ -65,7 +76,6 @@ const Index = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
         <div className="container mx-auto px-4 py-16">
-          {/* Hero Section */}
           <div className="text-center mb-16">
             <div className="flex justify-center mb-6">
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
@@ -91,8 +101,6 @@ const Index = () => {
               Start Building Your Deck
             </Button>
           </div>
-
-          {/* Features Grid */}
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
               <CardHeader>
@@ -107,7 +115,6 @@ const Index = () => {
                 </CardDescription>
               </CardContent>
             </Card>
-
             <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
               <CardHeader>
                 <div className="bg-gradient-to-r from-purple-500 to-pink-500 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
@@ -121,7 +128,6 @@ const Index = () => {
                 </CardDescription>
               </CardContent>
             </Card>
-
             <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
               <CardHeader>
                 <div className="bg-gradient-to-r from-pink-500 to-orange-500 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
@@ -146,7 +152,7 @@ const Index = () => {
       <div className="min-h-screen flex w-full bg-gray-50">
         <AppSidebar
           currentStep={currentStep}
-          onStepChange={setCurrentStep}
+          onStepChange={(step) => setCurrentStep(step)}
           projectData={projectData}
           qaDone={qaDone}
           outlineDone={outlineDone}
@@ -154,33 +160,11 @@ const Index = () => {
         <main className="flex-1 p-6">
           <SidebarTrigger className="mb-4" />
           
-          {currentStep === 'setup' && (
-            <ProjectSetup onComplete={handleProjectSetup} />
-          )}
-          
-          {currentStep === 'qa' && projectData && (
-            <InteractiveQA 
-              projectData={projectData}
-              onComplete={handleQAComplete}
-            />
-          )}
-          
-          {currentStep === 'outline' && projectData && (
-            <Outline 
-            onAccept={handleOutlineAccept} 
-            />
-          )}
-
-          {currentStep === 'template' && (
-            <Template onComplete={handleTemplateSelect} />
-          )}
-
-          {currentStep === 'preview' && projectData && (
-            <DeckPreview 
-              projectData={projectData}
-              qaData={qaData}
-            />
-          )}
+          {currentStep === 'setup' && <ProjectSetup onComplete={handleProjectSetup} />}
+          {currentStep === 'qa' && projectData && <InteractiveQA projectData={projectData} onComplete={handleQAComplete} />}
+          {currentStep === 'outline' && <Outline onAccept={handleOutlineAccept} />}
+          {currentStep === 'template' && <Template outline={outline} onGenerate={handleGenerateDeck} />}
+          {currentStep === 'preview' && <DeckPreview generatedSlides={generatedSlides} downloadUrl={downloadUrl} />}
         </main>
       </div>
     </SidebarProvider>
