@@ -1,6 +1,6 @@
 // src/components/DeckPreview.tsx
 import { useState, useMemo } from 'react';
-import { ProjectData, QAData, GeneratedSlide } from '@/pages/Index';
+import { ProjectData, QAData, GeneratedSlide } from '@/pages/Index.tsx';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,8 @@ import {
   DollarSign,
   Calendar,
   AlertTriangle,
-  Trophy
+  Trophy,
+  Loader2
 } from 'lucide-react';
 
 interface DeckPreviewProps {
@@ -38,7 +39,6 @@ interface SlideData {
   notes?: string;
 }
 
-// A helper to map slide titles to icons and metadata
 const getSlideMetadata = (title: string): { icon: React.ElementType; type: 'title' | 'content' | 'data' | 'conclusion'; isCrucial: boolean } => {
   const lowerCaseTitle = title.toLowerCase();
   if (lowerCaseTitle.includes('problem')) return { icon: AlertTriangle, type: 'content', isCrucial: true };
@@ -52,13 +52,14 @@ const getSlideMetadata = (title: string): { icon: React.ElementType; type: 'titl
   if (lowerCaseTitle.includes('funding') || lowerCaseTitle.includes('ask')) return { icon: DollarSign, type: 'content', isCrucial: true };
   if (lowerCaseTitle.includes('team')) return { icon: Users, type: 'content', isCrucial: true };
   if (lowerCaseTitle.includes('conclusion') || lowerCaseTitle.includes('next steps')) return { icon: Trophy, type: 'conclusion', isCrucial: true };
-  return { icon: FileText, type: 'title', isCrucial: true }; // Default for title slide or others
+  return { icon: FileText, type: 'title', isCrucial: true };
 };
 
 
 const DeckPreview = ({ projectData, qaData, generatedSlides, downloadUrl }: DeckPreviewProps) => {
   const [selectedSlide, setSelectedSlide] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<string>('');
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const slides: SlideData[] = useMemo(() => {
     if (!generatedSlides) return [];
@@ -79,6 +80,36 @@ const DeckPreview = ({ projectData, qaData, generatedSlides, downloadUrl }: Deck
     setSelectedSlide(slideId === selectedSlide ? null : slideId);
   };
 
+  // --- IMPROVED: Function to handle the direct download ---
+  const handleDownload = async () => {
+    if (!downloadUrl) return;
+    setIsDownloading(true);
+    try {
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        // Log the actual response to see the error from Supabase
+        console.error("Supabase response error:", await response.text());
+        throw new Error("File not found or access denied by storage policy.");
+      }
+
+      const blob = await response.blob();
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      const fileName = `${projectData?.projectName || 'pitch-deck'}.pptx`;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Could not download the file. Please ensure the Supabase bucket policy is set correctly.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   if (!projectData) {
     return <div>Loading project data...</div>;
   }
@@ -96,19 +127,23 @@ const DeckPreview = ({ projectData, qaData, generatedSlides, downloadUrl }: Deck
           {downloadUrl && (
             <div className="flex gap-2">
               <Button
-                asChild
+                onClick={handleDownload}
+                disabled={isDownloading}
                 className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 flex items-center gap-2"
               >
-                <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                {isDownloading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
                   <Download className="w-4 h-4" />
-                  Download PPTX
-                </a>
+                )}
+                Download PPTX
               </Button>
             </div>
           )}
         </div>
       </div>
 
+      {/* The rest of the component remains the same... */}
       <Tabs defaultValue="slides" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="slides">All Slides</TabsTrigger>
