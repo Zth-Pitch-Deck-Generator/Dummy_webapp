@@ -25,6 +25,7 @@ const Outline = ({ onAccept }: OutlineProps) => {
   const [review, setReview] = useState<SWOT | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [swotGenerated, setSwotGenerated] = useState(false);
 
   const projectId =
     typeof window !== "undefined" ? localStorage.getItem("projectId") : null;
@@ -69,7 +70,7 @@ const Outline = ({ onAccept }: OutlineProps) => {
   }, [projectId]);
 
   const handleImprove = async () => {
-    if (!projectId) return;
+    if (!projectId || swotGenerated) return;
     try {
       const res = await fetch("/api/outline/eval", {
         method: "POST",
@@ -78,6 +79,7 @@ const Outline = ({ onAccept }: OutlineProps) => {
       });
       if (!res.ok) throw new Error("Evaluation failed");
       setReview(await res.json());
+      setSwotGenerated(true);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Evaluation failed");
     }
@@ -122,8 +124,9 @@ const Outline = ({ onAccept }: OutlineProps) => {
         <Button
           onClick={handleImprove}
           className="bg-gray-100 hover:bg-gray-200 text-gray-800 border"
+          disabled={swotGenerated}
         >
-          Improve Outline (SWOT)
+          {swotGenerated ? "SWOT Analysis Generated" : "Improve Outline (SWOT)"}
         </Button>
 
         {/* The onClick handler now passes the outline state up to the parent */}

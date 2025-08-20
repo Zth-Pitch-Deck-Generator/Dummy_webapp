@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { QAData, ProjectData } from '@/pages/Index';
 
-// Define the shape of a single message for the API
 interface ApiMessage {
   role: 'user' | 'model';
   content: string;
@@ -15,6 +14,7 @@ export interface AIQuestion {
   choices?: string[] | null;
   explanation?: string | null;
   isComplete: boolean;
+  isMetricCalculation: boolean;
 }
 
 export default function useQASession(
@@ -24,6 +24,8 @@ export default function useQASession(
   const [messages, setMessages] = useState<ApiMessage[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<AIQuestion | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [questionCount, setQuestionCount] = useState(1);
+  const [subQuestionCount, setSubQuestionCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,7 +53,6 @@ export default function useQASession(
         
         const questionData: AIQuestion = await res.json();
         setCurrentQuestion(questionData);
-
         setMessages([
             initialMessage,
             { role: 'model', content: questionData.question }
@@ -99,9 +100,14 @@ export default function useQASession(
       const nextQuestionData: AIQuestion = await res.json();
 
       if (nextQuestionData.isComplete) {
-        // Pass the final message list to the completion handler
         await handleComplete([...updatedMessages, { role: 'model', content: nextQuestionData.question }]);
       } else {
+        if (nextQuestionData.isMetricCalculation) {
+          setSubQuestionCount(prev => prev + 1);
+        } else {
+          setQuestionCount(prev => prev + 1);
+          setSubQuestionCount(0);
+        }
         setCurrentQuestion(nextQuestionData);
         setMessages(prev => [...prev, { role: 'model', content: nextQuestionData.question }]);
       }
@@ -111,7 +117,7 @@ export default function useQASession(
       setIsLoading(false);
     }
   };
-
+  
   const handleComplete = async (finalMessages: ApiMessage[]) => {
     const projectId = localStorage.getItem('projectId');
     if (!projectId) {
@@ -120,7 +126,6 @@ export default function useQASession(
     }
     
     try {
-      console.log("Attempting to save session...");
       const res = await fetch('/api/qa/session/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -129,14 +134,9 @@ export default function useQASession(
 
       if (!res.ok) {
         const errorBody = await res.json();
-        console.error("Failed to save session:", errorBody);
         throw new Error('Failed to save the Q&A session to the database.');
       }
-
-      console.log("Session saved successfully. Proceeding to outline.");
       
-      // *** FIX IS HERE ***
-      // Transform the final messages into the correct QAData format before calling onComplete.
       const formattedQAData: QAData = finalMessages
         .reduce((acc, msg, i) => {
             if (msg.role === 'user') {
@@ -181,6 +181,6 @@ export default function useQASession(
     handleSend,
     scrollRef,
     history: historyForUI,
-    questionCount: historyForUI.length + 1,
+    questionCount: subQuestionCount > 0 ? `${questionCount}.${subQuestionCount}` : questionCount.toString(),
   };
 }

@@ -124,6 +124,16 @@ const handleEval: RequestHandler = async (req, res) => {
       return void res.status(404).json({ error: "Outline not found" });
     }
   
+    const { data: existingReview } = await supabase
+      .from("outline_reviews")
+      .select("improvements")
+      .eq("outline_id", outlineRow.id)
+      .maybeSingle();
+
+    if (existingReview) {
+      return void res.json(existingReview.improvements);
+    }
+
     const evalPrompt = `
   You are a VC Pitch Coach. Review the provided pitch deck outline and perform a SWOT analysis based on the information within it.
   Respond ONLY with a valid JSON object with four keys: "strength", "weakness", "opportunities", and "threats". Each key should have an array of strings as its value.
