@@ -1,6 +1,7 @@
 // backend/routes/generate-deck.ts
 import { Router } from "express";
 import { z } from "zod";
+import PptxGenJS from 'pptxgenjs'; // Import statically at the top
 import { geminiJson } from "../lib/geminiFlash.js";
 import { supabase } from "../supabase.js";
 import fetch from 'node-fetch';
@@ -68,9 +69,8 @@ router.post("/", async (req, res) => {
 
     console.log(`[${projectId}] Creating Airbnb-style PPTX file...`);
 
-    const pptxgen = await import('pptxgenjs');
-    const pres = new pptxgen.default();
-
+    // Use the imported PptxGenJS directly
+    const pres = new PptxGenJS();
 
     // --- Airbnb Template Color Palette ---
     const AIRBNB_PINK = "FF5A5F";
