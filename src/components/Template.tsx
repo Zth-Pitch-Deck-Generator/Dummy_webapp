@@ -7,11 +7,11 @@ import { Sparkles, ExternalLink, Loader2 } from 'lucide-react';
 import { GeneratedSlide } from '@/pages/Index';
 
 interface TemplateProps {
-  outline: any[];
+  // Outline is no longer needed here, as the backend will fetch it
   onGenerate: (slides: GeneratedSlide[], url: string) => void;
 }
 
-const Template = ({ outline, onGenerate }: TemplateProps) => {
+const Template = ({ onGenerate }: TemplateProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const zthTemplate = {
@@ -24,18 +24,27 @@ const Template = ({ outline, onGenerate }: TemplateProps) => {
 
   const handleGenerateClick = async () => {
     setIsGenerating(true);
+    const projectId = localStorage.getItem("projectId");
+
+    if (!projectId) {
+        alert("Error: Project ID is missing. Please start over.");
+        setIsGenerating(false);
+        return;
+    }
+
     try {
       const response = await fetch('/api/generate-deck', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          outline,
-          templateSlug: 'ZTH-template'
+          projectId: projectId,
+          templateSlug: 'ZTH-template' // This can be dynamic if you add more templates
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Deck generation failed on the server.');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Deck generation failed on the server.');
       }
 
       const result = await response.json();
@@ -43,7 +52,7 @@ const Template = ({ outline, onGenerate }: TemplateProps) => {
 
     } catch (error) {
       console.error("Failed to generate deck:", error);
-      alert("An error occurred while generating the deck. Please try again.");
+      alert(`An error occurred while generating the deck: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGenerating(false);
     }

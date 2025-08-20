@@ -2,41 +2,34 @@
 import { Router } from "express";
 import { z } from "zod";
 import { geminiJson } from "../lib/geminiFlash.js";
+import { supabase } from "../supabase.js";
 import pptxgen from "pptxgenjs";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from 'url';
 import fetch from 'node-fetch';
 
 const router = Router();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const slideSchema = z.object({
-  title: z.string(),
-  bullet_points: z.array(z.string()),
-});
-
+// Zod schema for validating the incoming request
 const bodySchema = z.object({
-  outline: z.array(slideSchema),
+  projectId: z.string().uuid(),
+  templateSlug: z.string(), // e.g., 'ZTH-template'
 });
 
 // --- Pexels Image Fetching Function ---
 const getImageUrl = async (query: string): Promise<string | null> => {
     if (!process.env.PEXELS_API_KEY || !query) return null;
     try {
-        const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1`, {
+        const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`, {
             headers: { Authorization: process.env.PEXELS_API_KEY }
         });
-        if (!response.ok) throw new Error('Pexels API request failed');
+        if (!response.ok) throw new Error(`Pexels API failed with status: ${response.status}`);
         const data: any = await response.json();
-        return data.photos[0]?.src.medium || null;
+        return data.photos[0]?.src.large || null;
     } catch (error) {
         console.error("Pexels image fetch error:", error);
         return null;
     }
 };
+
 
 // --- Main Route Handler ---
 router.post("/", async (req, res) => {
@@ -45,108 +38,143 @@ router.post("/", async (req, res) => {
     if (!parsed.success) {
       return void res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
     }
-    const { outline } = parsed.data;
-    const jobId = `deck_${crypto.randomUUID()}`;
+    const { projectId, templateSlug } = parsed.data;
 
-    // Step 1: Enhanced prompt to get content, image ideas, and chart data
-    console.log(`[${jobId}] Starting content generation...`);
+    // 1. Fetch the user-approved outline from Supabase
+    const { data: outlineData, error: outlineError } = await supabase
+      .from('outlines')
+      .select('outline_json')
+      .eq('project_id', projectId)
+      .single();
+
+    if (outlineError || !outlineData) {
+      throw new Error(`Failed to fetch outline for project ${projectId}: ${outlineError?.message}`);
+    }
+    const outline = outlineData.outline_json;
+
+    // 2. AI Enrichment Prompt
+    console.log(`[${projectId}] Starting AI content enrichment...`);
     const prompt = `
-      You are an expert pitch deck writer. Based on the provided slide outline, generate the complete content for a presentation.
-      For each slide, provide:
-      1. A "title".
-      2. "content" as an array of concise bullet points (max 15 words each).
-      3. An "image_prompt": a simple 2-3 word search query for a stock photo (e.g., "team working", "data graph", "happy customer").
-      4. "chart_data": If the slide is about data (e.g., Traction, Market Size), provide a sample 'chart' object. Otherwise, make it null. The chart object should have a 'type' (bar or pie), an array of 'labels', and an array of 'values'. Example: { "type": "bar", "labels": ["Q1", "Q2", "Q3"], "values": [10, 25, 45] }.
+      You are a world-class pitch deck designer. Your task is to take a raw slide outline and enrich it with visual and data-driven elements.
+      For each slide in the provided outline, you must return a JSON object with the following fields:
+      - "title": The original title from the outline.
+      - "content": The original bullet points from the outline.
+      - "image_query": A concise, 2-4 word search query for a professional stock photo that visually represents the slide's core message (e.g., "team collaboration", "data analytics graph", "market growth").
+      - "chart_data": If the slide's content is inherently data-driven (like 'Traction' or 'Market Size'), provide a sample chart object: { "type": "bar" | "pie", "labels": string[], "values": number[] }. Otherwise, this field MUST be null.
+      - "diagram_prompt": If the slide explains a complex process or concept (like 'Solution' or 'Business Model'), provide a detailed prompt for an AI image generator to create a visually appealing diagram or illustration. Otherwise, this field MUST be null.
 
-      OUTLINE:
+      This is the user's approved outline:
       ${JSON.stringify(outline, null, 2)}
 
-      Return a valid JSON array of these slide objects. Respond ONLY with the JSON array.
+      Return a valid JSON array of these enriched slide objects. Ensure the output strictly follows this structure.
     `;
-    const generatedSlides = await geminiJson(prompt);
-    console.log(`[${jobId}] Content generated successfully.`);
+    const enrichedSlides = await geminiJson(prompt);
+    console.log(`[${projectId}] Content enrichment complete.`);
 
-    // Step 2: Generate the PPTX file with advanced features
-    console.log(`[${jobId}] Creating enhanced PPTX file...`);
+    // 3. Generate the PPTX file with professional design
+    console.log(`[${projectId}] Creating visually rich PPTX file...`);
     const pres = new pptxgen();
 
-    // --- Define Master Slide Layouts ---
+    // --- Define Master Slide Layouts (mimicking a professional template) ---
+    pres.defineLayout({ name: 'TITLE', width: 10, height: 5.625 });
+    pres.defineLayout({ name: 'CONTENT', width: 10, height: 5.625 });
+    
+    // Title Master
     pres.defineSlideMaster({
-      title: "TITLE_SLIDE",
-      background: { color: "F1F1F1" },
+      title: "MASTER_TITLE",
+      background: { color: "000042" }, // Dark blue background
       objects: [
-        { text: { text: "Company Title", options: { x: 0.5, y: 2.5, w: '90%', fontSize: 42, fontFace: "Georgia", color: "003366" } } },
-        { text: { text: "Tagline", options: { x: 0.5, y: 3.5, w: '90%', fontSize: 24, fontFace: "Arial", color: "4F4F4F" } } },
+        { 'rect': { x: 0, y: 4.5, w: 10, h: 1.12, fill: { color: "FFFFFF" } } },
+        { 'text': {
+            text: "Company Name",
+            options: { x: 0.5, y: 2.0, w: 9, h: 1, fontFace: "Georgia", fontSize: 48, color: "FFFFFF", bold: true, align: "center" }
+        }},
+        { 'text': {
+            text: "Pitch Deck Tagline",
+            options: { x: 0.5, y: 3.0, w: 9, h: 0.75, fontFace: "Arial", fontSize: 24, color: "F1F1F1", align: "center" }
+        }},
       ],
     });
-
+    
+    // Content Master
     pres.defineSlideMaster({
-      title: "CONTENT_SLIDE",
-      background: { color: "FFFFFF" },
+      title: "MASTER_CONTENT",
+      background: { color: "F1F1F1" }, // Light gray background
       objects: [
-        { text: { text: "Slide Title", options: { x: 0.5, y: 0.2, w: '90%', h: 0.75, fontSize: 32, fontFace: "Georgia", color: "003366" } } },
-        { placeholder: { options: { name: "body", type: "body", x: 0.5, y: 1.2, w: '50%', h: '75%' }, text: 'Content Placeholder'}},
+        { 'rect': { x: 0, y: 0, w: 10, h: 0.75, fill: { color: "003366" } } },
+        { 'text': {
+            text: "SLIDE_TITLE",
+            options: { x: 0.5, y: 0.1, w: 9, h: 0.6, fontFace: "Georgia", fontSize: 28, color: "FFFFFF", bold: true }
+        }},
       ],
     });
+    
+     // --- Loop and Create Slides ---
+    for (const [index, slideData] of enrichedSlides.entries()) {
+        const slide = pres.addSlide({ masterName: index === 0 ? "MASTER_TITLE" : "MASTER_CONTENT" });
 
-    // --- Create Slides using Master Layouts and Generated Content ---
-    for (const [index, slideContent] of generatedSlides.entries()) {
-      const slideLayout = index === 0 ? "TITLE_SLIDE" : "CONTENT_SLIDE";
-      const slide = pres.addSlide({ masterName: slideLayout });
+        if (index === 0) { // Title Slide
+            slide.addText(slideData.title, { placeholder: "title" });
+            slide.addText(slideData.content[0] || ' ', { placeholder: "body" });
+        } else { // Content Slides
+            slide.addText(slideData.title, { placeholder: "title" });
 
-      slide.addText(slideContent.title, { placeholder: index === 0 ? "title" : "title" });
-      
-      if (index > 0) {
-        // Add text content
-        slide.addText(slideContent.content.join('\n'), { 
-            placeholder: "body", 
-            fontFace: "Arial", 
-            fontSize: 16, 
-            bullet: true 
-        });
-
-        // Add Image
-        const imageUrl = await getImageUrl(slideContent.image_prompt);
-        if (imageUrl) {
-            const imageBuffer = await fetch(imageUrl).then(res => res.buffer());
-            const imageBase64 = imageBuffer.toString('base64');
-            slide.addImage({ data: `data:image/png;base64,${imageBase64}`, x: 6, y: 1.5, w: 3.5, h: 3.5 });
+            const textOptions: pptxgen.TextPropsOptions = { 
+                x: 0.5, y: 1.0, w: 5.5, h: 4.0, 
+                fontFace: "Arial", fontSize: 14, 
+                color: "333333", bullet: { type: 'bullet', code: '2022' } 
+            };
+            slide.addText(slideData.content.join('\n'), textOptions);
+            
+            // Add Visuals: Chart > Diagram > Image
+            let visualAdded = false;
+            if (slideData.chart_data && slideData.chart_data.labels?.length) {
+                slide.addChart(
+                    slideData.chart_data.type === 'pie' ? pres.ChartType.pie : pres.ChartType.bar,
+                    [{ name: slideData.title, labels: slideData.chart_data.labels, values: slideData.chart_data.values }],
+                    { x: 6.5, y: 1.2, w: 3, h: 3, showLegend: true }
+                );
+                visualAdded = true;
+            } 
+            
+            if (!visualAdded) {
+                const imageQuery = slideData.diagram_prompt || slideData.image_query;
+                const imageUrl = await getImageUrl(imageQuery);
+                if (imageUrl) {
+                    slide.addImage({ path: imageUrl, x: 6.5, y: 1.2, w: 3, h: 3 });
+                }
+            }
         }
+    }
 
-        // Add Chart
-        if (slideContent.chart_data && slideContent.chart_data.labels) {
-            slide.addChart(
-                slideContent.chart_data.type === 'pie' ? pres.ChartType.pie : pres.ChartType.bar,
-                [{ name: "Chart Data", labels: slideContent.chart_data.labels, values: slideContent.chart_data.values }],
-                { x: 6, y: 1.5, w: 3.5, h: 3.5 }
-            );
-        }
-      } else {
-        // For title slide, add tagline
-        slide.addText(slideContent.content[0] || '', { placeholder: "body" });
-      }
+    // 4. Generate buffer and upload to Supabase
+    const pptxBuffer = await pres.write({ outputType: 'nodebuffer' });
+    const filePath = `deck-${projectId}-${Date.now()}.pptx`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('pitch-decks')
+      .upload(filePath, pptxBuffer, {
+        contentType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      throw new Error(`Failed to upload to Supabase Storage: ${uploadError.message}`);
     }
     
-    // Step 3: Save and return the file
-    const tempDir = path.join(__dirname, '..', '..', 'public', 'temp');
-    if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
-    }
-    const filePath = path.join(tempDir, `${jobId}.pptx`);
-    await pres.writeFile({ fileName: filePath });
-    console.log(`[${jobId}] PPTX file saved to ${filePath}`);
-
-    const downloadUrl = `/temp/${jobId}.pptx`;
-
+    // 5. Get public URL and return to frontend
+    const { data: urlData } = supabase.storage.from('pitch-decks').getPublicUrl(filePath);
+    
     res.status(200).json({
-      slides: generatedSlides,
-      downloadUrl: downloadUrl,
+      slides: enrichedSlides,
+      downloadUrl: urlData.publicUrl,
     });
 
   } catch (error: any) {
-    console.error("Error in /api/generate-deck:", error);
+    console.error("Error in /api/generate-deck:", error.message);
     res.status(500).json({ error: "Failed to generate deck." });
   }
 });
 
 export default router;
+
