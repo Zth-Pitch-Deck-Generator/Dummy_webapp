@@ -1,10 +1,13 @@
 // backend/routes/generate-deck.ts
 import { Router } from "express";
 import { z } from "zod";
-import PptxGenJS from 'pptxgenjs'; // Import statically at the top
+import { createRequire } from "module"; // Import createRequire
 import { geminiJson } from "../lib/geminiFlash.js";
 import { supabase } from "../supabase.js";
 import fetch from 'node-fetch';
+
+const require = createRequire(import.meta.url); // Create a require function
+const PptxGenJS = require('pptxgenjs'); // Use require to load the library
 
 const router = Router();
 
@@ -69,7 +72,7 @@ router.post("/", async (req, res) => {
 
     console.log(`[${projectId}] Creating Airbnb-style PPTX file...`);
 
-    // Use the imported PptxGenJS directly
+    // The instantiation remains the same
     const pres = new PptxGenJS();
 
     // --- Airbnb Template Color Palette ---
