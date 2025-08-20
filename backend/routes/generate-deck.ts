@@ -3,7 +3,6 @@ import { Router } from "express";
 import { z } from "zod";
 import { geminiJson } from "../lib/geminiFlash.js";
 import { supabase } from "../supabase.js";
-import pptxgen from "pptxgenjs";
 import fetch from 'node-fetch';
 
 const router = Router();
@@ -68,7 +67,10 @@ router.post("/", async (req, res) => {
     console.log(`[${projectId}] Content enrichment complete.`);
 
     console.log(`[${projectId}] Creating Airbnb-style PPTX file...`);
-    const pres = new pptxgen();
+
+    const pptxgen = await import('pptxgenjs');
+    const pres = new pptxgen.default();
+
 
     // --- Airbnb Template Color Palette ---
     const AIRBNB_PINK = "FF5A5F";
@@ -91,7 +93,7 @@ router.post("/", async (req, res) => {
         }},
       ],
     });
-    
+
     pres.defineSlideMaster({
       title: "MASTER_CONTENT_AIRBNB",
       background: { color: AIRBNB_BACKGROUND },
@@ -103,16 +105,16 @@ router.post("/", async (req, res) => {
         { 'placeholder': { options: { name: "body", type: "body", x: 0.5, y: 1.0, w: 8.5, h: 4.0 }, text: 'Content Placeholder'}},
       ],
     });
-    
+
     for (const [index, slideData] of enrichedSlides.entries()) {
         const slide = pres.addSlide({ masterName: index === 0 ? "MASTER_TITLE_AIRBNB" : "MASTER_CONTENT_AIRBNB" });
 
         slide.addText(slideData.title, { placeholder: "title" });
-        
+
         if (index > 0) {
-             slide.addText(slideData.content.join('\n'), { 
-                placeholder: "body", 
-                fontFace: "Helvetica", 
+             slide.addText(slideData.content.join('\n'), {
+                placeholder: "body",
+                fontFace: "Helvetica",
                 fontSize: 24,
                 color: AIRBNB_GRAY_DARK,
                 bullet: { indent: 30 },
@@ -136,9 +138,9 @@ router.post("/", async (req, res) => {
     if (uploadError) {
       throw new Error(`Failed to upload to Supabase Storage: ${uploadError.message}`);
     }
-    
+
     const { data: urlData } = supabase.storage.from('pitch-decks').getPublicUrl(filePath);
-    
+
     res.status(200).json({
       slides: enrichedSlides,
       downloadUrl: urlData.publicUrl,

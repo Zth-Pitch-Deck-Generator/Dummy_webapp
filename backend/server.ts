@@ -12,7 +12,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const corsOptions = {
-  origin: '*', 
+  origin: '*',
   optionsSuccessStatus: 200
 };
 
@@ -32,6 +32,12 @@ app.use("/api/generate-deck", generateDeckRouter); // Use the new deck generatio
 /* Health Check Endpoint */
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
+});
+
+/* Error Handling Middleware */
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'A server error occurred' });
 });
 
 /* Server Startup */
