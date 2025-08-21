@@ -6,14 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Download, 
-  Edit, 
-  Star, 
-  FileText, 
-  TrendingUp, 
-  Users, 
-  Target, 
+import {
+  Download,
+  Edit,
+  Star,
+  FileText,
+  TrendingUp,
+  Users,
+  Target,
   Lightbulb,
   DollarSign,
   Calendar,
