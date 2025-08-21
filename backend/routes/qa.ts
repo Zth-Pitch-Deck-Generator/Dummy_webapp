@@ -6,7 +6,7 @@ import { geminiJson } from "../lib/geminiFlash.js";
 
 const router = Router();
 
-const MAX_QUESTIONS = 5;
+const MAX_QUESTIONS = 20;
 
 const bodySchema = z.object({
   projectId: z.string().uuid(),
