@@ -15,7 +15,7 @@ const ChatWindow = ({ messages, isLoading }: Props) => (
     <div className="space-y-4">
       {messages.map(m => (
         <div key={m.id} className={`flex gap-3 ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-          {m.type === 'ai' && (
+          {m.type === 'model' && (
             <Avatar className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500">
               <Bot className="w-4 h-4 text-white p-1" />
             </Avatar>
