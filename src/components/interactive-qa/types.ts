@@ -3,7 +3,7 @@ import { ProjectData, QAData } from '@/pages/Index';
 
 export type AIMessage = {
   id: string;
-  type: 'ai';
+  type: 'model';
   question: string;
   answerType: 'free_text' | 'multiple_choice';
   choices?: string[];

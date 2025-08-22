@@ -156,3 +156,7 @@ router.post("/", async (req, res) => {
 });
 
 export default router;
+
+// When reading transcript from Supabase, ensure only "user" and "model" roles are used if you process roles.
+// If you ever map or use roles for slide generation or transcript, use:
+// m.role === "user" ? "Founder" : "Analyst"
