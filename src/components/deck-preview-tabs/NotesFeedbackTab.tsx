@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { QAData } from '@/pages/Index.tsx';
-import { Skeleton } from '../ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface NotesFeedbackTabProps {
   qaData: QAData;
@@ -62,7 +62,7 @@ const NotesFeedbackTab = ({ qaData, projectId }: NotesFeedbackTabProps) => {
     }
 
   return (
-    <div className="grid lg:grid-cols-2 gap-6">
+    <div className="grid lg:grid-cols-1 gap-6">
       <Card>
         <CardHeader>
           <CardTitle>Smart Engine Deck Recommendations</CardTitle>
@@ -93,7 +93,6 @@ const NotesFeedbackTab = ({ qaData, projectId }: NotesFeedbackTabProps) => {
           </ScrollArea>
         </CardContent>
       </Card>
-      
     </div>
   );
 };
