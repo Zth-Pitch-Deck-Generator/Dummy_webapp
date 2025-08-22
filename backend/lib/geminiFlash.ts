@@ -1,7 +1,7 @@
 // backend/lib/geminiFlash.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-2.0-flash";
 const genAI = new GoogleGenerativeAI( process.env.GEMINI_API_KEY || "");
 /**
  * Call Gemini-Flash and return parsed JSON.
