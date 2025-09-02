@@ -1,0 +1,20 @@
+{
+  "name": "Complete Pitch Deck",
+  "description": "Full version, 12 slides.",
+  "slideCount": 12,
+  "maxQuestions": 20,
+  "questions": [
+    { "topic": "Problem", "question": "What problem are you solving?", "answerType": "free_text" },
+    { "topic": "Solution", "question": "What is your solution?", "answerType": "free_text" },
+    { "topic": "Market Size", "question": "What is your market size (TAM, SAM, SOM)?", "answerType": "free_text" },
+    { "topic": "Product", "question": "How does your product work? Can you provide a demo or screenshots?", "answerType": "free_text" },
+    { "topic": "Business Model", "question": "What is your revenue model?", "answerType": "free_text" },
+    { "topic": "Traction", "question": "What traction have you gained so far?", "answerType": "free_text" },
+    { "topic": "Go-to-Market", "question": "What is your go-to-market strategy?", "answerType": "free_text" },
+    { "topic": "Competition", "question": "Who are your competitors and what is your competitive advantage?", "answerType": "free_text" },
+    { "topic": "Team", "question": "Who is on your team?", "answerType": "free_text" },
+    { "topic": "Financials", "question": "What are your financial projections for the next 3-5 years?", "answerType": "free_text" },
+    { "topic": "The Ask", "question": "How much are you raising and what are the use of funds?", "answerType": "free_text" },
+    { "topic": "Contact", "question": "What is your contact information?", "answerType": "free_text" }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "name": "Basic Pitch Deck",
+  "description": "Core narrative, 8 slides.",
+  "slideCount": 8,
+  "maxQuestions": 20,
+  "questions": [
+    {
+      "topic": "Problem",
+      "question": "What is the single most important problem you are solving?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Solution",
+      "question": "In one sentence, what is your solution?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Market Size",
+      "question": "What is the total addressable market (TAM) for your solution?",
+      "answerType": "free_text"
+    },
+    {
+        "topic": "Business Model",
+        "question": "How do you make money?",
+        "answerType": "free_text"
+    },
+    {
+        "topic": "Team",
+        "question": "Who are the key members of your team and what is their relevant experience?",
+        "answerType": "free_text"
+    },
+    {
+        "topic": "Competition",
+        "question": "Who are your main competitors?",
+        "answerType": "free_text"
+    },
+    {
+        "topic": "Traction",
+        "question": "What traction have you achieved so far (users, revenue, etc.)?",
+        "answerType": "free_text"
+    },
+    {
+        "topic": "The Ask",
+        "question": "How much money are you raising and what will you use it for?",
+        "answerType": "free_text"
+    }
+  ]
+}

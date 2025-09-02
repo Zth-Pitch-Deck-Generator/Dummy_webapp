@@ -1,0 +1,14 @@
+{
+  "name": "Direct Dataroom",
+  "description": "For founders who know their KPIs. 12-13 slides.",
+  "slideCountRange": [12, 13],
+  "maxQuestions": 20,
+  "questions": [
+    { "topic": "Key Metrics", "question": "Please list the main KPIs you track for your business.", "answerType": "free_text" },
+    { "topic": "MRR Details", "question": "What is your current MRR, and what was it 6 months ago?", "answerType": "free_text", "isMetricCalculation": true },
+    { "topic": "CAC Details", "question": "What is your average Customer Acquisition Cost (CAC)? Please provide the total marketing/sales spend and new customers for a recent period.", "answerType": "free_text", "isMetricCalculation": true },
+    { "topic": "LTV Details", "question": "What is your Customer Lifetime Value (LTV)?", "answerType": "free_text", "isMetricCalculation": true },
+    { "topic": "Churn Details", "question": "What is your monthly and annual customer churn rate?", "answerType": "free_text", "isMetricCalculation": true },
+    { "topic": "Other Metrics", "question": "Are there any other important metrics you'd like to include (e.g., Gross Margin, Burn Rate, Runway)?", "answerType": "free_text" }
+  ]
+}

@@ -2,14 +2,14 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import ProjectSetup from '@/components/ProjectSetup';
-import InteractiveQA from '@/components/interactive-qa/InteractiveQA';
-import DeckPreview from '@/components/DeckPreview';
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from '@/components/AppSidebar';
+import ProjectSetup from '../components/ProjectSetup';
+import InteractiveQA from '../components/interactive-qa/InteractiveQA';
+import DeckPreview from '../components/DeckPreview';
+import { SidebarProvider, SidebarTrigger } from "../components/ui/sidebar";
+import { AppSidebar } from '../components/AppSidebar';
 import { Sparkles, Presentation, Users } from 'lucide-react';
-import Outline from '@/components/Outline';
-import Template from '@/components/Template';
+import Outline from '../components/Outline';
+import Template from '../components/Template';
 
 export type ProjectData = {
   projectName: string;
@@ -19,7 +19,8 @@ export type ProjectData = {
   revenue: 'pre-revenue' | 'revenue';
   slide_mode: 'manual' | 'ai';
   slide_count: number;
-  decktype: 'essentials' | 'matrix' | 'complete_deck';
+  decktype: 'pitch-deck' | 'dataroom';
+  deckSubtype: 'basic_pitch_deck' | 'complete_pitch_deck' | 'guided_dataroom' | 'direct_dataroom';
 };
 
 export type QAData = {
@@ -160,7 +161,7 @@ const Index = () => {
           {currentStep === 'setup' && <ProjectSetup onComplete={handleProjectSetup} />}
           {currentStep === 'qa' && projectData && <InteractiveQA projectData={projectData} onComplete={handleQAComplete} />}
           {currentStep === 'outline' && <Outline onAccept={handleOutlineAccept} />}
-          {currentStep === 'template' && <Template outline={outline} onGenerate={handleGenerateDeck} />}
+          {currentStep === 'template' && <Template onGenerate={handleGenerateDeck} />}
           {currentStep === 'preview' && (
             <DeckPreview 
               projectData={projectData}

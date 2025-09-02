@@ -11,13 +11,13 @@ const bodySchema = z.object({
   stage:       z.enum(["pre-seed","seed","series-a","series-b","series-c","other"]),
   revenue: z.enum(["pre-revenue", "revenue"]),
   description: z.string().min(5),
-  slide_mode: z.enum(["manual", "ai"]),  // Optional for AI mode
-  slide_count:  z.number().int().min(5).max(14).nullable().optional(),  // Optional for AI mode
-  decktype:    z.enum(["essentials", "matrix", "complete_deck"])
+  slide_mode: z.enum(["manual", "ai"]),
+  slide_count:  z.number().int().min(5).max(14).nullable().optional(),
+  decktype:    z.enum(["basic_pitch_deck", "complete_pitch_deck", "guided_dataroom", "direct_dataroom"])
 }).refine(
   d => {
     if (d.slide_mode === "manual") return d.slide_count !== null && d.slide_count !== undefined;
-    return true;                    // AI mode → ignore slide_count
+    return true;
   },
   {
     message: "slide_count is required when slide_mode is manual",
