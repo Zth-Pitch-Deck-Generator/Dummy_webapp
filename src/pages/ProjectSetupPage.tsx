@@ -11,13 +11,14 @@ const ProjectSetupPage = () => {
     if (data.deckSubtype === 'basic_pitch_deck') {
       navigate(`/create/basic-pitch-deck/${projectId}`);
     } 
-    // This is where you'll add routes for other deck types
+    // Add else-if blocks here for other deck types in the future
     // else if (data.deckSubtype === 'complete_pitch_deck') {
     //   navigate(`/create/complete-pitch-deck/${projectId}`);
     // }
     else {
-        // Fallback for any other deck types for now
+        // Fallback or default navigation
         console.warn(`No dedicated route for deck subtype: ${data.deckSubtype}.`);
+        // For now, we can redirect to a generic path or the basic one
         navigate(`/create/basic-pitch-deck/${projectId}`);
     }
   };
@@ -26,4 +27,3 @@ const ProjectSetupPage = () => {
 };
 
 export default ProjectSetupPage;
-

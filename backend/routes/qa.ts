@@ -12,7 +12,7 @@ const router = Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const MAX_QUESTIONS = 20;
+const MAX_QUESTIONS = 5;
 
 const bodySchema = z.object({
   projectId: z.string().uuid(),
