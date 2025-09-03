@@ -19,14 +19,12 @@ const BasicPitchDeckFlow = () => {
     const [outline, setOutline] = useState<any[]>([]);
     const [qaDone, setQaDone] = useState(false);
     const [outlineDone, setOutlineDone] = useState(false);
-    const [templateSelected, setTemplateSelected] = useState(false);
     const [generatedSlides, setGeneratedSlides] = useState<GeneratedSlide[]>([]);
     const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchProject = async () => {
             if (!projectId) return;
-            // Set localStorage for other components that might need it
             localStorage.setItem("projectId", projectId);
 
             const { data, error } = await supabase
@@ -72,17 +70,18 @@ const BasicPitchDeckFlow = () => {
     const handleGenerateDeck = (slides: GeneratedSlide[], url: string) => {
         setGeneratedSlides(slides);
         setDownloadUrl(url);
-        setTemplateSelected(true);
         setCurrentStep('preview');
     };
     
     if (!projectData) {
         return (
-            <div className="flex items-center justify-center h-screen">
-                <div className="space-y-4">
-                    <Skeleton className="h-8 w-64" />
-                    <Skeleton className="h-4 w-80" />
-                    <Skeleton className="h-96 w-full" />
+            <div className="flex items-center justify-center h-screen bg-gray-50">
+                <div className="w-full max-w-4xl p-6 space-y-6">
+                    <Skeleton className="h-10 w-1/3" />
+                    <Skeleton className="h-6 w-2/3" />
+                    <div className="border p-6 rounded-lg">
+                        <Skeleton className="h-96 w-full" />
+                    </div>
                 </div>
             </div>
         );
@@ -119,7 +118,7 @@ const BasicPitchDeckFlow = () => {
                     outlineDone={outlineDone}
                 />
                 <main className="flex-1 p-6">
-                    <SidebarTrigger className="mb-4" />
+                    <SidebarTrigger className="mb-4 lg:hidden" />
                     {renderStep()}
                 </main>
             </div>

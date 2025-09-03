@@ -1,6 +1,5 @@
 // src/components/ProjectSetup.tsx
 import { useState } from "react"
-import { useNavigate } from "react-router-dom";
 import { ProjectData } from "@/pages/Index"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,7 +21,7 @@ import {
 } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
-import { Briefcase, TrendingUp, Users, Database } from "lucide-react"
+import { Briefcase, TrendingUp, Users, Database, Loader2 } from "lucide-react"
 
 export type FormData = Omit<ProjectData, "revenue" | "decktype" | "deckSubtype"> & {
   revenue: "" | ProjectData["revenue"]
@@ -31,7 +30,7 @@ export type FormData = Omit<ProjectData, "revenue" | "decktype" | "deckSubtype">
 }
 
 interface ProjectSetupProps {
-  onComplete: (data: ProjectData) => void
+  onComplete: (data: ProjectData, projectId: string) => void;
 }
 
 const rangeByDeck = {
@@ -54,8 +53,8 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
     decktype: "",
     deckSubtype: "",
   })
+  const [isLoading, setIsLoading] = useState(false);
 
-  const navigate = useNavigate();
   const totalSteps = 3
 
   const deckTypes = {
@@ -72,12 +71,18 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
   const handleNext = async () => {
     if (step < totalSteps) return setStep(step + 1)
 
+    setIsLoading(true);
     try {
       const apiPayload = {
-        ...formData,
-        decktype: formData.deckSubtype,
+        projectName: formData.projectName,
+        industry: formData.industry,
+        stage: formData.stage,
+        revenue: formData.revenue,
+        description: formData.description,
+        slide_count: formData.slide_count,
+        slide_mode: formData.slide_mode,
+        decktype: formData.deckSubtype, 
       };
-      delete (apiPayload as any).deckSubtype;
       
       const res = await fetch("/api/projects", {
         method: "POST",
@@ -89,17 +94,12 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
         throw new Error(error || "Project creation failed")
       }
       const { id } = await res.json()
-      localStorage.setItem("projectId", id)
-      
-      if (formData.deckSubtype === 'basic_pitch_deck') {
-        navigate('/basic-pitch-deck');
-      } else {
-        onComplete(formData as ProjectData)
-      }
+      onComplete(formData as unknown as ProjectData, id)
     } catch (err: any) {
       console.error(err)
       alert(`Error creating project: ${err.message}`)
-    }
+      setIsLoading(false);
+    } 
   }
 
   const handlePrevious = () => step > 1 && setStep(step - 1)
@@ -248,8 +248,8 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                             <CardContent><CardDescription>Create a compelling narrative to present to investors.</CardDescription></CardContent>
                         </Card>
                         {formData.decktype === 'pitch-deck' && (
-                            <div className="pl-4 space-y-4">
-                                <Label className="text-blue-700 font-semibold">Subheadings</Label>
+                            <div className="pl-4 mt-4 space-y-4 border-l-2 border-gray-200">
+                                <Label className="text-gray-500 font-semibold">SUBHEADINGS</Label>
                                 <div className="grid md:grid-cols-2 gap-6 sm:grid-cols-1">
                                     {deckTypes["pitch-deck"].map((dt) => {
                                         const Icon = dt.icon
@@ -281,8 +281,8 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                             <CardContent><CardDescription>Compile detailed metrics and data for due diligence.</CardDescription></CardContent>
                         </Card>
                         {formData.decktype === 'dataroom' && (
-                            <div className="pl-4 space-y-4">
-                                <Label className="text-blue-700 font-semibold">Subheadings</Label>
+                             <div className="pl-4 mt-4 space-y-4 border-l-2 border-gray-200">
+                                <Label className="text-gray-500 font-semibold">SUBHEADINGS</Label>
                                 <div className="grid md:grid-cols-2 gap-6 sm:grid-cols-1">
                                     {deckTypes["dataroom"].map((dt) => {
                                         const Icon = dt.icon
@@ -337,7 +337,8 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
 
         <div className="flex justify-between mt-10">
           <Button variant="outline" disabled={step === 1} onClick={handlePrevious} size="default">Previous</Button>
-          <Button onClick={handleNext} disabled={!isStepValid()} size="default" type="button">
+          <Button onClick={handleNext} disabled={!isStepValid() || isLoading} size="default" type="button">
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {step === totalSteps ? "Start Q&A Session" : "Next"}
           </Button>
         </div>
@@ -347,3 +348,4 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
 }
 
 export default ProjectSetup;
+

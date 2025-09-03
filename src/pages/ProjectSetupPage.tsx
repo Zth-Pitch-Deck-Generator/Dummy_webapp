@@ -1,20 +1,7 @@
 // src/pages/ProjectSetupPage.tsx
+import ProjectSetup from '../components/ProjectSetup';
 import { useNavigate } from "react-router-dom";
-import { ProjectData } from "src/pages/Index.tsx";
-
-type ProjectSetupProps = {
-  onComplete: (data: ProjectData, projectId: string) => void;
-};
-
-const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
-  // ...component logic here
-  // Call onComplete(data, projectId) when appropriate
-  return (
-    <div>
-      {/* Your component UI */}
-    </div>
-  );
-};
+import { ProjectData } from "./Index";
 
 const ProjectSetupPage = () => {
   const navigate = useNavigate();
@@ -24,14 +11,13 @@ const ProjectSetupPage = () => {
     if (data.deckSubtype === 'basic_pitch_deck') {
       navigate(`/create/basic-pitch-deck/${projectId}`);
     } 
-    // Add else-if blocks here for other deck types in the future
+    // This is where you'll add routes for other deck types
     // else if (data.deckSubtype === 'complete_pitch_deck') {
     //   navigate(`/create/complete-pitch-deck/${projectId}`);
     // }
     else {
-        // Fallback or default navigation
+        // Fallback for any other deck types for now
         console.warn(`No dedicated route for deck subtype: ${data.deckSubtype}.`);
-        // For now, we can redirect to a generic path or the basic one
         navigate(`/create/basic-pitch-deck/${projectId}`);
     }
   };
@@ -40,3 +26,4 @@ const ProjectSetupPage = () => {
 };
 
 export default ProjectSetupPage;
+
