@@ -5,8 +5,23 @@
   "maxQuestions": 20,
   "questions": [
     {
+      "topic": "Company",
+      "question": "What is your company's name and what is its one-line tagline?",
+      "answerType": "free_text"
+    },
+    {
       "topic": "Problem",
       "question": "What is the single most important problem you are solving?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Problem",
+      "question": "Who is most affected by this problem?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Problem",
+      "question": "How are they currently solving this problem?",
       "answerType": "free_text"
     },
     {
@@ -15,34 +30,79 @@
       "answerType": "free_text"
     },
     {
-      "topic": "Market Size",
-      "question": "What is the total addressable market (TAM) for your solution?",
+      "topic": "Solution",
+      "question": "What are the key features of your product/service?",
       "answerType": "free_text"
     },
     {
-        "topic": "Business Model",
-        "question": "How do you make money?",
-        "answerType": "free_text"
+      "topic": "Solution",
+      "question": "Can you provide a link to a demo, or describe what a mockup would look like?",
+      "answerType": "free_text"
     },
     {
-        "topic": "Team",
-        "question": "Who are the key members of your team and what is their relevant experience?",
-        "answerType": "free_text"
+      "topic": "Market Opportunity",
+      "question": "What is the Total Addressable Market (TAM) for your solution?",
+      "answerType": "free_text"
     },
     {
-        "topic": "Competition",
-        "question": "Who are your main competitors?",
-        "answerType": "free_text"
+      "topic": "Market Opportunity",
+      "question": "What is your Serviceable Available Market (SAM)?",
+      "answerType": "free_text"
     },
     {
-        "topic": "Traction",
-        "question": "What traction have you achieved so far (users, revenue, etc.)?",
-        "answerType": "free_text"
+      "topic": "Market Opportunity",
+      "question": "What is your Serviceable Obtainable Market (SOM)?",
+      "answerType": "free_text"
     },
     {
-        "topic": "The Ask",
-        "question": "How much money are you raising and what will you use it for?",
-        "answerType": "free_text"
+      "topic": "Traction",
+      "question": "What is your current monthly revenue?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Traction",
+      "question": "How many active users do you have?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Traction",
+      "question": "Do you have any pilot programs or key partnerships?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Traction",
+      "question": "What is your user growth rate month-over-month?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Team",
+      "question": "Who are the founders of your company?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Team",
+      "question": "What is the relevant experience of your core team members?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Team",
+      "question": "Why is your team the right one to solve this problem?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Competition",
+      "question": "Who are your main competitors?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "The Ask",
+      "question": "How much money are you raising?",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "The Ask",
+      "question": "How will you use the funds?",
+      "answerType": "free_text"
     }
   ]
 }

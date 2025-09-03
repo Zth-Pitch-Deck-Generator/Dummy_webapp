@@ -1,15 +1,8 @@
 // src/pages/Index.tsx
-import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import ProjectSetup from '../components/ProjectSetup';
-import InteractiveQA from '../components/interactive-qa/InteractiveQA';
-import DeckPreview from '../components/DeckPreview';
-import { SidebarProvider, SidebarTrigger } from "../components/ui/sidebar";
-import { AppSidebar } from '../components/AppSidebar';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Sparkles, Presentation, Users } from 'lucide-react';
-import Outline from '../components/Outline';
-import Template from '../components/Template';
 
 export type ProjectData = {
   projectName: string;
@@ -19,8 +12,8 @@ export type ProjectData = {
   revenue: 'pre-revenue' | 'revenue';
   slide_mode: 'manual' | 'ai';
   slide_count: number;
-  decktype: 'pitch-deck' | 'dataroom';
-  deckSubtype: 'basic_pitch_deck' | 'complete_pitch_deck' | 'guided_dataroom' | 'direct_dataroom';
+  decktype: "pitch-deck" | "dataroom";
+  deckSubtype: "basic_pitch_deck" | "complete_pitch_deck" | "guided_dataroom" | "direct_dataroom";
 };
 
 export type QAData = {
@@ -35,71 +28,33 @@ export type GeneratedSlide = {
 };
 
 const Index = () => {
-  const [currentStep, setCurrentStep] = useState<'landing' | 'setup' | 'qa' | 'outline' | 'template' | 'preview'>('landing');
-  const [projectData, setProjectData] = useState<ProjectData | null>(null);
-  const [qaData, setQAData] = useState<QAData>([]);
-  const [outline, setOutline] = useState<any[]>([]);
-  const [qaDone, setQaDone] = useState(false);
-  const [outlineDone, setOutlineDone] = useState(false);
-
-  const [generatedSlides, setGeneratedSlides] = useState<GeneratedSlide[]>([]);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-
-  const handleStartProject = () => setCurrentStep('setup');
-
-  const handleProjectSetup = (data: ProjectData) => {
-    setProjectData(data);
-    setCurrentStep('qa');
-  };
-
-  const handleQAComplete = (data: QAData) => {
-    setQAData(data);
-    setQaDone(true);
-    setCurrentStep('outline');
-  };
-
-  const handleOutlineAccept = (outlineData: any[]) => {
-    setOutline(outlineData);
-    setOutlineDone(true);
-    setCurrentStep('template');
-  };
-
-  const handleGenerateDeck = (slides: GeneratedSlide[], url: string) => {
-    setGeneratedSlides(slides);
-    setDownloadUrl(url);
-    setCurrentStep('preview');
-  };
-
-  if (currentStep === 'landing') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-        <div className="container mx-auto px-4 py-16">
-          <div className="text-center mb-16">
-            <div className="flex justify-center mb-6">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
-                <Presentation className="w-12 h-12 text-white" />
-              </div>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+      <div className="container mx-auto px-4 py-16">
+        <div className="text-center mb-16">
+          <div className="flex justify-center mb-6">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
+              <Presentation className="w-12 h-12 text-white" />
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-              AI-Powered
-              <span className="block bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                Pitch Decks
-              </span>
-            </h1>
-            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed">
-              Create professional pitch decks in minutes with our AI-powered platform. 
-              Answer smart questions, get tailored suggestions, and build compelling presentations.
-            </p>
-            <Button 
-              onClick={handleStartProject}
-              size="lg"
-              className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-            >
+          </div>
+          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+            AI-Powered
+            <span className="block bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+              Pitch Decks
+            </span>
+          </h1>
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed">
+            Create professional pitch decks in minutes with our AI-powered platform. 
+            Answer smart questions, get tailored suggestions, and build compelling presentations.
+          </p>
+          <Button asChild size="lg" className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+            <Link to="/create">
               <Sparkles className="w-5 h-5 mr-2" />
               Start Building Your Deck
-            </Button>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            </Link>
+          </Button>
+        </div>
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
               <CardHeader>
                 <div className="bg-gradient-to-r from-cyan-500 to-purple-500 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
@@ -140,39 +95,8 @@ const Index = () => {
               </CardContent>
             </Card>
           </div>
-        </div>
       </div>
-    );
-  }
-
-  return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gray-50">
-        <AppSidebar
-          currentStep={currentStep}
-          onStepChange={(step) => setCurrentStep(step)}
-          projectData={projectData}
-          qaDone={qaDone}
-          outlineDone={outlineDone}
-        />
-        <main className="flex-1 p-6">
-          <SidebarTrigger className="mb-4" />
-          
-          {currentStep === 'setup' && <ProjectSetup onComplete={handleProjectSetup} />}
-          {currentStep === 'qa' && projectData && <InteractiveQA projectData={projectData} onComplete={handleQAComplete} />}
-          {currentStep === 'outline' && <Outline onAccept={handleOutlineAccept} />}
-          {currentStep === 'template' && <Template onGenerate={handleGenerateDeck} />}
-          {currentStep === 'preview' && (
-            <DeckPreview 
-              projectData={projectData}
-              qaData={qaData}
-              generatedSlides={generatedSlides}
-              downloadUrl={downloadUrl}
-            />
-          )}
-        </main>
-      </div>
-    </SidebarProvider>
+    </div>
   );
 };
 

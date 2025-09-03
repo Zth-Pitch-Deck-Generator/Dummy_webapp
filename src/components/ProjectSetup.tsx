@@ -1,5 +1,6 @@
 // src/components/ProjectSetup.tsx
 import { useState } from "react"
+import { useNavigate } from "react-router-dom";
 import { ProjectData } from "@/pages/Index"
 import { Button } from "@/components/ui/button"
 import {
@@ -54,6 +55,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
     deckSubtype: "",
   })
 
+  const navigate = useNavigate();
   const totalSteps = 3
 
   const deckTypes = {
@@ -89,7 +91,11 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
       const { id } = await res.json()
       localStorage.setItem("projectId", id)
       
-      onComplete(formData as ProjectData)
+      if (formData.deckSubtype === 'basic_pitch_deck') {
+        navigate('/basic-pitch-deck');
+      } else {
+        onComplete(formData as ProjectData)
+      }
     } catch (err: any) {
       console.error(err)
       alert(`Error creating project: ${err.message}`)
