@@ -18,7 +18,7 @@ const bodySchema = z.object({
   projectId: z.string().uuid(),
   messages: z.array(
     z.object({
-      role: z.enum(["ai", "user", "model"]),
+      role: z.enum(["user", "model"]),
       content: z.string(),
     })
   ),
@@ -28,7 +28,7 @@ const completeBodySchema = z.object({
     projectId: z.string().uuid(),
     messages: z.array(
       z.object({
-        role: z.enum(["ai", "user", "model"]),
+        role: z.enum(["user", "model"]),
         content: z.string(),
       })
     ),
