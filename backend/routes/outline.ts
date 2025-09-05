@@ -127,7 +127,72 @@ const handleOutline: any = async (req: any, res: any) => {
 
 router.post("/", handleOutline);
 
-// The /eval route remains unchanged
-// ...
+/* ---------- POST /api/outline/eval ---------- */
+router.post("/eval", async (req, res) => {
+  try {
+    const schema = z.object({
+      projectId: z.string().uuid(),
+    });
+    const parse = schema.safeParse(req.body);
+    if (!parse.success) {
+      return void res.status(400).json({ error: "Bad payload" });
+    }
+    const { projectId } = parse.data;
+
+    // Fetch outline and transcript for the project
+    const { data: outlineData, error: outlineError } = await supabase
+      .from("outlines")
+      .select("outline_json")
+      .eq("project_id", projectId)
+      .maybeSingle();
+
+    if (outlineError || !outlineData || !outlineData.outline_json) {
+      return void res.status(404).json({ error: "Outline not found" });
+    }
+
+    const { data: sessionData, error: sessionError } = await supabase
+      .from('qa_sessions')
+      .select('transcript')
+      .eq('project_id', projectId)
+      .limit(1)
+      .single();
+
+    if (sessionError || !sessionData || !sessionData.transcript) {
+      return void res.status(404).json({ error: "Q&A session missing or transcript is empty" });
+    }
+
+    const transcript = sessionData.transcript
+      .map((m: any) => `${m.role === "user" ? "Founder" : "Analyst"}: ${m.content}`)
+      .join("\n");
+
+    // Prompt for SWOT analysis
+    const prompt = `
+      Using the following pitch deck outline and founder interview transcript, generate a SWOT analysis (Strengths, Weaknesses, Opportunities, Threats) for this startup.
+      Return ONLY a valid JSON object with four arrays: { "strength": string[], "weakness": string[], "opportunities": string[], "threats": string[] }
+
+      Outline: ${JSON.stringify(outlineData.outline_json, null, 2)}
+      Transcript: """${transcript}"""
+    `;
+
+    const swot = await geminiJson(prompt);
+
+    // Validate SWOT structure
+    const swotSchema = z.object({
+      strength: z.array(z.string()),
+      weakness: z.array(z.string()),
+      opportunities: z.array(z.string()),
+      threats: z.array(z.string()),
+    });
+    const valid = swotSchema.safeParse(swot);
+    if (!valid.success) {
+      return void res.status(502).json({ error: "SWOT JSON schema invalid from AI" });
+    }
+
+    return void res.json(swot);
+  } catch (e: any) {
+    console.error("Error in /api/outline/eval:", e);
+    return void res.status(500).json({ error: "Failed to generate SWOT analysis.", message: e.message });
+  }
+});
 
 export default router;

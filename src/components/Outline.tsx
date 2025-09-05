@@ -70,18 +70,31 @@ const Outline = ({ onAccept }: OutlineProps) => {
   }, [projectId]);
 
   const handleImprove = async () => {
-    if (!projectId || swotGenerated) return;
+    if (!projectId) {
+      alert("Project ID missing. Cannot generate SWOT analysis.");
+      return;
+    }
+    if (swotGenerated) return;
     try {
       const res = await fetch("/api/outline/eval", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId }),
       });
-      if (!res.ok) throw new Error("Evaluation failed");
+      if (!res.ok) {
+        // Show backend error message if available
+        let msg = "Evaluation failed";
+        try {
+          const errData = await res.json();
+          msg = errData.error || msg;
+        } catch {}
+        throw new Error(msg);
+      }
       setReview(await res.json());
       setSwotGenerated(true);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Evaluation failed");
+      // Do not set swotGenerated so user can retry
     }
   };
 
