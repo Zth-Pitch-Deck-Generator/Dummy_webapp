@@ -2,7 +2,7 @@
   "name": "Basic Pitch Deck",
   "description": "Core narrative, 8 slides.",
   "slideCount": 8,
-  "maxQuestions": 20,
+  "maxQuestions": 15,
   "questions": [
     {
       "topic": "Company",
@@ -10,19 +10,19 @@
       "answerType": "free_text"
     },
     {
-      "topic": "Problem",
-      "question": "What is the single most important problem you are solving?",
+      "topic": "Problem/Opportunity",
+      "question": "What is the primary problem, need, or opportunity your company addresses?",
       "answerType": "free_text"
     },
     {
-      "topic": "Problem",
-      "question": "Who is most affected by this problem?",
+      "topic": "Audience",
+      "question": "Who is your primary target audience or customer segment?",
       "answerType": "free_text"
     },
     {
-      "topic": "Problem",
-      "question": "How are they currently solving this problem?",
-      "answerType": "free_text"
+      "topic": "Alternatives",
+      "question": "What are the current alternatives or solutions your target audience uses?",
+      "answerType": "multiple_choice"
     },
     {
       "topic": "Solution",
@@ -57,17 +57,17 @@
     {
       "topic": "Traction",
       "question": "What is your current monthly revenue?",
-      "answerType": "free_text"
+      "answerType": "multiple_choice"
     },
     {
       "topic": "Traction",
       "question": "How many active users do you have?",
-      "answerType": "free_text"
+      "answerType": "multiple_choice"
     },
     {
       "topic": "Traction",
       "question": "Do you have any pilot programs or key partnerships?",
-      "answerType": "free_text"
+      "answerType": "multiple_choice"
     },
     {
       "topic": "Traction",
@@ -97,7 +97,7 @@
     {
       "topic": "The Ask",
       "question": "How much money are you raising?",
-      "answerType": "free_text"
+      "answerType": "multiple_choice"
     },
     {
       "topic": "The Ask",

@@ -12,8 +12,6 @@ const router = Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const MAX_QUESTIONS = 2;
-
 const bodySchema = z.object({
   projectId: z.string().uuid(),
   messages: z.array(
@@ -55,17 +53,6 @@ const qaHandler: RequestHandler = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    const userMessages = messages.filter((m) => m.role === "user");
-    if (userMessages.length >= MAX_QUESTIONS) {
-      void res.json({
-        isComplete: true,
-        question: "Thank you! We have enough information to proceed.",
-        answerType: "complete",
-      });
-      return;
-    }
-
-    // Load QA config based on decktype
     const configPath = path.join(__dirname, `../qa-configs/${projectData.decktype}.json`);
     let qaConfig;
     try {
@@ -77,59 +64,91 @@ const qaHandler: RequestHandler = async (req: Request, res: Response): Promise<v
         return;
     }
 
-    const conversationHistory = messages
-      .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
-      .join("\n");
+    const MAX_QUESTIONS = qaConfig.maxQuestions || qaConfig.questions.length;
+    const userMessages = messages.filter((m) => m.role === "user");
+    const nextQuestionIndex = userMessages.length;
 
-    const lastUserAnswer = messages[messages.length - 1]?.content.toLowerCase();
-    let clarificationInstruction = "";
-    if (lastUserAnswer && (lastUserAnswer.includes("don't know") || lastUserAnswer.includes("not sure"))) {
-      const lastQuestion = messages[messages.length - 2]?.content;
-      clarificationInstruction = `The user did not know the answer to the last question: "${lastQuestion}". Please explain the key term in that question simply and then ask a related, easier follow-up question.`;
+    if (nextQuestionIndex >= MAX_QUESTIONS) {
+      void res.json({
+        isComplete: true,
+        question: "Thank you! We have enough information to proceed.",
+        answerType: "complete",
+      });
+      return;
+    }
+    
+    const nextQuestionFromConfig = qaConfig.questions[nextQuestionIndex];
+
+    if (!nextQuestionFromConfig) {
+      void res.json({
+        isComplete: true,
+        question: "Thank you! We have enough information to proceed.",
+        answerType: "complete",
+      });
+      return;
+    }
+    
+    let finalQuestion = { ...nextQuestionFromConfig };
+
+    if (finalQuestion.answerType === 'multiple_choice') {
+      const choiceGenPrompt = `
+        You are an expert business analyst creating multiple-choice questions for a startup founder.
+        Based on the startup's details and the question to be asked, generate 3-4 relevant and plausible multiple-choice options.
+        Always include "Other" as the last option.
+
+        Startup Details:
+        - Name: ${projectData.name}
+        - Industry: ${projectData.industry}
+        - Stage: ${projectData.stage}
+        - Description: ${projectData.description}
+
+        Question to generate choices for:
+        "${finalQuestion.question}"
+
+        Return ONLY a valid JSON object with a single key "choices", which is an array of strings.
+        Example format:
+        {
+          "choices": ["Option A", "Option B", "Option C", "Other"]
+        }
+      `;
+      
+      try {
+        const generated = await geminiJson(choiceGenPrompt);
+        const choicesSchema = z.object({ choices: z.array(z.string()).min(1) });
+        const parsedChoices = choicesSchema.safeParse(generated);
+
+        if (parsedChoices.success) {
+          finalQuestion.choices = parsedChoices.data.choices;
+          if (!finalQuestion.choices.map(c => c.toLowerCase()).includes('other')) {
+            finalQuestion.choices.push('Other');
+          }
+        } else {
+            // Fallback if AI fails to generate valid choices
+            console.error("Gemini failed to generate valid choices, using default.", parsedChoices.error);
+            if (!finalQuestion.choices || finalQuestion.choices.length === 0) {
+                finalQuestion.choices = ["Yes", "No", "Other"];
+            }
+        }
+      } catch (e) {
+        console.error("Error generating dynamic choices from Gemini:", e);
+        // Fallback if AI fails
+        if (!finalQuestion.choices || finalQuestion.choices.length === 0) {
+            finalQuestion.choices = ["Yes", "No", "Other"];
+        }
+      }
     }
 
-    const prompt = `
-      You are an expert business analyst conducting an interview to create a pitch deck.
-      Your goal is to gather enough information to generate a compelling pitch deck based on the user's project details and the provided question bank.
+    const responsePayload = {
+        ...finalQuestion,
+        isComplete: false,
+        isMetricCalculation: finalQuestion.isMetricCalculation || false,
+    };
 
-      Project Details:
-      - Name: ${projectData.name}
-      - Industry: ${projectData.industry}
-      - Stage: ${projectData.stage}
-      - Revenue: ${projectData.revenue}
-      - Description: ${projectData.description}
-      - Deck Type Required: ${qaConfig.name} (${qaConfig.description})
+    res.json(responsePayload);
 
-      Question Bank (use these as a guide):
-      ${JSON.stringify(qaConfig.questions, null, 2)}
-
-      Conversation History:
-      ${conversationHistory}
-      ---
-      Instructions:
-      1.  Based on the project details, question bank, and conversation history, determine the single best NEXT question to ask.
-      2.  Do not repeat questions.
-      3.  If the user asks to calculate a metric (like CAC or LTV), ask the necessary follow-up questions to calculate it. These metric-calculation questions should NOT increment the main question count.
-      4.  The total number of questions should not exceed ${MAX_QUESTIONS}. If you have enough information, respond with \`{"isComplete": true}\`.
-      5.  ${clarificationInstruction || 'Prioritize asking objective, multiple-choice questions to be efficient. Always include "Other" as a choice.'}
-      6.  Your response MUST be a single, valid JSON object with the following structure:
-          \`{"topic": string, "question": string, "answerType": "free_text" | "multiple_choice", "choices": string[] | null, "explanation": string | null, "isComplete": boolean, "isMetricCalculation": boolean}\`
-          - "topic": The general subject of the question (e.g., "Revenue Model", "Target Market").
-          - "question": The specific question for the user.
-          - "answerType": "free_text" for open-ended answers, "multiple_choice" for options.
-          - "choices": An array of strings for multiple-choice questions, otherwise null. Must include "Other" if it is a multiple choice question.
-          - "explanation": If explaining a term, provide a simple definition here, otherwise null.
-          - "isComplete": A boolean indicating if the Q&A session is finished.
-          - "isMetricCalculation": A boolean indicating if this question is part of a metric calculation flow.
-
-      Generate the next question now.
-    `;
-
-    const aiResponse = await geminiJson(prompt);
-    void res.json(aiResponse);
   } catch (e: any) {
-    console.error("Error calling Gemini or processing request in /api/qa:", e);
-    void res.status(500).json({ error: "Failed to generate next question.", message: e.message });
+    console.error("Error in /api/qa handler:", e);
+    void res.status(500).json({ error: "Failed to process Q&A request.", message: e.message });
   }
 };
 router.post("/", qaHandler);
