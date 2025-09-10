@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
-import { Briefcase, TrendingUp, Users, Database, Loader2 } from "lucide-react"
+import { FileText, TrendingUp, Users, Database, Loader2, ArrowLeft, ArrowRight, Building, BarChart3 } from "lucide-react"
 
 export type FormData = Omit<ProjectData, "revenue" | "decktype" | "deckSubtype"> & {
   revenue: "" | ProjectData["revenue"]
@@ -61,12 +61,12 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
 
   const deckTypes = {
     "pitch-deck": [
-        { id: "basic_pitch_deck", name: "Basic Pitch Deck", description: "Covers the core narrative in exactly 8 slides.", icon: Briefcase, badge: "Core Story", slides: "8 slides" },
+        { id: "basic_pitch_deck", name: "Basic Pitch Deck", description: "Covers the core narrative in exactly 8 slides.", icon: FileText, badge: "Core Story", slides: "8 slides" },
         { id: "complete_pitch_deck", name: "Complete Pitch Deck", description: "The full version, covering all key areas in 12 slides.", icon: TrendingUp, badge: "Full Version", slides: "12 slides" },
     ],
     "dataroom": [
         { id: "guided_dataroom", name: "Guided Build", description: "For founders unsure which metrics to feature. We'll propose industry-relevant KPIs.", icon: Users, badge: "Guided", slides: "12-13 slides" },
-        { id: "direct_dataroom", name: "Direct Build", description: "For founders who already track their KPIs and know which ones to include.", icon: Database, badge: "Direct", slides: "12-13 slides" },
+        { id: "direct_dataroom", name: "Direct Build", description: "For founders who already track their KPIs and know which ones to include.", icon: BarChart3, badge: "Direct", slides: "12-13 slides" },
     ]
   }
 
@@ -83,9 +83,9 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
         description: formData.description,
         slide_count: formData.slide_count,
         slide_mode: formData.slide_mode,
-        decktype: formData.deckSubtype, 
+        decktype: formData.deckSubtype,
       };
-      
+
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -101,7 +101,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
       console.error(err)
       alert(`Error creating project: ${err.message}`)
       setIsLoading(false);
-    } 
+    }
   }
 
   const handlePrevious = () => step > 1 && setStep(step - 1)
@@ -142,172 +142,239 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
       setFormData((p) => ({ ...p, slide_mode: "manual", slide_count: min }))
     }
   }
-  
+
   const selectedDeckKey = formData.deckSubtype;
   const [min, max] = selectedDeckKey ? rangeByDeck[selectedDeckKey as keyof typeof rangeByDeck] : [5, 14];
 
-  const StepDots = () => (
-    <div className="flex gap-3 justify-center mb-6">
+  const StepIndicator = () => (
+    <div className="flex items-center justify-center mb-12">
       {Array.from({ length: totalSteps }).map((_, i) => (
-        <span
-          key={i}
-          className={`w-4 h-4 rounded-full transition-colors ${
-            i + 1 === step ? "bg-blue-600" : "bg-blue-200"
-          }`}
-        />
+        <div key={i} className="flex items-center">
+          <div className={`
+            w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200
+            ${i + 1 === step
+              ? "bg-brand text-text-inverse shadow-sm"
+              : i + 1 < step
+                ? "bg-brand text-text-inverse"
+                : "bg-surface border border-border text-text-tertiary"
+            }
+          `}>
+            {i + 1}
+          </div>
+          {i < totalSteps - 1 && (
+            <div className={`
+              w-16 h-px mx-4 transition-colors duration-200
+              ${i + 1 < step ? "bg-brand" : "bg-border"}
+            `} />
+          )}
+        </div>
       ))}
     </div>
   )
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gray-50">
-        <AppSidebar />
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar
+          currentStep="setup"
+          onStepChange={() => {}}
+          projectData={null}
+          qaDone={false}
+          outlineDone={false}
+        />
         <main className="flex-1 p-0">
-          <div className="max-w-4xl mx-auto bg-white rounded-2xl p-10 shadow-xl my-10">
-            <div className="flex items-center justify-between mb-8">
-              <h1 className="text-4xl font-extrabold text-blue-600 tracking-tight">
+          <div className="max-w-4xl mx-auto px-6 py-12">
+            {/* Header */}
+            <div className="text-center mb-12">
+              <h1 className="text-3xl md:text-4xl font-light text-text-primary mb-4 tracking-tight">
                 Project Setup
               </h1>
-              <Badge
-                variant="secondary"
-                className="text-sm py-1 px-3 rounded-full"
-              >{`Step ${step} of ${totalSteps}`}</Badge>
+              <p className="text-text-secondary font-light">
+                {step === 1 && "Let's start with some basic information about your project"}
+                {step === 2 && "Tell us more about your project to get tailored questions"}
+                {step === 3 && "Select the type of document you want to create"}
+              </p>
             </div>
 
-            <StepDots />
+            <StepIndicator />
 
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {step === 1 && "Project Basics"}
-                  {step === 2 && "Project Description"}
-                  {step === 3 && "Choose Deck Type"}
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  {step === 1 && "Let's start with some basic information about your project."}
-                  {step === 2 && "Tell us more about your project to get tailored questions."}
-                  {step === 3 && "Select the type of document you want to create."}
+            <Card className="border-0 shadow-lg bg-surface-elevated">
+              <CardHeader className="pb-8">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="icon-container icon-container-sm bg-brand-light">
+                    {step === 1 && <Building className="w-4 h-4 text-text-secondary" />}
+                    {step === 2 && <FileText className="w-4 h-4 text-text-secondary" />}
+                    {step === 3 && <BarChart3 className="w-4 h-4 text-text-secondary" />}
+                  </div>
+                  <CardTitle className="text-xl font-medium text-text-primary">
+                    {step === 1 && "Project Basics"}
+                    {step === 2 && "Project Description"}
+                    {step === 3 && "Choose Deck Type"}
+                  </CardTitle>
+                </div>
+                <CardDescription className="text-text-secondary font-light">
+                  {step === 1 && "Basic information helps us understand your business context"}
+                  {step === 2 && "A detailed description enables more targeted AI questions"}
+                  {step === 3 && "Different deck types serve different purposes and audiences"}
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="space-y-8">
+              <CardContent className="space-y-8 px-8 pb-8">
                 {step === 1 && (
-                  <>
-                    <div className="space-y-2">
-                      <Label className="text-blue-700 font-semibold">Project Name *</Label>
-                      <Input value={formData.projectName} onChange={(e) => setFormData((p) => ({ ...p, projectName: e.target.value }))} placeholder="Enter your project name" autoFocus />
+                  <div className="grid gap-6">
+                    <div className="space-y-3">
+                      <Label className="text-text-primary font-medium">Project Name</Label>
+                      <Input
+                        value={formData.projectName}
+                        onChange={(e) => setFormData((p) => ({ ...p, projectName: e.target.value }))}
+                        placeholder="Enter your project name"
+                        className="input-field h-12"
+                        autoFocus
+                      />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-700 font-semibold">Industry / Field *</Label>
-                      <Select value={formData.industry} onValueChange={(v) => setFormData((p) => ({ ...p, industry: v }))}>
-                        <SelectTrigger><SelectValue placeholder="Select your industry" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="technology">Technology</SelectItem>
-                          <SelectItem value="startup">Startup</SelectItem>
-                          <SelectItem value="finance">Finance</SelectItem>
-                          <SelectItem value="edtech">EdTech</SelectItem>
-                          <SelectItem value="e-commerce">E-commerce</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <Label className="text-text-primary font-medium">Industry</Label>
+                        <Select value={formData.industry} onValueChange={(v) => setFormData((p) => ({ ...p, industry: v }))}>
+                          <SelectTrigger className="input-field h-12">
+                            <SelectValue placeholder="Select industry" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="technology">Technology</SelectItem>
+                            <SelectItem value="startup">Startup</SelectItem>
+                            <SelectItem value="finance">Finance</SelectItem>
+                            <SelectItem value="edtech">EdTech</SelectItem>
+                            <SelectItem value="e-commerce">E-commerce</SelectItem>
+                            <SelectItem value="healthcare">Healthcare</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-3">
+                        <Label className="text-text-primary font-medium">Company Stage</Label>
+                        <Select value={formData.stage} onValueChange={(v) => setFormData((p) => ({ ...p, stage: v }))}>
+                          <SelectTrigger className="input-field h-12">
+                            <SelectValue placeholder="Select stage" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pre-seed">Pre-Seed</SelectItem>
+                            <SelectItem value="seed">Seed</SelectItem>
+                            <SelectItem value="series-a">Series A</SelectItem>
+                            <SelectItem value="series-b">Series B</SelectItem>
+                            <SelectItem value="series-c">Series C+</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-700 font-semibold">Stage of Company *</Label>
-                      <Select value={formData.stage} onValueChange={(v) => setFormData((p) => ({ ...p, stage: v }))}>
-                        <SelectTrigger><SelectValue placeholder="Select your stage" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pre-seed">Pre-Seed (Ideation)</SelectItem>
-                          <SelectItem value="seed">Seed (Ideation-development)</SelectItem>
-                          <SelectItem value="series-a">Series A (Development)</SelectItem>
-                          <SelectItem value="series-b">Series B (Growth)</SelectItem>
-                          <SelectItem value="series-c">Series C (Expansion)</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-700 font-semibold">Revenue Status *</Label>
+                    <div className="space-y-3">
+                      <Label className="text-text-primary font-medium">Revenue Status</Label>
                       <Select value={formData.revenue} onValueChange={(v) => setFormData((p) => ({ ...p, revenue: v as FormData["revenue"] }))}>
-                        <SelectTrigger><SelectValue placeholder="Select revenue status" /></SelectTrigger>
+                        <SelectTrigger className="input-field h-12">
+                          <SelectValue placeholder="Select revenue status" />
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="pre-revenue">Pre-Revenue</SelectItem>
                           <SelectItem value="revenue">Revenue-Generating</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  </>
+                  </div>
                 )}
                 {step === 2 && (
-                  <div className="space-y-2">
-                    <Label className="text-blue-700 font-semibold">Project Description *</Label>
-                    <Textarea rows={6} placeholder="Describe your project, its goals, and target audience…" value={formData.description} onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))} autoFocus />
-                    <p className="text-sm text-gray-500">This helps our AI generate more relevant questions for your pitch deck.</p>
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <Label className="text-text-primary font-medium">Project Description</Label>
+                      <Textarea
+                        rows={8}
+                        placeholder="Describe your project, its goals, target audience, and what makes it unique..."
+                        value={formData.description}
+                        onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
+                        className="input-field resize-none"
+                        autoFocus
+                      />
+                      <p className="text-sm text-text-tertiary font-light">
+                        A detailed description helps our AI generate more relevant and targeted questions.
+                      </p>
+                    </div>
                   </div>
                 )}
                 {step === 3 && (
-                    <div className="space-y-6">
-                        <div className="space-y-4">
-                            <Card onClick={() => handleDeckTypeSelect('pitch-deck')} className="cursor-pointer hover:shadow-lg transition-shadow" data-selected={formData.decktype === 'pitch-deck'}>
-                                <CardHeader><CardTitle>Pitch Deck</CardTitle></CardHeader>
-                                <CardContent><CardDescription>Create a compelling narrative to present to investors.</CardDescription></CardContent>
-                            </Card>
-                            {formData.decktype === 'pitch-deck' && (
-                                <div className="pl-4 mt-4 space-y-4 border-l-2 border-gray-200">
-                                    <Label className="text-gray-500 font-semibold">SUBHEADINGS</Label>
-                                    <div className="grid md:grid-cols-2 gap-6 sm:grid-cols-1">
-                                        {deckTypes["pitch-deck"].map((dt) => {
-                                            const Icon = dt.icon
-                                            const selected = formData.deckSubtype === dt.id
-                                            return (
-                                            <Card key={dt.id} data-selected={selected} onClick={() => handleDeckSubtypeSelect(dt.id)} className="cursor-pointer transition-all data-[selected=true]:ring-2 data-[selected=true]:ring-blue-500">
-                                                <CardHeader className="pb-3">
-                                                <div className="flex items-center justify-between">
-                                                    <Icon className={`w-7 h-7 ${selected ? "text-blue-600" : "text-blue-400"} transition-colors`} />
-                                                    <Badge variant={selected ? "default" : "secondary"}>{dt.badge}</Badge>
-                                                </div>
-                                                <CardTitle className="text-lg">{dt.name}</CardTitle>
-                                                </CardHeader>
-                                                <CardContent>
-                                                <CardDescription className="mb-2">{dt.description}</CardDescription>
-                                                <p className="text-sm font-medium text-gray-600">{dt.slides}</p>
-                                                </CardContent>
-                                            </Card>
-                                            )
-                                        })}
+                    <div className="space-y-8">
+                        {/* Deck Type Selection */}
+                        <div className="space-y-6">
+                            <div className="grid gap-4">
+                                <Card
+                                  onClick={() => handleDeckTypeSelect('pitch-deck')}
+                                  className={`card-interactive p-6 ${formData.decktype === 'pitch-deck' ? 'ring-2 ring-brand border-brand' : ''}`}
+                                >
+                                  <div className="flex items-start space-x-4">
+                                    <div className="icon-container icon-container-md bg-surface border border-border">
+                                      <FileText className="w-5 h-5 text-text-secondary" />
                                     </div>
-                                </div>
-                            )}
-                        </div>
+                                    <div className="flex-1">
+                                      <h3 className="text-lg font-medium text-text-primary mb-2">Pitch Deck</h3>
+                                      <p className="text-text-secondary font-light leading-relaxed">
+                                        Create a compelling narrative to present to investors and stakeholders.
+                                      </p>
+                                    </div>
+                                  </div>
+                                </Card>
 
-                        <div className="space-y-4">
-                            <Card onClick={() => handleDeckTypeSelect('dataroom')} className="cursor-pointer hover:shadow-lg transition-shadow" data-selected={formData.decktype === 'dataroom'}>
-                                <CardHeader><CardTitle>Dataroom</CardTitle></CardHeader>
-                                <CardContent><CardDescription>Compile detailed metrics and data for due diligence.</CardDescription></CardContent>
-                            </Card>
-                            {formData.decktype === 'dataroom' && (
-                                 <div className="pl-4 mt-4 space-y-4 border-l-2 border-gray-200">
-                                    <Label className="text-gray-500 font-semibold">SUBHEADINGS</Label>
-                                    <div className="grid md:grid-cols-2 gap-6 sm:grid-cols-1">
-                                        {deckTypes["dataroom"].map((dt) => {
-                                            const Icon = dt.icon
-                                            const selected = formData.deckSubtype === dt.id
-                                            return (
-                                            <Card key={dt.id} data-selected={selected} onClick={() => handleDeckSubtypeSelect(dt.id)} className="cursor-pointer transition-all data-[selected=true]:ring-2 data-[selected=true]:ring-blue-500">
-                                                <CardHeader className="pb-3">
-                                                <div className="flex items-center justify-between">
-                                                    <Icon className={`w-7 h-7 ${selected ? "text-blue-600" : "text-blue-400"} transition-colors`} />
-                                                    <Badge variant={selected ? "default" : "secondary"}>{dt.badge}</Badge>
-                                                </div>
-                                                <CardTitle className="text-lg">{dt.name}</CardTitle>
-                                                </CardHeader>
-                                                <CardContent>
-                                                <CardDescription className="mb-2">{dt.description}</CardDescription>
-                                                <p className="text-sm font-medium text-gray-600">{dt.slides}</p>
-                                                </CardContent>
-                                            </Card>
-                                            )
-                                        })}
+                                <Card
+                                  onClick={() => handleDeckTypeSelect('dataroom')}
+                                  className={`card-interactive p-6 ${formData.decktype === 'dataroom' ? 'ring-2 ring-brand border-brand' : ''}`}
+                                >
+                                  <div className="flex items-start space-x-4">
+                                    <div className="icon-container icon-container-md bg-surface border border-border">
+                                      <Database className="w-5 h-5 text-text-secondary" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <h3 className="text-lg font-medium text-text-primary mb-2">Data Room</h3>
+                                      <p className="text-text-secondary font-light leading-relaxed">
+                                        Compile detailed metrics and data for due diligence processes.
+                                      </p>
+                                    </div>
+                                  </div>
+                                </Card>
+                            </div>
+
+                            {/* Subtype Selection */}
+                            {formData.decktype && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <div className="border-t border-border pt-6">
+                                        <h4 className="text-sm font-medium text-text-secondary mb-4 uppercase tracking-wider">
+                                          Choose Template
+                                        </h4>
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            {deckTypes[formData.decktype].map((dt) => {
+                                                const Icon = dt.icon
+                                                const selected = formData.deckSubtype === dt.id
+                                                return (
+                                                <Card
+                                                  key={dt.id}
+                                                  onClick={() => handleDeckSubtypeSelect(dt.id)}
+                                                  className={`card-interactive p-6 ${selected ? 'ring-2 ring-brand border-brand' : ''}`}
+                                                >
+                                                  <div className="flex items-start justify-between mb-4">
+                                                    <div className="icon-container icon-container-md bg-surface border border-border">
+                                                      <Icon className="w-5 h-5 text-text-secondary" />
+                                                    </div>
+                                                    <Badge variant={selected ? "default" : "secondary"} className="text-xs">
+                                                      {dt.badge}
+                                                    </Badge>
+                                                  </div>
+                                                  <h5 className="text-lg font-medium text-text-primary mb-2">{dt.name}</h5>
+                                                  <p className="text-text-secondary text-sm font-light mb-3 leading-relaxed">
+                                                    {dt.description}
+                                                  </p>
+                                                  <p className="text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                                                    {dt.slides}
+                                                  </p>
+                                                </Card>
+                                                )
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -340,11 +407,26 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
               </CardContent>
             </Card>
 
-            <div className="flex justify-between mt-10">
-              <Button variant="outline" disabled={step === 1} onClick={handlePrevious} size="default">Previous</Button>
-              <Button onClick={handleNext} disabled={!isStepValid() || isLoading} size="default" type="button">
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {step === totalSteps ? "Start Q&A Session" : "Next"}
+            {/* Navigation */}
+            <div className="flex items-center justify-between mt-8">
+              <Button
+                variant="ghost"
+                disabled={step === 1}
+                onClick={handlePrevious}
+                className="flex items-center space-x-2 text-text-secondary hover:text-text-primary"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Previous</span>
+              </Button>
+
+              <Button
+                onClick={handleNext}
+                disabled={!isStepValid() || isLoading}
+                className="btn-primary flex items-center space-x-2"
+              >
+                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>{step === totalSteps ? "Start Q&A Session" : "Continue"}</span>
+                {!isLoading && <ArrowRight className="w-4 h-4" />}
               </Button>
             </div>
           </div>
