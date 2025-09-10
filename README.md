@@ -16,13 +16,13 @@ A full-stack web application for creating professional pitch decks using AI-powe
 > **Note:** The screenshots shown below are for reference and demonstration purposes only. They may not represent the final version of the user interface, as the application is under active development and the UI is subject to ongoing updates and improvements. Please consider these as examples of the application's functionality rather than the definitive visual design.
 
 
-![Screenshot 1](Screenshot1.png)
+![Screenshot 1](/root-assets/Screenshot1.png)
 
-![Screenshot 2](Screenshot2.png)
+![Screenshot 2](/root-assets/Screenshot2.png)
 
-![Screenshot 3](Screenshot3.png)
+![Screenshot 3](/root-assets/Screenshot3.png)
 
-![Screenshot 4](Screenshot4.png)
+![Screenshot 4](/root-assets/Screenshot4.png)
 
 ## Tech Stack
 
