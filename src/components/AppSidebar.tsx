@@ -39,51 +39,68 @@ export function AppSidebar({ currentStep, onStepChange, projectData, qaDone, out
   ];
 
   return (
-    <Sidebar className="bg-white border-r border-gray-200">
+    <Sidebar className="bg-surface border-r border-border">
       <SidebarHeader className="p-6 pb-4">
         <div className="flex items-center gap-3">
-          <img src="/icons/logo.png" alt="Smart Engine Logo" className="w-12 h-12" />
-          <h2 className="font-bold text-xl text-gray-800">Smart Engine Deck Generator</h2>
+          <img src="/logo.png" alt="ZTH Logo" className="w-12 h-12" />
+          <div>
+            <h2 className="font-semibold text-lg text-text-primary">ZTH</h2>
+            <p className="text-xs text-text-tertiary font-light">AI-powered presentations</p>
+          </div>
         </div>
         {projectData && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm font-semibold text-gray-700">{projectData.projectName}</p>
-            <p className="text-xs text-gray-500">{projectData.industry}</p>
+          <div className="mt-6 p-4 bg-background rounded-lg border border-border">
+            <p className="text-sm font-medium text-text-primary">{projectData.projectName}</p>
+            <p className="text-xs text-text-secondary capitalize">{projectData.industry}</p>
           </div>
         )}
       </SidebarHeader>
-      
-      <SidebarContent className="px-3">
+
+      <SidebarContent className="px-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="px-1 text-xs font-bold uppercase text-gray-400 tracking-wider">
+          <SidebarGroupLabel className="px-2 text-xs font-medium uppercase text-text-tertiary tracking-wider mb-3">
             Build Process
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="mt-1 space-y-2">
+            <SidebarMenu className="space-y-1">
               {steps.map((step) => {
                 const Icon = step.icon;
                 const isActive = currentStep === step.id;
                 const StatusIcon = step.completed ? CheckCircle : Circle;
-                
+
                 return (
                   <SidebarMenuItem key={step.id}>
                     <SidebarMenuButton
                       onClick={() => !step.disabled && onStepChange(step.id as any)}
                       className={`
                         group flex items-center w-full text-left gap-x-3 p-3 rounded-lg transition-all duration-200
-                        ${isActive 
-                          ? 'bg-[hsl(214,100%,50%)] text-white shadow-md hover:shadow-lg hover:bg-[hsla(214,100%,78%,1.00)] hover:text-gray-900'
-                          : step.disabled 
-                            ? 'text-gray-400 cursor-not-allowed' 
-                            : 'text-gray-500 hover:bg-white hover:shadow-md hover:text-gray-900'
+                        ${isActive
+                          ? 'bg-brand text-text-inverse shadow-sm'
+                          : step.disabled
+                            ? 'text-text-tertiary cursor-not-allowed'
+                            : 'text-text-secondary hover:bg-background hover:text-text-primary'
                         }
                       `}
                       disabled={step.disabled}
                     >
-                      <Icon className={`w-5 h-5 transition-colors duration-200 ${isActive ? 'text-white group-hover:text-gray-900' : 'text-gray-400 group-hover:text-gray-600'}`} />
-                      <span className="flex-1 text-base font-medium">{step.title}</span>
-                      <StatusIcon 
-                        className={`w-5 h-5 transition-colors duration-200 ${step.completed ? 'text-green-500' : (isActive ? 'text-blue-200 group-hover:text-blue-900' : 'text-gray-300')}`} 
+                      <div className={`icon-container icon-container-sm ${
+                        isActive
+                          ? 'bg-text-inverse/20 text-text-inverse'
+                          : step.disabled
+                            ? 'bg-surface text-text-tertiary'
+                            : 'bg-surface text-text-secondary group-hover:text-text-primary'
+                      } transition-colors duration-200`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <span className="flex-1 text-sm font-medium">{step.title}</span>
+                      <StatusIcon
+                        className={`w-4 h-4 transition-colors duration-200 ${
+                          step.completed
+                            ? 'text-success'
+                            : isActive
+                              ? 'text-text-inverse/60'
+                              : 'text-text-tertiary'
+                        }`}
                       />
                     </SidebarMenuButton>
                   </SidebarMenuItem>

@@ -2,7 +2,7 @@
   "name": "Basic Pitch Deck",
   "description": "Core narrative, 8 slides.",
   "slideCount": 8,
-  "maxQuestions": 15,
+  "maxQuestions": 5,
   "questions": [
     {
       "topic": "Company",

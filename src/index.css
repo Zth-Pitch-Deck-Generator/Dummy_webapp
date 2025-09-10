@@ -1,96 +1,149 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
+/* Premium Swiss-inspired design system */
 
 @layer base {
   :root {
-    --brand: 214 100% 50%;
+    /* Core Brand - Minimal accent */
+    --brand: 240 5% 15%;
+    --brand-light: 240 4% 85%;
+
+    /* Neutral Foundation */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 240 6% 10%;
+    --surface: 0 0% 99%;
+    --surface-elevated: 0 0% 100%;
 
+    /* Card System */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 6% 10%;
+    --card-border: 240 4% 94%;
 
+    /* Text Hierarchy */
+    --text-primary: 240 8% 5%;
+    --text-secondary: 240 6% 35%;
+    --text-tertiary: 240 4% 55%;
+    --text-inverse: 0 0% 100%;
+
+    /* Interactive Elements */
+    --primary: 240 5% 15%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 240 6% 10%;
+
+    --secondary: 240 2% 96%;
+    --secondary-foreground: 240 6% 10%;
+    --secondary-hover: 240 3% 92%;
+
+    /* Borders & Inputs */
+    --border: 240 4% 92%;
+    --border-strong: 240 4% 85%;
+    --input: 240 4% 96%;
+    --input-border: 240 4% 90%;
+    --ring: 240 5% 15%;
+
+    /* Status Colors - Minimal */
+    --success: 142 71% 45%;
+    --success-light: 142 71% 96%;
+    --warning: 38 92% 50%;
+    --warning-light: 38 92% 96%;
+    --destructive: 0 65% 51%;
+    --destructive-light: 0 65% 96%;
+
+    /* Popover/Menu */
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 240 6% 10%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Muted/Disabled */
+    --muted: 240 2% 96%;
+    --muted-foreground: 240 6% 35%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Accent for highlights */
+    --accent: 240 2% 96%;
+    --accent-foreground: 240 6% 10%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Sidebar */
+    --sidebar-background: 240 2% 98%;
+    --sidebar-foreground: 240 7% 20%;
+    --sidebar-primary: 240 8% 5%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 2% 94%;
+    --sidebar-accent-foreground: 240 8% 5%;
+    --sidebar-border: 240 4% 92%;
+    --sidebar-ring: 240 5% 15%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Spacing & Typography */
+    --radius: 0.75rem;
+    --radius-sm: 0.5rem;
+    --radius-lg: 1rem;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
 
   .dark {
-    --brand: 214 100% 50%;
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --brand: 240 5% 85%;
+    --brand-light: 240 5% 20%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --background: 240 8% 6%;
+    --foreground: 240 4% 95%;
+    --surface: 240 7% 8%;
+    --surface-elevated: 240 6% 10%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --card: 240 7% 8%;
+    --card-foreground: 240 4% 95%;
+    --card-border: 240 6% 15%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --text-primary: 240 4% 95%;
+    --text-secondary: 240 4% 65%;
+    --text-tertiary: 240 3% 45%;
+    --text-inverse: 240 8% 6%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --primary: 240 4% 95%;
+    --primary-foreground: 240 8% 6%;
+    --primary-hover: 240 3% 85%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --secondary: 240 6% 15%;
+    --secondary-foreground: 240 4% 95%;
+    --secondary-hover: 240 6% 20%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --border: 240 6% 15%;
+    --border-strong: 240 6% 25%;
+    --input: 240 6% 12%;
+    --input-border: 240 6% 20%;
+    --ring: 240 4% 95%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --success: 142 71% 55%;
+    --success-light: 142 71% 10%;
+    --warning: 38 92% 60%;
+    --warning-light: 38 92% 10%;
+    --destructive: 0 65% 61%;
+    --destructive-light: 0 65% 10%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --popover: 240 7% 8%;
+    --popover-foreground: 240 4% 95%;
+
+    --muted: 240 6% 15%;
+    --muted-foreground: 240 4% 65%;
+
+    --accent: 240 6% 15%;
+    --accent-foreground: 240 4% 95%;
+
+    --sidebar-background: 240 8% 6%;
+    --sidebar-foreground: 240 4% 75%;
+    --sidebar-primary: 240 4% 95%;
+    --sidebar-primary-foreground: 240 8% 6%;
+    --sidebar-accent: 240 6% 12%;
+    --sidebar-accent-foreground: 240 4% 95%;
+    --sidebar-border: 240 6% 15%;
+    --sidebar-ring: 240 4% 95%;
   }
 }
 
@@ -100,6 +153,74 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-inter antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+    font-variation-settings: 'opsz' 32;
+  }
+
+  /* Typography Scale */
+  .text-xs { font-size: 0.75rem; line-height: 1rem; }
+  .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+  .text-base { font-size: 1rem; line-height: 1.5rem; }
+  .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+  .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+  .text-2xl { font-size: 1.5rem; line-height: 2rem; }
+  .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+  .text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+  .text-5xl { font-size: 3rem; line-height: 1; }
+  .text-6xl { font-size: 3.75rem; line-height: 1; }
+}
+
+@layer components {
+  /* Premium button variants */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary-hover;
+    @apply px-6 py-3 rounded-lg font-medium transition-all duration-200;
+    @apply shadow-sm hover:shadow-md;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary-hover;
+    @apply px-6 py-3 rounded-lg font-medium transition-all duration-200;
+    @apply border border-border hover:border-border-strong;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  /* Card variants */
+  .card-elevated {
+    @apply bg-card border border-card-border rounded-lg;
+    @apply shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  .card-interactive {
+    @apply bg-card border border-card-border rounded-lg cursor-pointer;
+    @apply hover:border-border-strong hover:shadow-md transition-all duration-200;
+    @apply focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2;
+  }
+
+  /* Input styling */
+  .input-field {
+    @apply bg-input border border-input-border rounded-lg px-4 py-3;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent;
+    @apply placeholder:text-text-tertiary transition-all duration-200;
+  }
+
+  /* Icon containers */
+  .icon-container {
+    @apply flex items-center justify-center rounded-lg;
+    @apply transition-colors duration-200;
+  }
+
+  .icon-container-sm {
+    @apply w-8 h-8;
+  }
+
+  .icon-container-md {
+    @apply w-12 h-12;
+  }
+
+  .icon-container-lg {
+    @apply w-16 h-16;
   }
 }
