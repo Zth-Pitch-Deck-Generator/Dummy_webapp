@@ -245,7 +245,6 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                             <SelectItem value="finance">Finance</SelectItem>
                             <SelectItem value="edtech">EdTech</SelectItem>
                             <SelectItem value="e-commerce">E-commerce</SelectItem>
-                            <SelectItem value="healthcare">Healthcare</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
@@ -257,11 +256,11 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                             <SelectValue placeholder="Select stage" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="pre-seed">Pre-Seed</SelectItem>
-                            <SelectItem value="seed">Seed</SelectItem>
-                            <SelectItem value="series-a">Series A</SelectItem>
-                            <SelectItem value="series-b">Series B</SelectItem>
-                            <SelectItem value="series-c">Series C+</SelectItem>
+                            <SelectItem value="pre-seed">Pre-Seed (Ideation)</SelectItem>
+                            <SelectItem value="seed">Seed (Ideation-development)</SelectItem>
+                            <SelectItem value="series-a">Series A (Development)</SelectItem>
+                            <SelectItem value="series-b">Series B (Growth)</SelectItem>
+                            <SelectItem value="series-c">Series C+ (Expansion)</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
