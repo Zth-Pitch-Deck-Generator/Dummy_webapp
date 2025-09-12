@@ -24,6 +24,52 @@ A full-stack web application for creating professional pitch decks using AI-powe
 
 ![Screenshot 4](/screenshots/Screenshot4.png)
 
+## Color Palette
+
+The application uses a professional blue-based color scheme designed to maintain trust and credibility while providing excellent readability and accessibility.
+
+### Primary Colors
+- **Bright Blue (Buttons, Highlights)**: `#2563eb` - Used for primary actions, brand elements, and highlights
+- **Dark Navy (Primary Text)**: `#1e293b` - Main text color for headings and important content
+- **Deep Navy (Secondary Text)**: `#182436` - Secondary text and darker variations
+
+### Background Colors
+- **Pure White**: `#ffffff` - Main background color
+- **Light Blue Gradients**: Used for subtle background variations
+  - `#f8fbff` - Very light blue for backgrounds
+  - `#f0f7ff` - Light blue tint for surfaces
+  - `#f6faff` - Subtle blue background
+  - `#f2f8ff` - Card backgrounds
+  - `#f4f9ff` - Input backgrounds
+  - `#f7fbff` - Elevated surfaces
+  - `#f6f9fd` - Alternative background
+
+### Neutral Colors
+- **Light Gray (Borders, Subtle Backgrounds)**: `#f4f5f7` - Border colors and subtle backgrounds
+- **Soft Gray**: `#f5f6f8` - Muted backgrounds and disabled states
+- **Near White**: `#fcfcfc` - Very light backgrounds
+
+### CSS Custom Properties
+The colors are implemented using CSS custom properties in `src/index.css` for easy maintenance and dark mode support:
+
+```css
+:root {
+  --brand: 214 88% 58%;           /* #2563eb */
+  --text-primary: 222 47% 11%;    /* #1e293b */
+  --text-secondary: 221 39% 11%;  /* #1e293b variation */
+  --background: 0 0% 100%;        /* #ffffff */
+  --surface: 210 100% 99%;        /* #f8fbff */
+  /* ... additional properties */
+}
+```
+
+### Usage Guidelines
+- Use **Bright Blue** for primary actions (buttons, links, active states)
+- Use **Dark Navy** for main content and headings
+- Use **Light Blue Gradients** for backgrounds and subtle accents
+- Use **Neutral Grays** for borders, dividers, and secondary content
+- Maintain proper contrast ratios for accessibility (minimum 4.5:1 for normal text)
+
 ## Tech Stack
 
 ### Frontend
