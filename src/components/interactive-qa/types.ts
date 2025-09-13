@@ -1,5 +1,31 @@
 // src/components/interactive-qa/types.ts
+// src/features/interactive-qa/types.ts
+import { ProjectData, QAData } from '@/pages/Index';
 
+export type AIMessage = {
+  id: string;
+  type: 'model';
+  question: string;
+  answerType: 'free_text' | 'multiple_choice';
+  choices?: string[];
+  timestamp: number;
+};
+
+export type UserMessage = {
+  id: string;
+  type: 'user';
+  content: string;
+  timestamp: number;
+};
+
+export type Message = AIMessage | UserMessage;
+
+export type { QAData };
+
+export interface InteractiveQAProps {
+  projectData: ProjectData;
+  onComplete: (qaData: QAData) => void;
+}
 // The value for an answer can be a single string or an array of strings
 export type QAAnswer = string | string[];
 
@@ -26,9 +52,3 @@ export interface QASession {
   questions: QAQuestion[];
 }
 
-// Defines the structure for a single chat message in the UI
-export interface Message {
-  id: string;
-  content: string;
-  role: 'user' | 'model'; // This adds the missing 'role' property
-}

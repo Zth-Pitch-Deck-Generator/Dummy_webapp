@@ -1,81 +1,186 @@
 // src/components/interactive-qa/useQASession.ts
-import { useState, useMemo, useEffect } from 'react';
-import { QASession, QAQuestion, QAAnswer, Message } from './types';
+import { useEffect, useRef, useState } from 'react';
+import { QAData, ProjectData } from '@/pages/Index';
 
-export const useQASession = (config: QASession, onComplete: (answers: Record<string, QAAnswer>) => void) => {
-  const { questions } = config;
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, QAAnswer>>({});
+interface ApiMessage {
+  role: 'user' | 'model';
+  content: string;
+}
 
-  const currentQuestion: QAQuestion | undefined = questions[currentQuestionIndex];
-  const isCompleted = currentQuestionIndex >= questions.length;
+export interface AIQuestion {
+  topic: string;
+  question: string;
+  answerType: 'free_text' | 'multiple_choice' | 'complete';
+  choices?: string[] | null;
+  explanation?: string | null;
+  isComplete: boolean;
+  isMetricCalculation: boolean;
+}
 
-  const handleSubmit = (answer: QAAnswer) => {
+export default function useQASession(
+  projectData: ProjectData,
+  onComplete: (qaData: QAData) => void
+) {
+  const [messages, setMessages] = useState<ApiMessage[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<AIQuestion | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [questionCount, setQuestionCount] = useState(1);
+  const [subQuestionCount, setSubQuestionCount] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const initialMessage: ApiMessage = {
+      role: 'model',
+      content: `Let’s understand your idea better to help us build your "${projectData.decktype}" pitch deck.`
+    };
+    
+    const fetchFirstQuestion = async () => {
+      try {
+        const projectId = localStorage.getItem('projectId');
+        if (!projectId) throw new Error('Project ID missing');
+        
+        const res = await fetch('/api/qa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectId, messages: [initialMessage] })
+        });
+
+        if (!res.ok) {
+            const errorBody = await res.json();
+            console.error("API Error on first question:", errorBody);
+            throw new Error('API error on first question');
+        }
+        
+        const questionData: AIQuestion = await res.json();
+        setCurrentQuestion(questionData);
+        setMessages([
+            initialMessage,
+            { role: 'model', content: questionData.question }
+        ]);
+
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFirstQuestion();
+  }, [projectData]);
+
+  const handleSend = async (answer: string | string[]) => {
     if (!currentQuestion) return;
 
-    setAnswers(prev => ({ ...prev, [currentQuestion.id]: answer }));
+    const answerContent = Array.isArray(answer) ? answer.join(', ') : answer;
+    if (!answerContent.trim()) return;
 
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-    } else {
-      // This was the last question, call onComplete with the final answers
-      const finalAnswers = { ...answers, [currentQuestion.id]: answer };
-      onComplete(finalAnswers);
-      setCurrentQuestionIndex(prev => prev + 1); // Move past the last question to show completion
-    }
-  };
+    setIsLoading(true);
 
-  const goBack = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
-    }
-  };
+    const updatedMessages: ApiMessage[] = [
+      ...messages,
+      { role: 'user', content: answerContent }
+    ];
+    setMessages(updatedMessages);
 
-  const canGoBack = currentQuestionIndex > 0 && !isCompleted;
+    try {
+      const projectId = localStorage.getItem('projectId');
+      if (!projectId) throw new Error('Project ID missing');
 
-  const messages: Message[] = useMemo(() => {
-    const builtMessages: Message[] = [];
-    if (!questions || questions.length === 0) return [];
-  
-    // Loop up to the current question
-    for (let i = 0; i <= currentQuestionIndex && i < questions.length; i++) {
-      const q = questions[i];
-      // Add the question from the model
-      builtMessages.push({ id: q.id, role: 'model', content: q.text });
-  
-      const answer = answers[q.id];
-      if (answer) {
-        // Format the answer for display
-        let answerText: string;
-        if (Array.isArray(answer)) {
-            answerText = answer.join(', ');
-        } else if (typeof answer === 'string') {
-            answerText = answer;
-        } else {
-            answerText = JSON.stringify(answer);
-        }
-        builtMessages.push({ id: `${q.id}-ans`, role: 'user', content: answerText });
-      } else {
-        // If there's no answer yet, this is the current question, so we stop.
-        break;
+      const res = await fetch('/api/qa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, messages: updatedMessages })
+      });
+      if (!res.ok) {
+        const errorBody = await res.json();
+        console.error("API Error on next question:", errorBody);
+        throw new Error('API error on next question');
       }
-    }
-    return builtMessages;
-  }, [currentQuestionIndex, questions, answers]);
+      
+      const nextQuestionData: AIQuestion = await res.json();
 
-  const progress = useMemo(() => {
-    const answeredCount = Object.keys(answers).length;
-    return questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;
-  }, [answers, questions]);
+      if (nextQuestionData.isComplete) {
+        await handleComplete([...updatedMessages, { role: 'model', content: nextQuestionData.question }]);
+      } else {
+        if (nextQuestionData.isMetricCalculation) {
+          setSubQuestionCount(prev => prev + 1);
+        } else {
+          setQuestionCount(prev => prev + 1);
+          setSubQuestionCount(0);
+        }
+        setCurrentQuestion(nextQuestionData);
+        setMessages(prev => [...prev, { role: 'model', content: nextQuestionData.question }]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleComplete = async (finalMessages: ApiMessage[]) => {
+    const projectId = localStorage.getItem('projectId');
+    if (!projectId) {
+      alert('Project ID missing. Cannot save session.');
+      return;
+    }
+    
+    try {
+      const res = await fetch('/api/qa/session/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, messages: finalMessages })
+      });
+
+      if (!res.ok) {
+        const errorBody = await res.json();
+        throw new Error('Failed to save the Q&A session to the database.');
+      }
+      
+      const formattedQAData: QAData = finalMessages
+        .reduce((acc, msg, i) => {
+            if (msg.role === 'user') {
+                const questionMsg = finalMessages[i-1];
+                if (questionMsg && questionMsg.role === 'model') {
+                    acc.push({
+                        question: questionMsg.content,
+                        answer: msg.content,
+                        timestamp: Date.now()
+                    });
+                }
+            }
+            return acc;
+        }, [] as QAData);
+
+      onComplete(formattedQAData);
+
+    } catch (err) {
+      console.error(err);
+      alert("There was an error saving your session. Please try again.");
+    }
+  };
+  
+  const historyForUI: QAData = messages
+    .reduce((acc, msg, i) => {
+        if (msg.role === 'user') {
+            const questionMsg = messages[i-1];
+            if (questionMsg) {
+              acc.push({
+                  question: questionMsg.content,
+                  answer: msg.content,
+                  timestamp: Date.now()
+              });
+            }
+        }
+        return acc;
+    }, [] as QAData);
 
   return {
-    messages,
-    answers,
     currentQuestion,
-    isCompleted,
-    progress,
-    canGoBack,
-    handleSubmit,
-    goBack,
+    isLoading,
+    handleSend,
+    scrollRef,
+    history: historyForUI,
+    questionCount: subQuestionCount > 0 ? `${questionCount}.${subQuestionCount}` : questionCount.toString(),
   };
-};
+}
