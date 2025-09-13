@@ -51,9 +51,15 @@ const AllSlidesTab = ({ slides }: AllSlidesTabProps) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+              {/* This logic now handles both string and array content types */}
+              {Array.isArray(slide.content) ? (
+                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
                   {slide.content.map((bullet, i) => <li key={i}>{bullet}</li>)}
-              </ul>
+                </ul>
+              ) : (
+                <p className="text-sm text-gray-700">{slide.content}</p>
+              )}
+
               {isSelected && (
                 <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">

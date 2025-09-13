@@ -1,27 +1,34 @@
-// src/features/interactive-qa/types.ts
-import { ProjectData, QAData } from '@/pages/Index';
+// src/components/interactive-qa/types.ts
 
-export type AIMessage = {
-  id: string;
-  type: 'model';
-  question: string;
-  answerType: 'free_text' | 'multiple_choice';
-  choices?: string[];
-  timestamp: number;
-};
+// The value for an answer can be a single string or an array of strings
+export type QAAnswer = string | string[];
 
-export type UserMessage = {
+// Defines the structure for a choice in a question
+export interface QAChoiceOption {
+  value: string;
+  label: string;
+}
+
+// Defines a single question in the Q&A session
+export interface QAQuestion {
   id: string;
-  type: 'user';
+  text: string;
+  type: 'text' | 'single-choice' | 'multiple-choice';
+  placeholder?: string;
+  options?: QAChoiceOption[];
+}
+
+// Defines the entire configuration for a Q&A session
+export interface QASession {
+  id: string;
+  title: string;
+  description: string;
+  questions: QAQuestion[];
+}
+
+// Defines the structure for a single chat message in the UI
+export interface Message {
+  id: string;
   content: string;
-  timestamp: number;
-};
-
-export type Message = AIMessage | UserMessage;
-
-export type { QAData };
-
-export interface InteractiveQAProps {
-  projectData: ProjectData;
-  onComplete: (qaData: QAData) => void;
+  role: 'user' | 'model'; // This adds the missing 'role' property
 }

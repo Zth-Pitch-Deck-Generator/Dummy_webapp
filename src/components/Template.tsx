@@ -1,21 +1,23 @@
 // src/components/Template.tsx
 import { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ExternalLink, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ExternalLink, Loader2 } from 'lucide-react';
 import { GeneratedSlide } from '@/pages/Index.tsx';
 
 interface TemplateProps {
   onGenerate: (slides: GeneratedSlide[], url: string) => void;
 }
 
+// Updated templates to match the backend slugs and add PDF URLs
 const templates = [
-    { id: 'airbnb-style', name: 'The Airbnb Model', description: 'Clean, simple, and investor-focused, based on the iconic deck.', tags: ['Iconic', 'Story-focused'] },
-    { id: 'modern-tech', name: 'Modern Tech', description: 'Sleek and professional, perfect for software and tech startups.', tags: ['SaaS', 'Professional'] },
-    { id: 'creative-startup', name: 'Creative Startup', description: 'A vibrant and bold design for creative and consumer brands.', tags: ['B2C', 'Vibrant'] },
-    { id: 'business-professional', name: 'Business Professional', description: 'A classic and formal template for serious business presentations.', tags: ['Corporate', 'Formal'] },
-    { id: 'minimalist', name: 'Minimalist', description: 'A clean and simple design that lets your content shine.', tags: ['Simple', 'Elegant'] },
+    { id: 'technology', name: 'Technology Pitch Deck', description: 'A sleek design for software, hardware, and tech companies.', tags: ['Technology', 'SaaS'], url: '/Technology Pitch Deck Template.pdf' },
+    { id: 'startup', name: 'Startup Pitch Deck', description: 'A modern and clean template perfect for early-stage startups.', tags: ['Startup', 'VC'], url: '/Startup Pitch Deck Template.pdf' },
+    { id: 'ecommerce', name: 'E-commerce Pitch Deck', description: 'A template for e-commerce businesses to showcase products and growth.', tags: ['E-commerce', 'Retail'], url: '/E-commerce Pitch Deck Template.pdf' },
+    { id: 'fintech', name: 'FinTech Pitch Deck', description: 'A professional template for financial technology companies.', tags: ['FinTech', 'Finance'], url: '/FinTech Pitch Deck Template.pdf' },
+    { id: 'general', name: 'General Pitch Deck', description: 'A versatile and classic template for any business presentation.', tags: ['General', 'Corporate'], url: '/General Pitch Deck Template.pdf' },
 ];
 
 const Template = ({ onGenerate }: TemplateProps) => {
@@ -68,7 +70,7 @@ const Template = ({ onGenerate }: TemplateProps) => {
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-2">Choose Your Template</h1>
         <p className="text-lg text-gray-600">
-          Select a design for your presentation. You can preview a sample of the Airbnb style.
+          Select a design for your presentation. You can preview a sample of each style.
         </p>
       </div>
 
@@ -77,17 +79,36 @@ const Template = ({ onGenerate }: TemplateProps) => {
            <Card 
              key={template.id} 
              onClick={() => setSelectedTemplate(template.id)}
-             className={`cursor-pointer transition-all duration-200 hover:shadow-xl ${selectedTemplate === template.id ? 'ring-2 ring-blue-500 scale-105' : 'hover:scale-105'}`}
+             className={`cursor-pointer transition-all duration-200 hover:shadow-xl flex flex-col justify-between ${selectedTemplate === template.id ? 'ring-2 ring-blue-500 scale-105' : 'hover:scale-105'}`}
             >
-             <CardHeader>
-               <CardTitle>{template.name}</CardTitle>
-               <div className="flex flex-wrap gap-2 pt-2">
-                 {template.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-               </div>
-             </CardHeader>
-             <CardContent>
-               <p className="text-gray-600">{template.description}</p>
-             </CardContent>
+             <div>
+                <CardHeader>
+                  <CardTitle>{template.name}</CardTitle>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {template.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600">{template.description}</p>
+                </CardContent>
+             </div>
+             <div className="p-4 pt-0">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full" onClick={(e) => e.stopPropagation()}>
+                      View Sample <ExternalLink className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+                    <DialogHeader>
+                      <DialogTitle>{template.name} - Sample Preview</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-grow border rounded-md overflow-hidden">
+                      <iframe src={template.url} className="h-full w-full" title={`${template.name} Preview`} />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+             </div>
            </Card>
         ))}
       </div>
@@ -103,11 +124,6 @@ const Template = ({ onGenerate }: TemplateProps) => {
             "Generate & Preview Deck"
           )}
         </Button>
-         <Button variant="outline" asChild>
-            <a href={'/Air-BnB-Template.pdf'} target="_blank" rel="noopener noreferrer">
-              View Airbnb Sample <ExternalLink className="ml-2 h-4 w-4" />
-            </a>
-          </Button>
       </div>
     </div>
   );

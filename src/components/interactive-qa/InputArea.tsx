@@ -1,116 +1,113 @@
-// src/features/interactive-qa/InputArea.tsx
-import { useState } from 'react';
+// src/components/interactive-qa/InputArea.tsx
+import { useState, useEffect } from 'react';
+import { QAQuestion, QAAnswer } from './types';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import TextareaAutosize from 'react-textarea-autosize';
-import { Send } from 'lucide-react';
-import type { AIMessage } from './types.ts';
+import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft } from 'lucide-react';
 
-interface Props {
-  lastAI: AIMessage | undefined;
-  isLoading: boolean;
-  onSend: (content: string | string[]) => void;
+interface InputAreaProps {
+  question: QAQuestion;
+  onSubmit: (answer: QAAnswer) => void;
+  onBack: () => void;
+  canGoBack: boolean;
+  previousAnswer: QAAnswer | undefined;
 }
 
-const InputArea = ({ lastAI, isLoading, onSend }: Props) => {
-  const [currentInput, setCurrentInput] = useState('');
-  const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
-  const [showOther, setShowOther] = useState(false);
+const InputArea = ({ question, onSubmit, onBack, canGoBack, previousAnswer }: InputAreaProps) => {
+  const [textAnswer, setTextAnswer] = useState('');
+  const [choiceAnswer, setChoiceAnswer] = useState('');
+  const [multiChoiceAnswer, setMultiChoiceAnswer] = useState<string[]>([]);
 
-  if (!lastAI) return null;
+  useEffect(() => {
+    // When the question changes, populate with the previous answer
+    switch(question.type) {
+      case 'text':
+        setTextAnswer(previousAnswer as string || '');
+        break;
+      case 'single-choice':
+        setChoiceAnswer(previousAnswer as string || '');
+        break;
+      case 'multiple-choice':
+        setMultiChoiceAnswer(previousAnswer as string[] || []);
+        break;
+    }
+  }, [question, previousAnswer]);
 
-  const handleChoiceClick = (choice: string) => {
-    if (choice.toLowerCase() === 'other') {
-      setShowOther(v => !v);
-      // Remove "Other" from selections if it's there
-      setSelectedChoices(prev => prev.filter(c => c.toLowerCase() !== 'other'));
-    } else {
-      setSelectedChoices(prev =>
-        prev.includes(choice)
-          ? prev.filter(c => c !== choice)
-          : [...prev, choice]
-      );
+  const handleSubmit = () => {
+    switch (question.type) {
+      case 'text':
+        if (textAnswer.trim()) onSubmit(textAnswer.trim());
+        break;
+      case 'single-choice':
+        if (choiceAnswer) onSubmit(choiceAnswer);
+        break;
+      case 'multiple-choice':
+        if (multiChoiceAnswer.length > 0) onSubmit(multiChoiceAnswer);
+        break;
     }
   };
 
-  const handleSubmitMultipleChoice = () => {
-    const finalChoices = [...selectedChoices];
-    if (showOther && currentInput.trim()) {
-      finalChoices.push(currentInput.trim());
-    }
-    if (finalChoices.length > 0) {
-      onSend(finalChoices);
-      setSelectedChoices([]);
-      setCurrentInput('');
-      setShowOther(false);
+  const renderInput = () => {
+    switch (question.type) {
+      case 'text':
+        return (
+          <Textarea
+            placeholder={question.placeholder || 'Type your answer...'}
+            value={textAnswer}
+            onChange={(e) => setTextAnswer(e.target.value)}
+            className="flex-grow"
+          />
+        );
+      case 'single-choice':
+        return (
+            <RadioGroup value={choiceAnswer} onValueChange={setChoiceAnswer} className="space-y-2">
+                {question.options?.map(option => (
+                    <div key={option.value} className="flex items-center space-x-2">
+                        <RadioGroupItem value={option.value} id={option.value} />
+                        <Label htmlFor={option.value}>{option.label}</Label>
+                    </div>
+                ))}
+            </RadioGroup>
+        );
+      case 'multiple-choice':
+         return (
+             <div className="space-y-2">
+                {question.options?.map(option => (
+                    <div key={option.value} className="flex items-center space-x-2">
+                        <Checkbox
+                            id={option.value}
+                            checked={multiChoiceAnswer.includes(option.value)}
+                            onCheckedChange={(checked) => {
+                                setMultiChoiceAnswer(prev => 
+                                    checked
+                                        ? [...prev, option.value]
+                                        : prev.filter(v => v !== option.value)
+                                );
+                            }}
+                        />
+                        <Label htmlFor={option.value}>{option.label}</Label>
+                    </div>
+                ))}
+            </div>
+        );
+      default:
+        return null;
     }
   };
 
-  /* multiple-choice */
-  if (lastAI.answerType === 'multiple_choice' && lastAI.choices) {
-    return (
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap gap-2 items-center">
-          {lastAI.choices.map(choice => (
-            <Button
-              key={choice}
-              variant={selectedChoices.includes(choice) || (choice.toLowerCase() === 'other' && showOther) ? 'default' : 'outline'}
-              onClick={() => handleChoiceClick(choice)}
-              disabled={isLoading}
-            >
-              {choice}
-            </Button>
-          ))}
-        </div>
-
-        {showOther && (
-          <div className="flex gap-2 items-center">
-            <Input
-              value={currentInput}
-              onChange={e => setCurrentInput(e.target.value)}
-              placeholder="Enter your answer…"
-              disabled={isLoading}
-              className="min-w-[180px]"
-            />
-          </div>
-        )}
-        <Button onClick={handleSubmitMultipleChoice} disabled={selectedChoices.length === 0 && !currentInput.trim() || isLoading}>
-          Submit
-        </Button>
-      </div>
-    );
-  }
-
-  /* free-text */
   return (
-    <div className="flex gap-2">
-      <TextareaAutosize
-        minRows={1}
-        maxRows={6}
-        value={currentInput}
-        onChange={e => setCurrentInput(e.target.value)}
-        placeholder="Type your answer here…"
-        disabled={isLoading}
-        onKeyDown={e => {
-          if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
-            e.preventDefault();
-            onSend(currentInput);
-            setCurrentInput('');
-          }
-        }}
-        className="
-          flex-1 resize-none rounded-md border px-3 py-2 text-sm
-          focus:ring-2 focus:ring-purple-500 focus:border-purple-500
-          disabled:bg-gray-100 disabled:cursor-not-allowed
-        "
-      />
-      <Button
-        onClick={() => { onSend(currentInput); setCurrentInput(''); }}
-        disabled={!currentInput.trim() || isLoading}
-        className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-      >
-        <Send className="w-4 h-4" />
-      </Button>
+    <div className="p-4 bg-white border-t">
+      <div className="mb-4">{renderInput()}</div>
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={onBack} disabled={!canGoBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Previous
+        </Button>
+        <Button onClick={handleSubmit}>Next</Button>
+      </div>
     </div>
   );
 };
