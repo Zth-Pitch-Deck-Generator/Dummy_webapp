@@ -5,7 +5,7 @@ import { QAData, GeneratedSlide, ProjectData } from './Index';
 import { SidebarProvider, SidebarTrigger } from "../components/ui/sidebar";
 import { AppSidebar } from '../components/AppSidebar';
 import InteractiveQA from '../components/interactive-qa/InteractiveQA';
-import Outline from '../components/Outline';
+import Outline from '../components/OutlineContainer';
 import Template from '../components/Template';
 import DeckPreview from '../components/DeckPreview';
 import { supabase } from '../lib/supabase';
