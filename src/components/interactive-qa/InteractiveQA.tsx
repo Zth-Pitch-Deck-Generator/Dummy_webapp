@@ -1,20 +1,79 @@
 // src/components/interactive-qa/InteractiveQA.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Info } from 'lucide-react';
+import { Info, ArrowLeft } from 'lucide-react';
 import useQASession from './useQASession';
 import type { InteractiveQAProps } from './types';
 import { Skeleton } from '../ui/skeleton';
 
 const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
-  const { currentQuestion, isLoading, handleSend, questionCount } = useQASession(projectData, onComplete);
+  const { currentQuestion, isLoading, handleSend, handlePrevious, getPreviousAnswer, questionCount, history, canGoBack } = useQASession(projectData, onComplete);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
+  const [lastRestoredQuestion, setLastRestoredQuestion] = useState<string | null>(null);
+
+  // Restore previous answer when question changes (including when going back)
+  useEffect(() => {
+    if (currentQuestion && currentQuestion.question !== lastRestoredQuestion) {
+      const previousAnswer = getPreviousAnswer(currentQuestion.question);
+      if (previousAnswer) {
+        if (currentQuestion.answerType === 'multiple_choice') {
+          const choices = Array.isArray(previousAnswer.answer) ? previousAnswer.answer : [previousAnswer.answer];
+          const regularChoices = choices.filter(choice =>
+            currentQuestion.choices?.includes(choice) || choice === 'Other'
+          );
+          const otherChoices = choices.filter(choice =>
+            !currentQuestion.choices?.includes(choice) && choice !== 'Other'
+          );
+
+          setSelectedChoices(regularChoices.length > 0 ? regularChoices : []);
+
+          // If there are custom choices, select "Other" and set the custom text
+          if (otherChoices.length > 0) {
+            setSelectedChoices(prev => [...prev, 'Other']);
+            setCurrentAnswer(otherChoices.join(', '));
+          } else {
+            setCurrentAnswer('');
+          }
+        } else {
+          // For free text questions
+          const answerText = Array.isArray(previousAnswer.answer)
+            ? previousAnswer.answer.join(', ')
+            : previousAnswer.answer;
+          setCurrentAnswer(answerText);
+          setSelectedChoices([]);
+        }
+      } else {
+        // No previous answer, clear form
+        setCurrentAnswer('');
+        setSelectedChoices([]);
+      }
+      setLastRestoredQuestion(currentQuestion.question);
+    }
+  }, [currentQuestion?.question]);
+
+  // Determine if we're likely on the last question based on question count and deck type
+  const isLikelyLastQuestion = () => {
+    const numericQuestionCount = parseInt(questionCount.split('.')[0]);
+
+    // Conservative thresholds - show "Next" for most questions, only "Submit Answer" near the very end
+    switch (projectData.deckSubtype) {
+      case 'basic_pitch_deck':
+        return numericQuestionCount >= 18; // Show "Submit Answer" for the last few questions
+      case 'complete_pitch_deck':
+        return numericQuestionCount >= 18; // Complete has up to 20 questions
+      case 'guided_dataroom':
+      case 'direct_dataroom':
+        return numericQuestionCount >= 15; // Dataroom
+      default:
+        return numericQuestionCount >= 18; // Default - very conservative
+    }
+  };
 
   const handleSubmit = () => {
     if (isLoading) return;
@@ -22,7 +81,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
     if (currentQuestion?.answerType === 'multiple_choice') {
       const otherChoiceSelected = selectedChoices.includes('Other');
       let finalChoices = selectedChoices.filter(c => c !== 'Other');
-      
+
       if (otherChoiceSelected && currentAnswer.trim()) {
         finalChoices.push(currentAnswer.trim());
       }
@@ -47,7 +106,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
         : [...prev, choice]
     );
   };
-  
+
   const renderInput = () => {
     if (!currentQuestion) return null;
 
@@ -88,7 +147,7 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
         );
     }
   };
-  
+
   const isSubmitDisabled = () => {
       if (isLoading) return true;
       if (currentQuestion?.answerType === 'multiple_choice') {
@@ -134,10 +193,20 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
                 {renderInput()}
               </div>
             </CardContent>
-            <CardFooter>
-                <Button onClick={handleSubmit} disabled={isSubmitDisabled()}>
-                    Submit Answer
-                </Button>
+            <CardFooter className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                disabled={!canGoBack}
+                onClick={handlePrevious}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Previous</span>
+              </Button>
+
+              <Button onClick={handleSubmit} disabled={isSubmitDisabled()}>
+                {isLikelyLastQuestion() ? 'Submit Answer' : 'Next'}
+              </Button>
             </CardFooter>
           </>
         )}

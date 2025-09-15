@@ -26,6 +26,9 @@ export default function useQASession(
   const [isLoading, setIsLoading] = useState(true);
   const [questionCount, setQuestionCount] = useState(1);
   const [subQuestionCount, setSubQuestionCount] = useState(0);
+  const [questionHistory, setQuestionHistory] = useState<AIQuestion[]>([]);
+  const [canGoBack, setCanGoBack] = useState(false);
+  const [answerHistory, setAnswerHistory] = useState<Map<string, { answer: string | string[], answerType: string }>>(new Map());
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,12 +36,12 @@ export default function useQASession(
       role: 'model',
       content: `Let’s understand your idea better to help us build your "${projectData.decktype}" pitch deck.`
     };
-    
+
     const fetchFirstQuestion = async () => {
       try {
         const projectId = localStorage.getItem('projectId');
         if (!projectId) throw new Error('Project ID missing');
-        
+
         const res = await fetch('/api/qa', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -50,9 +53,10 @@ export default function useQASession(
             console.error("API Error on first question:", errorBody);
             throw new Error('API error on first question');
         }
-        
+
         const questionData: AIQuestion = await res.json();
         setCurrentQuestion(questionData);
+        setQuestionHistory([questionData]);
         setMessages([
             initialMessage,
             { role: 'model', content: questionData.question }
@@ -68,11 +72,52 @@ export default function useQASession(
     fetchFirstQuestion();
   }, [projectData]);
 
+  const handlePrevious = () => {
+    if (questionHistory.length <= 1) return;
+
+    // Remove the current question from history and get the previous one
+    const newHistory = [...questionHistory];
+    newHistory.pop(); // Remove current question
+    const previousQuestion = newHistory[newHistory.length - 1];
+
+    if (previousQuestion) {
+      setCurrentQuestion(previousQuestion);
+      setQuestionHistory(newHistory);
+
+      // Remove the last user answer and model question from messages
+      const newMessages = [...messages];
+      newMessages.pop(); // Remove user's last answer
+      newMessages.pop(); // Remove model's last question
+      setMessages(newMessages);
+
+      // Update question count
+      if (previousQuestion.isMetricCalculation) {
+        setSubQuestionCount(prev => Math.max(0, prev - 1));
+      } else {
+        setQuestionCount(prev => Math.max(1, prev - 1));
+        setSubQuestionCount(0);
+      }
+
+      setCanGoBack(newHistory.length > 1);
+    }
+  };
+
+  const getPreviousAnswer = (question: string) => {
+    return answerHistory.get(question);
+  };
+
   const handleSend = async (answer: string | string[]) => {
     if (!currentQuestion) return;
 
     const answerContent = Array.isArray(answer) ? answer.join(', ') : answer;
     if (!answerContent.trim()) return;
+
+    // Store the answer for this question
+    const questionKey = currentQuestion.question;
+    setAnswerHistory(prev => new Map(prev).set(questionKey, {
+      answer: answer,
+      answerType: currentQuestion.answerType
+    }));
 
     setIsLoading(true);
 
@@ -96,7 +141,7 @@ export default function useQASession(
         console.error("API Error on next question:", errorBody);
         throw new Error('API error on next question');
       }
-      
+
       const nextQuestionData: AIQuestion = await res.json();
 
       if (nextQuestionData.isComplete) {
@@ -109,6 +154,8 @@ export default function useQASession(
           setSubQuestionCount(0);
         }
         setCurrentQuestion(nextQuestionData);
+        setQuestionHistory(prev => [...prev, nextQuestionData]);
+        setCanGoBack(true);
         setMessages(prev => [...prev, { role: 'model', content: nextQuestionData.question }]);
       }
     } catch (err) {
@@ -117,14 +164,14 @@ export default function useQASession(
       setIsLoading(false);
     }
   };
-  
+
   const handleComplete = async (finalMessages: ApiMessage[]) => {
     const projectId = localStorage.getItem('projectId');
     if (!projectId) {
       alert('Project ID missing. Cannot save session.');
       return;
     }
-    
+
     try {
       const res = await fetch('/api/qa/session/complete', {
         method: 'POST',
@@ -136,7 +183,7 @@ export default function useQASession(
         const errorBody = await res.json();
         throw new Error('Failed to save the Q&A session to the database.');
       }
-      
+
       const formattedQAData: QAData = finalMessages
         .reduce((acc, msg, i) => {
             if (msg.role === 'user') {
@@ -159,7 +206,7 @@ export default function useQASession(
       alert("There was an error saving your session. Please try again.");
     }
   };
-  
+
   const historyForUI: QAData = messages
     .reduce((acc, msg, i) => {
         if (msg.role === 'user') {
@@ -179,8 +226,11 @@ export default function useQASession(
     currentQuestion,
     isLoading,
     handleSend,
+    handlePrevious,
+    getPreviousAnswer,
     scrollRef,
     history: historyForUI,
+    canGoBack,
     questionCount: subQuestionCount > 0 ? `${questionCount}.${subQuestionCount}` : questionCount.toString(),
   };
 }
