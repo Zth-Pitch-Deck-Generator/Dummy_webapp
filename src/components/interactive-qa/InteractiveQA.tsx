@@ -15,11 +15,9 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   const { currentQuestion, isLoading, handleSend, handlePrevious, getPreviousAnswer, questionCount, history, canGoBack } = useQASession(projectData, onComplete);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
-  const [lastRestoredQuestion, setLastRestoredQuestion] = useState<string | null>(null);
-
-  // Restore previous answer when question changes (including when going back)
+  // Always restore previous answer for the current question
   useEffect(() => {
-    if (currentQuestion && currentQuestion.question !== lastRestoredQuestion) {
+    if (currentQuestion) {
       const previousAnswer = getPreviousAnswer(currentQuestion.question);
       if (previousAnswer) {
         if (currentQuestion.answerType === 'multiple_choice') {
@@ -53,7 +51,6 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
         setCurrentAnswer('');
         setSelectedChoices([]);
       }
-      setLastRestoredQuestion(currentQuestion.question);
     }
   }, [currentQuestion?.question]);
 

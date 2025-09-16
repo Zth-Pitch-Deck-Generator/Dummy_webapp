@@ -76,7 +76,7 @@ const qaHandler: RequestHandler = async (req: Request, res: Response): Promise<v
       });
       return;
     }
-    
+
     const nextQuestionFromConfig = qaConfig.questions[nextQuestionIndex];
 
     if (!nextQuestionFromConfig) {
@@ -87,31 +87,97 @@ const qaHandler: RequestHandler = async (req: Request, res: Response): Promise<v
       });
       return;
     }
-    
+
     let finalQuestion = { ...nextQuestionFromConfig };
 
+    // Only enhance questions where company context would be genuinely helpful
+    // Most questions from basic_pitch_deck.json are already well-written
+    const shouldEnhanceQuestion = (question: string, topic: string, company: any) => {
+      // Only enhance certain question types where context really matters
+      const contextualTopics = ['Company', 'Problem/Opportunity', 'Audience', 'Solution'];
+      const hasCompanyName = question.toLowerCase().includes('company') || question.toLowerCase().includes('your');
+
+      return contextualTopics.includes(topic) && hasCompanyName && company.name && company.industry;
+    };
+
+    // Only enhance questions where it genuinely adds value
+    if (shouldEnhanceQuestion(nextQuestionFromConfig.question, nextQuestionFromConfig.topic, projectData)) {
+      try {
+        const questionEnhancePrompt = `
+          Original Question: "${nextQuestionFromConfig.question}"
+          Company: ${projectData.name} (${projectData.industry} industry)
+
+          Add minimal context to make this question more relevant, but keep it simple:
+          1. Only add context if it genuinely helps
+          2. Keep it 1-2 lines maximum
+          3. Use simple, clear language
+          4. Don't over-complicate - the original is already good
+
+          Examples:
+          - Original: "What is your company's name and what is its one-line tagline?"
+          - Enhanced: "What's ${projectData.name} and how do you describe it in one line?"
+
+          - Original: "Who is your primary target audience?"
+          - Enhanced: "Who are your main customers in ${projectData.industry}?"
+
+          If the original question is already perfect, return it unchanged.
+
+          Return ONLY a JSON object:
+          {
+            "enhanced_question": "Your enhanced question here"
+          }
+        `;
+
+        const enhanceResult = await geminiJson(questionEnhancePrompt);
+        const enhanceSchema = z.object({
+          enhanced_question: z.string().min(1)
+        });
+        const parsedEnhance = enhanceSchema.safeParse(enhanceResult);
+
+        if (parsedEnhance.success && parsedEnhance.data.enhanced_question.trim() !== "") {
+          finalQuestion.question = parsedEnhance.data.enhanced_question;
+          console.log(`✅ Question enhanced for ${projectData.industry} (${projectData.stage}) startup`);
+          console.log(`📝 Original: "${nextQuestionFromConfig.question}"`);
+          console.log(`🎯 Enhanced: "${finalQuestion.question}"`);
+        } else {
+          console.log("⚠️ Using original question as enhancement failed or returned empty result");
+        }
+      } catch (e) {
+        console.error("❌ Error enhancing question with Gemini:", e);
+        console.log("🔄 Falling back to original question");
+        // Keep the original question if enhancement fails
+      }
+    } else {
+      console.log(`📋 Using original question as-is: "${nextQuestionFromConfig.question}"`);
+    }
+
+    // Generate dynamic multiple choice options if needed
     if (finalQuestion.answerType === 'multiple_choice') {
       const choiceGenPrompt = `
-        You are an expert business analyst creating multiple-choice questions for a startup founder.
-        Based on the startup's details and the question to be asked, generate 3-4 relevant and plausible multiple-choice options.
+        Create simple multiple-choice options for a ${projectData.industry} startup.
+
+        Company: ${projectData.name} (${projectData.stage} stage, ${projectData.revenue})
+        Question: "${finalQuestion.question}"
+
+        Generate 3-4 realistic options that are:
+        1. Easy to understand (simple language)
+        2. Relevant for ${projectData.industry} companies
+        3. Appropriate for ${projectData.stage} stage
+        4. Clear and specific
+
         Always include "Other" as the last option.
 
-        Startup Details:
-        - Name: ${projectData.name}
-        - Industry: ${projectData.industry}
-        - Stage: ${projectData.stage}
-        - Description: ${projectData.description}
-
-        Question to generate choices for:
-        "${finalQuestion.question}"
-
-        Return ONLY a valid JSON object with a single key "choices", which is an array of strings.
-        Example format:
+        Example for revenue question:
         {
-          "choices": ["Option A", "Option B", "Option C", "Other"]
+          "choices": ["$0 - No revenue yet", "$1K - $10K per month", "$10K - $50K per month", "Other"]
+        }
+
+        Return ONLY a JSON object:
+        {
+          "choices": ["Option 1", "Option 2", "Option 3", "Other"]
         }
       `;
-      
+
       try {
         const generated = await geminiJson(choiceGenPrompt);
         const choicesSchema = z.object({ choices: z.array(z.string()).min(1) });
@@ -122,15 +188,17 @@ const qaHandler: RequestHandler = async (req: Request, res: Response): Promise<v
           if (!finalQuestion.choices.map(c => c.toLowerCase()).includes('other')) {
             finalQuestion.choices.push('Other');
           }
+          console.log(`✅ Generated ${finalQuestion.choices.length} contextual choices for multiple choice question`);
         } else {
             // Fallback if AI fails to generate valid choices
-            console.error("Gemini failed to generate valid choices, using default.", parsedChoices.error);
+            console.error("❌ Gemini failed to generate valid choices, using default.", parsedChoices.error);
             if (!finalQuestion.choices || finalQuestion.choices.length === 0) {
                 finalQuestion.choices = ["Yes", "No", "Other"];
             }
         }
       } catch (e) {
-        console.error("Error generating dynamic choices from Gemini:", e);
+        console.error("❌ Error generating dynamic choices from Gemini:", e);
+        console.log("🔄 Using fallback choices");
         // Fallback if AI fails
         if (!finalQuestion.choices || finalQuestion.choices.length === 0) {
             finalQuestion.choices = ["Yes", "No", "Other"];
