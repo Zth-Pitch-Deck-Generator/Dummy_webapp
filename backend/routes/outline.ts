@@ -60,46 +60,117 @@ const handleOutline: any = async (req: any, res: any) => {
     const deckSubtype = projectData.decktype;
 
     if (deckSubtype === 'basic_pitch_deck') {
+        // Refactored prompt for 'basic_pitch_deck' to generate analytical content.
+        // Sets AI persona as VC analyst, emphasizes synthesis, and requires specific
+        // 'talking_points', 'key_insight', and 'visual_suggestion' fields for 8 fixed slides.
         prompt = `
-        Using the following interview transcript, create a pitch deck outline for a "Basic Pitch Deck".
-        The outline must contain exactly 8 slides with these specific titles in this order: "Cover", "Problem", "Solution", "Market Opportunity", "Traction", "Team", "Go-To-Market", and "The Ask".
-        For each slide, provide 2-3 concise bullet points synthesizing the user's answers. The "Cover" slide's bullet points should include the company name and tagline.
-        
-        Return ONLY a valid JSON array of exactly 8 slide objects:
+        You are a top-tier Venture Capital analyst and pitch deck expert. Your task is to transform a founder's raw interview transcript into a compelling, strategic 8-slide "Basic Pitch Deck" outline.
+
+        **Your Goal:** Do not just summarize. Your primary goal is to ANALYZE and SYNTHESIZE the founder's points, uncover the hidden strengths, and structure the information into a powerful narrative that would impress an investor.
+
+        **The outline must contain exactly 8 slides with these specific titles in this order:**
+        "Cover", "Problem", "Solution", "Market Opportunity", "Traction", "Team", "Go-To-Market", "The Ask"
+
+        **For each slide, you must:**
+        1.  Create the specific title from the list above.
+        2.  List the most critical "talking_points" as an array of 2-3 concise strings, synthesizing the user's answers. The "Cover" slide's talking_points should include the company name and tagline.
+        3.  Provide a "key_insight". This is your expert analysis. For example, if the founder provides a TAM, don't just state the number. Explain why it's a significant market opportunity. If they describe a feature, explain the strategic advantage it provides.
+        4.  Give a "visual_suggestion" for the slide, such as "A compelling hero image with company logo" or "A graph showing month-over-month user growth."
+
+        **Output Format:**
+        Return ONLY a valid JSON array of exactly 8 slide objects with this exact structure:
         [
-          { "title": "Cover", "bullet_points": string[], "data_needed": string[] },
-          { "title": "Problem", "bullet_points": string[], "data_needed": string[] },
-          { "title": "Solution", "bullet_points": string[], "data_needed": string[] },
-          { "title": "Market Opportunity", "bullet_points": string[], "data_needed": string[] },
-          { "title": "Traction", "bullet_points": string[], "data_needed": string[] },
-          { "title": "Team", "bullet_points": string[], "data_needed": string[] },
-          { "title": "Go-To-Market", "bullet_points": string[], "data_needed": string[] },
-          { "title": "The Ask", "bullet_points": string[], "data_needed": string[] }
+          {
+            "title": "Cover",
+            "talking_points": string[],
+            "key_insight": string,
+            "visual_suggestion": string
+          },
+          {
+            "title": "Problem",
+            "talking_points": string[],
+            "key_insight": string,
+            "visual_suggestion": string
+          },
+          {
+            "title": "Solution",
+            "talking_points": string[],
+            "key_insight": string,
+            "visual_suggestion": string
+          },
+          {
+            "title": "Market Opportunity",
+            "talking_points": string[],
+            "key_insight": string,
+            "visual_suggestion": string
+          },
+          {
+            "title": "Traction",
+            "talking_points": string[],
+            "key_insight": string,
+            "visual_suggestion": string
+          },
+          {
+            "title": "Team",
+            "talking_points": string[],
+            "key_insight": string,
+            "visual_suggestion": string
+          },
+          {
+            "title": "Go-To-Market",
+            "talking_points": string[],
+            "key_insight": string,
+            "visual_suggestion": string
+          },
+          {
+            "title": "The Ask",
+            "talking_points": string[],
+            "key_insight": string,
+            "visual_suggestion": string
+          }
         ]
 
         Transcript:"""${transcriptTxt}"""`;
     } else {
-        const slideCount = projectData.slide_count || 12;
-        prompt = `
-        Using the following interview transcript, create a ${slideCount}-slide pitch deck outline for a "${deckSubtype}" deck.
-        The outline should intelligently synthesize the user's answers into coherent slide content.
-        Return ONLY a valid JSON array of exactly ${slideCount} slide objects:
-        [
-          { "title": string, "bullet_points": string[], "data_needed": string[] },
-          ...
-        ]
+      // Original prompt for other deck types (unchanged).
+      // Generates an N-slide outline with 'bullet_points' and 'data_needed'.
+      const slideCount = projectData.slide_count || 12;
+      prompt = `
+      Using the following interview transcript, create a ${slideCount}-slide pitch deck outline for a "${deckSubtype}" deck.
+      The outline should intelligently synthesize the user's answers into coherent slide content.
+      Return ONLY a valid JSON array of exactly ${slideCount} slide objects:
+      [
+        { "title": string, "bullet_points": string[], "data_needed": string[] },
+        ...
+      ]
 
-        Transcript:"""${transcriptTxt}"""`;
+      Transcript:"""${transcriptTxt}"""`;
     }
+    // --- End: Basic Pitch Deck Enhancement ---
 
     const outline = await geminiJson(prompt);
-
-    const slideSchema = z.object({
+     // --- Start: Zod Schema Updates for Validation ---
+    // Schema for the enhanced 'basic_pitch_deck' output.
+    // Expects 'talking_points', 'key_insight', and 'visual_suggestion'.
+    const basicSlideSchema = z.object({
       title: z.string(),
-      bullet_points: z.array(z.string()),
-      data_needed: z.array(z.string()),
+      talking_points: z.array(z.string()),
+      key_insight: z.string().describe("AI's analysis of why this slide's content is compelling."),
+      visual_suggestion: z.string(),
     });
-    const outlineSchema = z.array(slideSchema).min(1);
+    
+    // Schema for other deck types, matching their original output structure.
+    const otherDeckSlideSchema = z.object({
+        title: z.string(),
+        bullet_points: z.array(z.string()),
+        data_needed: z.array(z.string()),
+    });
+
+    // Conditionally apply the correct Zod schema based on the deck type.
+    const outlineSchema = deckSubtype === 'basic_pitch_deck' 
+        ? z.array(basicSlideSchema).length(8)
+        : z.array(otherDeckSlideSchema).min(1);
+    // --- End: Zod Schema Updates for Validation ---
     const valid = outlineSchema.safeParse(outline);
     
     if (!valid.success) {
