@@ -2,11 +2,19 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
+// --- START OF CHANGES ---
+// Updated Slide type to accommodate both old and new backend structures.
 type Slide = {
   title: string;
+  // Existing properties for older deck types (made optional)
   bullet_points?: string[];
   data_needed?: string[];
+  // New properties for basic_pitch_deck (made optional)
+  talking_points?: string[];
+  key_insight?: string;
+  visual_suggestion?: string;
 };
+// --- END OF CHANGES ---
 
 type SWOT = {
     strength: string[];
@@ -15,7 +23,6 @@ type SWOT = {
     threats: string[];
 }
 
-// The onAccept prop now expects the outline data as an argument
 interface OutlineProps {
   onAccept: (outline: Slide[]) => void;
 }
@@ -56,7 +63,12 @@ const Outline = ({ onAccept }: OutlineProps) => {
         }
 
         const json = await res.json();
-        const slides = json.outline || json.outline_json || json;
+        // The backend should directly return the outline array now,
+        // so `json` itself should be the array.
+        const slides = json; // Simplified, assuming backend directly returns the array
+        // Fallback for older structures if needed
+        // const slides = json.outline || json.outline_json || json;
+
 
         if (!Array.isArray(slides))
           throw new Error("Outline format from API is invalid");
@@ -82,7 +94,6 @@ const Outline = ({ onAccept }: OutlineProps) => {
         body: JSON.stringify({ projectId }),
       });
       if (!res.ok) {
-        // Show backend error message if available
         let msg = "Evaluation failed";
         try {
           const errData = await res.json();
@@ -94,7 +105,6 @@ const Outline = ({ onAccept }: OutlineProps) => {
       setSwotGenerated(true);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Evaluation failed");
-      // Do not set swotGenerated so user can retry
     }
   };
 
@@ -121,13 +131,59 @@ const Outline = ({ onAccept }: OutlineProps) => {
                 {slide.title}
               </h3>
 
-              {!!slide.bullet_points?.length && (
-                <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
-                  {slide.bullet_points.map((bp) => (
-                    <li key={bp}>{bp}</li>
-                  ))}
-                </ul>
+              {/* --- START OF RENDERING CHANGES --- */}
+              {/* Render talking_points (new structure for basic deck) */}
+              {!!slide.talking_points?.length && (
+                <>
+                  <h4 className="font-semibold text-gray-700 mt-3 mb-1">Key Talking Points:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
+                    {slide.talking_points.map((tp, idx) => (
+                      <li key={idx}>{tp}</li>
+                    ))}
+                  </ul>
+                </>
               )}
+
+              {/* Render bullet_points (old structure for other decks) */}
+              {!!slide.bullet_points?.length && (
+                <>
+                  <h4 className="font-semibold text-gray-700 mt-3 mb-1">Bullet Points:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
+                    {slide.bullet_points.map((bp, idx) => (
+                      <li key={idx}>{bp}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {/* Render Key Insight (new structure for basic deck) */}
+              {slide.key_insight && (
+                <>
+                  <h4 className="font-semibold text-gray-700 mt-3 mb-1">AI Insight:</h4>
+                  <p className="text-gray-600 text-sm italic">{slide.key_insight}</p>
+                </>
+              )}
+
+              {/* Render Visual Suggestion (new structure for basic deck) */}
+              {slide.visual_suggestion && (
+                <>
+                  <h4 className="font-semibold text-gray-700 mt-3 mb-1">Visual Suggestion:</h4>
+                  <p className="text-gray-600 text-sm">{slide.visual_suggestion}</p>
+                </>
+              )}
+
+              {/* Render data_needed (old structure for other decks) */}
+              {!!slide.data_needed?.length && (
+                <>
+                  <h4 className="font-semibold text-gray-700 mt-3 mb-1">Data Needed:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-gray-600 text-sm">
+                    {slide.data_needed.map((dn, idx) => (
+                      <li key={idx}>{dn}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {/* --- END OF RENDERING CHANGES --- */}
             </div>
           </div>
         </div>
@@ -142,7 +198,6 @@ const Outline = ({ onAccept }: OutlineProps) => {
           {swotGenerated ? "SWOT Analysis Generated" : "Improve Outline (SWOT)"}
         </Button>
 
-        {/* The onClick handler now passes the outline state up to the parent */}
         <Button
           onClick={() => onAccept(outline)}
           className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -158,25 +213,25 @@ const Outline = ({ onAccept }: OutlineProps) => {
                 <div className="p-4 bg-green-50 rounded-lg">
                     <h5 className="font-bold text-green-800 mb-2">Strengths</h5>
                     <ul className="list-disc pl-5 text-sm space-y-1 text-green-700">
-                        {review.strength?.map((item: string) => <li key={item}>{item}</li>)}
+                        {review.strength?.map((item: string, idx) => <li key={idx}>{item}</li>)}
                     </ul>
                 </div>
                 <div className="p-4 bg-red-50 rounded-lg">
                     <h5 className="font-bold text-red-800 mb-2">Weaknesses</h5>
                     <ul className="list-disc pl-5 text-sm space-y-1 text-red-700">
-                        {review.weakness?.map((item: string) => <li key={item}>{item}</li>)}
+                        {review.weakness?.map((item: string, idx) => <li key={idx}>{item}</li>)}
                     </ul>
                 </div>
                 <div className="p-4 bg-blue-50 rounded-lg">
                     <h5 className="font-bold text-blue-800 mb-2">Opportunities</h5>
                     <ul className="list-disc pl-5 text-sm space-y-1 text-blue-700">
-                        {review.opportunities?.map((item: string) => <li key={item}>{item}</li>)}
+                        {review.opportunities?.map((item: string, idx) => <li key={idx}>{item}</li>)}
                     </ul>
                 </div>
                 <div className="p-4 bg-yellow-50 rounded-lg">
                     <h5 className="font-bold text-yellow-800 mb-2">Threats</h5>
                     <ul className="list-disc pl-5 text-sm space-y-1 text-yellow-700">
-                        {review.threats?.map((item: string) => <li key={item}>{item}</li>)}
+                        {review.threats?.map((item: string, idx) => <li key={idx}>{item}</li>)}
                     </ul>
                 </div>
             </div>
