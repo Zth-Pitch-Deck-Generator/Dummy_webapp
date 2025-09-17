@@ -29,6 +29,8 @@ export default function useQASession(
   const [questionHistory, setQuestionHistory] = useState<AIQuestion[]>([]);
   const [canGoBack, setCanGoBack] = useState(false);
   const [answerHistory, setAnswerHistory] = useState<Map<string, { answer: string | string[], answerType: string }>>(new Map());
+  const [fullQuestionHistory, setFullQuestionHistory] = useState<AIQuestion[]>([]); // Track all questions ever seen
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,6 +59,8 @@ export default function useQASession(
         const questionData: AIQuestion = await res.json();
         setCurrentQuestion(questionData);
         setQuestionHistory([questionData]);
+        setFullQuestionHistory([questionData]);
+        setCurrentQuestionIndex(0);
         setMessages([
             initialMessage,
             { role: 'model', content: questionData.question }
@@ -73,16 +77,14 @@ export default function useQASession(
   }, [projectData]);
 
   const handlePrevious = () => {
-    if (questionHistory.length <= 1) return;
+    if (currentQuestionIndex <= 0) return;
 
-    // Remove the current question from history and get the previous one
-    const newHistory = [...questionHistory];
-    newHistory.pop(); // Remove current question
-    const previousQuestion = newHistory[newHistory.length - 1];
+    const newIndex = currentQuestionIndex - 1;
+    const previousQuestion = fullQuestionHistory[newIndex];
 
     if (previousQuestion) {
       setCurrentQuestion(previousQuestion);
-      setQuestionHistory(newHistory);
+      setCurrentQuestionIndex(newIndex);
 
       // Remove the last user answer and model question from messages
       const newMessages = [...messages];
@@ -98,7 +100,7 @@ export default function useQASession(
         setSubQuestionCount(0);
       }
 
-      setCanGoBack(newHistory.length > 1);
+      setCanGoBack(newIndex > 0);
     }
   };
 
@@ -126,6 +128,19 @@ export default function useQASession(
       { role: 'user', content: answerContent }
     ];
     setMessages(updatedMessages);
+
+    // Check if we're moving forward to a question we've already seen
+    const nextIndex = currentQuestionIndex + 1;
+    if (nextIndex < fullQuestionHistory.length) {
+      // We're going back to a question we've already seen
+      const nextQuestion = fullQuestionHistory[nextIndex];
+      setCurrentQuestion(nextQuestion);
+      setCurrentQuestionIndex(nextIndex);
+      setCanGoBack(true);
+      setMessages(prev => [...prev, { role: 'model', content: nextQuestion.question }]);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const projectId = localStorage.getItem('projectId');
@@ -155,6 +170,8 @@ export default function useQASession(
         }
         setCurrentQuestion(nextQuestionData);
         setQuestionHistory(prev => [...prev, nextQuestionData]);
+        setFullQuestionHistory(prev => [...prev, nextQuestionData]);
+        setCurrentQuestionIndex(nextIndex);
         setCanGoBack(true);
         setMessages(prev => [...prev, { role: 'model', content: nextQuestionData.question }]);
       }
