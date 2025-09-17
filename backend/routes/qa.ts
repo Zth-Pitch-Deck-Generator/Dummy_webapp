@@ -64,7 +64,7 @@ const qaHandler: RequestHandler = async (req: Request, res: Response): Promise<v
         return;
     }
 
-    const MAX_QUESTIONS = 7;
+    const MAX_QUESTIONS = qaConfig.maxQuestions || qaConfig.questions.length;
     const userMessages = messages.filter((m) => m.role === "user");
     const nextQuestionIndex = userMessages.length;
 
