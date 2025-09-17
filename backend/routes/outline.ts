@@ -59,47 +59,99 @@ const handleOutline: any = async (req: any, res: any) => {
     let prompt;
     const deckSubtype = projectData.decktype;
 
+        // --- Dynamic Prompt Generation based on Deck Subtype ---
     if (deckSubtype === 'basic_pitch_deck') {
+        // Generates a highly empathetic and insightful outline for basic pitch decks.
+        // The AI is instructed to deeply understand, strategically synthesize,
+        // and implicitly highlight key information within concise bullet points.
+        // Output adheres to original Zod schema: title and bullet_points.
         prompt = `
-        Using the following interview transcript, create a pitch deck outline for a "Basic Pitch Deck".
-        The outline must contain exactly 8 slides with these specific titles in this order: "Cover", "Problem", "Solution", "Market Opportunity", "Traction", "Team", "Go-To-Market", and "The Ask".
-        For each slide, provide 2-3 concise bullet points synthesizing the user's answers. The "Cover" slide's bullet points should include the company name and tagline.
-        
-        Return ONLY a valid JSON array of exactly 8 slide objects:
+        You are a highly empathetic and perceptive strategic partner for a startup founder. Your goal is to transform their raw interview transcript into an incredibly compelling, 8-slide "Basic Pitch Deck" outline that makes them feel their vision has been *perfectly understood and articulated*.
+
+        **Your Mission:**
+        1.  **Deep Understanding:** Read the founder's transcript with utmost care, truly grasping their core idea, problem, solution, unique value, and strategic points.
+        2.  **Strategic Synthesis:** Do not just summarize. Synthesize the transcript into concise, impactful bullet points for each slide.
+        3.  **Highlight & Emphasize:** **Crucially, identify and highlight any standout information, key metrics, unique advantages, or particularly strong answers directly within the bullet points.** These should be woven in naturally, conveying their significance without explicit labels.
+        4.  **Client Delight:** Frame the content in a way that resonates deeply with the founder, making them feel like this outline is *exactly* what they envisioned, but better articulated.
+
+        **The outline must contain exactly 8 slides with these specific titles in this order:**
+        "Cover", "Problem", "Solution", "Market Opportunity", "Traction", "Team", "Go-To-Market", "The Ask"
+
+        **For each slide, you must:**
+        1.  Provide the exact "title" from the list above.
+        2.  Generate 3-4 highly synthesized and impactful "bullet_points" that capture the essence of the slide, naturally incorporating and highlighting any key insights or impressive data from the transcript. For the "Cover" slide, include the company name and a compelling tagline.
+
+        **Output Format:**
+        Return ONLY a valid JSON array of exactly 8 slide objects with this exact structure:
         [
-          { "title": "Cover", "bullet_points": string[], "data_needed": string[] },
-          { "title": "Problem", "bullet_points": string[], "data_needed": string[] },
-          { "title": "Solution", "bullet_points": string[], "data_needed": string[] },
-          { "title": "Market Opportunity", "bullet_points": string[], "data_needed": string[] },
-          { "title": "Traction", "bullet_points": string[], "data_needed": string[] },
-          { "title": "Team", "bullet_points": string[], "data_needed": string[] },
-          { "title": "Go-To-Market", "bullet_points": string[], "data_needed": string[] },
-          { "title": "The Ask", "bullet_points": string[], "data_needed": string[] }
+          {
+            "title": "Cover",
+            "bullet_points": string[]
+          },
+          {
+            "title": "Problem",
+            "bullet_points": string[]
+          },
+          {
+            "title": "Solution",
+            "bullet_points": string[]
+          },
+          {
+            "title": "Market Opportunity",
+            "bullet_points": string[]
+          },
+          {
+            "title": "Traction",
+            "bullet_points": string[]
+          },
+          {
+            "title": "Team",
+            "bullet_points": string[]
+          },
+          {
+            "title": "Go-To-Market",
+            "bullet_points": string[]
+          },
+          {
+            "title": "The Ask",
+            "bullet_points": string[]
+          }
         ]
 
         Transcript:"""${transcriptTxt}"""`;
     } else {
-        const slideCount = projectData.slide_count || 12;
-        prompt = `
-        Using the following interview transcript, create a ${slideCount}-slide pitch deck outline for a "${deckSubtype}" deck.
-        The outline should intelligently synthesize the user's answers into coherent slide content.
-        Return ONLY a valid JSON array of exactly ${slideCount} slide objects:
-        [
-          { "title": string, "bullet_points": string[], "data_needed": string[] },
-          ...
-        ]
+      // Prompt for other deck types, retaining original behavior for bullet_points and data_needed.
+      const slideCount = projectData.slide_count || 12;
+      prompt = `
+      Using the following interview transcript, create a ${slideCount}-slide pitch deck outline for a "${deckSubtype}" deck.
+      The outline should intelligently synthesize the user's answers into coherent slide content.
+      Return ONLY a valid JSON array of exactly ${slideCount} slide objects:
+      [
+        { "title": string, "bullet_points": string[], "data_needed": string[] },
+        ...
+      ]
 
-        Transcript:"""${transcriptTxt}"""`;
+      Transcript:"""${transcriptTxt}"""`;
     }
+    // --- End Dynamic Prompt Generation ---
 
     const outline = await geminiJson(prompt);
-
-    const slideSchema = z.object({
+    // --- Zod Schema Definitions & Conditional Validation ---
+    // Schema for basic_pitch_deck: only title and bullet_points.
+    const basicSlideSchema = z.object({
+      title: z.string(),
+      bullet_points: z.array(z.string()),
+    });
+    const otherDeckSlideSchema = z.object({
       title: z.string(),
       bullet_points: z.array(z.string()),
       data_needed: z.array(z.string()),
     });
-    const outlineSchema = z.array(slideSchema).min(1);
+    // Selects the appropriate Zod schema based on deck subtype for validation.
+    const outlineSchema = deckSubtype === 'basic_pitch_deck' 
+        ? z.array(basicSlideSchema).length(8)
+        : z.array(otherDeckSlideSchema).min(1);
+    // --- End Zod Schema Definitions & Conditional Validation ---
     const valid = outlineSchema.safeParse(outline);
     
     if (!valid.success) {
