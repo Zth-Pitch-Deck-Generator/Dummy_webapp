@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { geminiJson } from "../lib/geminiFlash.js";
 import multer from "multer";
+import { PDFExtract, PDFExtractResult } from "pdf.js-extract";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -16,33 +17,31 @@ const chatBodySchema = z.object({
   ),
 });
 
-const MAX_DECK_LENGTH = 15000; // Set a character limit for safety
+const MAX_DECK_LENGTH = 15000; // Limit content size for the API
 
 router.post("/analyze", upload.single('deck'), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       res.status(400).json({ error: "No file uploaded." });
-      return;
+      return ;
     }
 
-    const pdf = (await import('pdf-parse')).default;
-    
-    let deckContent;
-    try {
-      const data = await pdf(req.file.buffer);
-      deckContent = data.text;
-    } catch (pdfError) {
-      console.error("PDF parsing failed:", pdfError);
-      res.status(400).json({ error: "Could not read the uploaded PDF." });
-      return;
-    }
+    const pdfExtract = new PDFExtract();
+    // Correctly handle the buffer and assert the return type
+    const data: PDFExtractResult = await new Promise((resolve, reject) => {
+      pdfExtract.extractBuffer(req.file.buffer, {}, (err, data) => {
+        if (err) return reject(err);
+        resolve(data);
+      });
+    });
+
+    const deckContent = data.pages.map(page => page.content.map(item => item.str).join(' ')).join('\n');
 
     if (deckContent.length < 100) {
       res.status(400).json({ error: "The content of the PDF is too short to analyze." });
       return;
     }
 
-    // Truncate content to avoid exceeding API token limits
     const truncatedContent = deckContent.substring(0, MAX_DECK_LENGTH);
 
     const prompt = `
@@ -63,17 +62,16 @@ router.post("/analyze", upload.single('deck'), async (req: Request, res: Respons
 
   } catch (e: any) {
     console.error("Error in /api/investor-mockroom/analyze:", e);
-    res.status(500).json({ error: "Failed to analyze the pitch deck with the AI model.", message: e.message });
+    res.status(500).json({ error: "Failed to analyze the pitch deck.", message: e.message });
   }
 });
-
 
 router.post("/ask", async (req: Request, res: Response) => {
     try {
         const parsed = chatBodySchema.safeParse(req.body);
         if (!parsed.success) {
           res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
-          return;
+          return ;
         }
         const { deckContent, messages } = parsed.data;
 
