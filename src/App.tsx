@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ProjectSetupPage from "./pages/ProjectSetupPage";
 import BasicPitchDeckFlow from "./pages/BasicPitchDeckFlow";
+import InvestorMockRoomPage from "./pages/InvestorMockRoomPage";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/create" element={<ProjectSetupPage />} />
           <Route path="/create/basic-pitch-deck/:projectId" element={<BasicPitchDeckFlow />} />
+          <Route path="/investor-mock-room" element={<InvestorMockRoomPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
