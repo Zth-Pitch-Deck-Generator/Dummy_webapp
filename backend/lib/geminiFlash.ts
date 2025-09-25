@@ -1,29 +1,41 @@
-// backend/lib/geminiFlash.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const MODEL = "gemini-2.0-flash";
-const genAI = new GoogleGenerativeAI( process.env.GEMINI_API_KEY || "");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
 /**
- * Call Gemini-Flash and return parsed JSON.
- * Strips markdown code-fences if the model wraps its answer.
+ * A wrapper for the Gemini API that returns a JSON object.
+ * @param prompt The prompt to send to the AI.
+ * @returns A JSON object.
  */
-export async function geminiJson(prompt: string): Promise<any> {
-  const model = genAI.getGenerativeModel({ model: MODEL });
-
-  const { response } = await model.generateContent(prompt);
-  let text = response.text().trim();
-
-  // ────── remove ```json … `````` … ```
-  if (text.startsWith("```")) {
-    text = text
-      .replace(/^```[^\n]*\n?/, "")       // opening fence
-      .replace(/\s*```$/, "");            // closing fence
-  }
-
+export async function geminiJson(prompt: string) {
   try {
-    return JSON.parse(text);
-  } catch (err) {
-    console.error("Gemini JSON parse failed\n----- RAW TEXT -----\n" + text);
-    throw err;        // will be caught in the calling route
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const rawText = response.text().replace(/^```json\s*|```\s*$/g, "");
+    return JSON.parse(rawText);
+  } catch (e) {
+    console.error("Gemini JSON parse failed");
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    console.log("----- RAW TEXT -----");
+    console.log(response.text());
+    throw e;
+  }
+}
+
+/**
+ * A new function that returns a plain text string from the Gemini API.
+ * @param prompt The prompt to send to the AI.
+ * @returns A string of text.
+ */
+export async function geminiText(prompt: string): Promise<string> {
+  try {
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    return response.text();
+  } catch (e) {
+    console.error("Gemini text generation failed:", e);
+    return "Sorry, I encountered an error while generating a response.";
   }
 }
