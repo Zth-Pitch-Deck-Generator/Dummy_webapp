@@ -21,17 +21,28 @@ const MAX_DECK_LENGTH = 15000; // Limit content size for the API
 
 router.post("/analyze", upload.single('deck'), async (req: Request, res: Response) => {
   try {
+    // This check handles the 'undefined' possibility for req.file
     if (!req.file) {
       res.status(400).json({ error: "No file uploaded." });
-      return ;
+      return;
     }
 
+    const fileBuffer = req.file.buffer; // Store the buffer in a variable
+
     const pdfExtract = new PDFExtract();
-    // Correctly handle the buffer and assert the return type
+    
+    // Correctly handle the buffer and the potentially undefined result
     const data: PDFExtractResult = await new Promise((resolve, reject) => {
-      pdfExtract.extractBuffer(req.file.buffer, {}, (err, data) => {
-        if (err) return reject(err);
-        resolve(data);
+      pdfExtract.extractBuffer(fileBuffer, {}, (err, data) => {
+        if (err) {
+          return reject(err);
+        }
+        // Ensure data is not undefined before resolving
+        if (data) {
+          resolve(data);
+        } else {
+          reject(new Error("Failed to extract data from PDF."));
+        }
       });
     });
 
@@ -71,7 +82,7 @@ router.post("/ask", async (req: Request, res: Response) => {
         const parsed = chatBodySchema.safeParse(req.body);
         if (!parsed.success) {
           res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
-          return ;
+          return;
         }
         const { deckContent, messages } = parsed.data;
 
