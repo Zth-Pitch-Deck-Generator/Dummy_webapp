@@ -1,8 +1,8 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { geminiJson, geminiText } from "../lib/geminiFlash.js"; // Import geminiText
+import { geminiJson, geminiText } from "../lib/geminiFlash.js";
 import multer from "multer";
-import { PDFExtract, PDFExtractResult } from "pdf.js-extract";
+import pdf from "pdf-parse"; // <-- 1. Import pdf-parse
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -28,18 +28,12 @@ router.post(
         res.status(400).json({ error: "No file uploaded." });
         return;
       }
-      const fileBuffer = req.file.buffer;
-      const pdfExtract = new PDFExtract();
-      const data: PDFExtractResult = await new Promise((resolve, reject) => {
-        pdfExtract.extractBuffer(fileBuffer, {}, (err, data) => {
-          if (err) return reject(err);
-          if (data) return resolve(data);
-          reject(new Error("Failed to extract data from PDF."));
-        });
-      });
-      const deckContent = data.pages
-        .map((page) => page.content.map((item) => item.str).join(" "))
-        .join("\n");
+
+      // --- 2. Use pdf-parse to extract text ---
+      const data = await pdf(req.file.buffer);
+      const deckContent = data.text;
+      // -----------------------------------------
+
       if (deckContent.length < 100) {
         res
           .status(400)
@@ -86,16 +80,16 @@ router.post("/ask", async (req: Request, res: Response) => {
 You are an expert VC analyst acting as a mock investor.
 
 Carefully read the pitch deck content below and the conversation history, then ONLY answer the most recent user question.
-DO NOT repeat or rephrase the user's question in your answer. 
+DO NOT repeat or rephrase the user's question in your answer.
 If you need to infer from the deck, do so, and make relevant, thoughtful assumptions if explicit data is missing.
 Do not repeat or rephrase the user's question.
-Do not include the user's question, any "User:", "AI:", or similar labels in your answer. 
-Only return a direct answer, in the form of numbered points (1., 2., 3., ...). 
+Do not include the user's question, any "User:", "AI:", or similar labels in your answer.
+Only return a direct answer, in the form of numbered points (1., 2., 3., ...).
 Use paragraph-style points where detail is needed, but never just restate the user query.
 
 Pitch Deck Content:
 """
-${deckContent.substring(0, MAX_DECK_LENGTH)} 
+${deckContent.substring(0, MAX_DECK_LENGTH)}
 """
 
 Previous chat for context (do **not** reference directly):
@@ -109,8 +103,6 @@ Example output (for any question):
 Always output **only** numbered points directly answering the latest user question, without repeating or rephrasing the user's prompt.
 `;
 
-
-    // Use the new geminiText function here
     const responseText = await geminiText(prompt);
     res.json({ answer: responseText });
   } catch (e: any) {
