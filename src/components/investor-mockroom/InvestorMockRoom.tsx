@@ -63,32 +63,43 @@ export function InvestorMockRoom() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Investor Mock Room</CardTitle>
-        <CardDescription>
-          Upload your pitch deck (PDF) to get AI-powered feedback and practice your pitch.
+    <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-0 shadow-xl rounded-2xl">
+      <CardHeader className="text-center space-y-2 py-8">
+        <CardTitle className="font-bold text-3xl text-blue-900 tracking-tight">
+          Investor Mock Room
+        </CardTitle>
+        <CardDescription className="text-blue-700 text-lg">
+          Upload your pitch deck (PDF) to get <span className="font-semibold">AI-powered feedback</span> and practice your pitch with a mock investor.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-col items-center border-2 border-dashed border-gray-300 p-8 rounded-lg">
-          <Upload className="w-12 h-12 text-gray-400" />
-          <p className="mt-4 text-sm text-gray-600">
+      <CardContent className="flex flex-col items-center gap-6 pb-8">
+        <div className="w-full flex flex-col items-center border-4 border-dashed border-blue-300 p-8 rounded-xl bg-white shadow-lg transition duration-300 hover:border-blue-600">
+          <Upload className="w-16 h-16 text-blue-400" />
+          <label htmlFor="deck-upload" className="cursor-pointer text-blue-800 font-medium mt-4 hover:underline">
             {fileName || "Click to browse and upload your pitch deck."}
-          </p>
-          <Input id="deck-upload" type="file" className="sr-only" onChange={handleFileChange} accept=".pdf" />
-          <Button asChild className="mt-4">
-            <label htmlFor="deck-upload">Browse File</label>
+            <Input
+              id="deck-upload"
+              type="file"
+              className="sr-only"
+              onChange={handleFileChange}
+              accept=".pdf"
+            />
+          </label>
+          <Button
+            onClick={handleAnalyze}
+            disabled={!deckFile || isLoading}
+            className="mt-8 w-52 text-lg bg-blue-600 hover:bg-blue-700 transition duration-200 rounded-full shadow flex items-center justify-center"
+          >
+            {isLoading ? <span className="animate-spin mr-2 w-5 h-5 rounded-full border-4 border-blue-300 border-t-blue-600" /> : null}
+            {isLoading ? "Analyzing..." : "Analyze Deck"}
           </Button>
         </div>
-        <Button onClick={handleAnalyze} disabled={!deckFile || isLoading} className="w-full mt-4">
-          {isLoading ? "Analyzing..." : "Analyze Deck"}
-        </Button>
+
         {analysis && deckContent && (
-          <>
+          <div className="w-full">
             <AnalysisDisplay keyElements={analysis.keyElements} potentialQuestions={analysis.potentialQuestions} />
             <ChatInterface deckContent={deckContent} />
-          </>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -19,28 +19,35 @@ const chatBodySchema = z.object({
 
 const MAX_DECK_LENGTH = 15000;
 
-router.post("/analyze", upload.single('deck'), async (req: Request, res: Response) => {
-  try {
-    if (!req.file) {
-      res.status(400).json({ error: "No file uploaded." });
-      return;
-    }
-    const fileBuffer = req.file.buffer;
-    const pdfExtract = new PDFExtract();
-    const data: PDFExtractResult = await new Promise((resolve, reject) => {
-      pdfExtract.extractBuffer(fileBuffer, {}, (err, data) => {
-        if (err) return reject(err);
-        if (data) return resolve(data);
-        reject(new Error("Failed to extract data from PDF."));
+router.post(
+  "/analyze",
+  upload.single("deck"),
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        res.status(400).json({ error: "No file uploaded." });
+        return;
+      }
+      const fileBuffer = req.file.buffer;
+      const pdfExtract = new PDFExtract();
+      const data: PDFExtractResult = await new Promise((resolve, reject) => {
+        pdfExtract.extractBuffer(fileBuffer, {}, (err, data) => {
+          if (err) return reject(err);
+          if (data) return resolve(data);
+          reject(new Error("Failed to extract data from PDF."));
+        });
       });
-    });
-    const deckContent = data.pages.map(page => page.content.map(item => item.str).join(' ')).join('\n');
-    if (deckContent.length < 100) {
-      res.status(400).json({ error: "The content of the PDF is too short to analyze." });
-      return;
-    }
-    const truncatedContent = deckContent.substring(0, MAX_DECK_LENGTH);
-    const prompt = `
+      const deckContent = data.pages
+        .map((page) => page.content.map((item) => item.str).join(" "))
+        .join("\n");
+      if (deckContent.length < 100) {
+        res
+          .status(400)
+          .json({ error: "The content of the PDF is too short to analyze." });
+        return;
+      }
+      const truncatedContent = deckContent.substring(0, MAX_DECK_LENGTH);
+      const prompt = `
       You are an expert VC analyst. Analyze the following pitch deck content and provide:
       1.  **Key Elements**: A list of the strongest elements that will attract investors.
       2.  **Potential Questions**: A list of questions an investor might ask about this pitch.
@@ -50,42 +57,68 @@ router.post("/analyze", upload.single('deck'), async (req: Request, res: Respons
       """
       Return a single, valid JSON object with two keys: "keyElements" and "potentialQuestions".
     `;
-    const analysis = await geminiJson(prompt);
-    res.json({ ...analysis, deckContent });
-  } catch (e: any) {
-    console.error("Error in /api/investor-mockroom/analyze:", e);
-    res.status(500).json({ error: "Failed to analyze the pitch deck.", message: e.message });
+      const analysis = await geminiJson(prompt);
+      res.json({ ...analysis, deckContent });
+    } catch (e: any) {
+      console.error("Error in /api/investor-mockroom/analyze:", e);
+      res.status(500).json({
+        error: "Failed to analyze the pitch deck.",
+        message: e.message,
+      });
+    }
   }
-});
+);
 
 router.post("/ask", async (req: Request, res: Response) => {
-    try {
-        const parsed = chatBodySchema.safeParse(req.body);
-        if (!parsed.success) {
-          res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
-          return ;
-        }
-        const { deckContent, messages } = parsed.data;
-        const conversationHistory = messages.map(m => `${m.role}: ${m.content}`).join('\n');
-        const prompt = `
-        You are an expert VC analyst acting as a mock investor.
-        Answer the user's questions based on the provided deck content.
-        Pitch Deck Content:
-        """
-        ${deckContent.substring(0, MAX_DECK_LENGTH)} 
-        """
-        Conversation History:
-        ${conversationHistory}
-        Provide a concise and helpful answer to the last user question.
-        `;
-        // Use the new geminiText function here
-        const responseText = await geminiText(prompt); 
-        res.json({ answer: responseText });
-
-    } catch (e: any) {
-        console.error("Error in /api/investor-mockroom/ask:", e);
-        res.status(500).json({ error: "Failed to get an answer.", message: e.message });
+  try {
+    const parsed = chatBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res
+        .status(400)
+        .json({ error: "Invalid payload", details: parsed.error.flatten() });
+      return;
     }
+    const { deckContent, messages } = parsed.data;
+    const conversationHistory = messages
+      .map((m) => `${m.role}: ${m.content}`)
+      .join("\n");
+    const prompt = `
+You are an expert VC analyst acting as a mock investor.
+
+Carefully read the pitch deck content below and the conversation history, then ONLY answer the most recent user question.
+DO NOT repeat or rephrase the user's question in your answer. 
+If you need to infer from the deck, do so, and make relevant, thoughtful assumptions if explicit data is missing.
+Do not repeat or rephrase the user's question.
+Do not include the user's question, any "User:", "AI:", or similar labels in your answer. 
+Only return a direct answer, in the form of numbered points (1., 2., 3., ...). 
+Use paragraph-style points where detail is needed, but never just restate the user query.
+
+Pitch Deck Content:
+"""
+${deckContent.substring(0, MAX_DECK_LENGTH)} 
+"""
+
+Previous chat for context (do **not** reference directly):
+${conversationHistory}
+
+Example output (for any question):
+1. Direct, fact-based answer part one.
+2. Deeper explanation or calculation, if required.
+3. Further points as needed.
+
+Always output **only** numbered points directly answering the latest user question, without repeating or rephrasing the user's prompt.
+`;
+
+
+    // Use the new geminiText function here
+    const responseText = await geminiText(prompt);
+    res.json({ answer: responseText });
+  } catch (e: any) {
+    console.error("Error in /api/investor-mockroom/ask:", e);
+    res
+      .status(500)
+      .json({ error: "Failed to get an answer.", message: e.message });
+  }
 });
 
 export default router;
