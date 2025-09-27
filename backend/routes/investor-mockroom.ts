@@ -2,17 +2,18 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { geminiJson, geminiText } from "../lib/geminiFlash.js";
 import pdf from "pdf-parse";
-import fetch from "node-fetch"; // Switched to node-fetch for robustness
+import fetch from "node-fetch";
 
 const router = Router();
 
-// Zod schema to validate that the request body contains a valid URL
 const analyzeBodySchema = z.object({
   deckUrl: z.string().url("A valid URL for the pitch deck is required."),
 });
 
+// --- FIX #1: Make deckContent optional ---
+// The backend will no longer require the full deck text for follow-up questions.
 const chatBodySchema = z.object({
-  deckContent: z.string().min(100),
+  deckContent: z.string().optional(), // Changed from .min(100) to .optional()
   messages: z.array(
     z.object({
       role: z.enum(["user", "model"]),
@@ -23,10 +24,8 @@ const chatBodySchema = z.object({
 
 const MAX_DECK_LENGTH = 15000;
 
-// This endpoint is now much cleaner and only handles URLs.
 router.post("/analyze", async (req: Request, res: Response) => {
   try {
-    // 1. Validate the incoming request has a `deckUrl`
     const parsed = analyzeBodySchema.safeParse(req.body);
     if (!parsed.success) {
       return res
@@ -35,7 +34,6 @@ router.post("/analyze", async (req: Request, res: Response) => {
     }
     const { deckUrl } = parsed.data;
 
-    // 2. Fetch the PDF from the Supabase URL
     const pdfResponse = await fetch(deckUrl);
     if (!pdfResponse.ok) {
       throw new Error(`Failed to fetch PDF from URL: ${pdfResponse.statusText}`);
@@ -43,7 +41,6 @@ router.post("/analyze", async (req: Request, res: Response) => {
     const fileBuffer = await pdfResponse.arrayBuffer();
     const buffer = Buffer.from(fileBuffer);
 
-    // 3. (THE FIX) Use pdf-parse ONLY with the buffer from the fetched file
     const data = await pdf(buffer);
     const deckContent = data.text;
 
@@ -79,15 +76,18 @@ router.post("/ask", async (req: Request, res: Response) => {
   try {
     const parsed = chatBodySchema.safeParse(req.body);
     if (!parsed.success) {
-      res
+      return res
         .status(400)
         .json({ error: "Invalid payload", details: parsed.error.flatten() });
-      return;
     }
-    const { deckContent, messages } = parsed.data;
+    // We only need the messages now, deckContent is not used for follow-ups
+    const { messages } = parsed.data;
     const conversationHistory = messages
       .map((m) => `${m.role}: ${m.content}`)
       .join("\n");
+
+    // --- FIX #2: Simplified prompt for follow-up questions ---
+    // The prompt now relies only on the conversation history.
     const prompt = `
 You are an expert VC analyst acting as a mock investor.
 
@@ -98,11 +98,6 @@ Do not repeat or rephrase the user's question.
 Do not include the user's question, any "User:", "AI:", or similar labels in your answer.
 Only return a direct answer, in the form of numbered points (1., 2., 3., ...).
 Use paragraph-style points where detail is needed, but never just restate the user query.
-
-Pitch Deck Content:
-"""
-${deckContent.substring(0, MAX_DECK_LENGTH)}
-"""
 
 Previous chat for context (do **not** reference directly):
 ${conversationHistory}
