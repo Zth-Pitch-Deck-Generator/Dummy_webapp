@@ -1,5 +1,5 @@
 // backend/server.ts
-import express from "express";
+import express, { Request, Response, NextFunction } from "express"; // Import types
 import cors from "cors";
 import "dotenv/config";
 import projectsRouter from "./routes/projects.js";
@@ -7,7 +7,7 @@ import qaRouter from "./routes/qa.js";
 import outlineRouter from "./routes/outline.js";
 import templateRouter from "./routes/template.js";
 import generateDeckRouter from "./routes/generate-deck.js";
-import deckRouter from "./routes/deck.js"; // Import the new router
+import deckRouter from "./routes/deck.js";
 import investorMockRoomRouter from "./routes/investor-mockroom.js";
 
 const app = express();
@@ -30,17 +30,23 @@ app.use("/api/qa", qaRouter);
 app.use("/api/outline", outlineRouter);
 app.use("/api/template", templateRouter);
 app.use("/api/generate-deck", generateDeckRouter);
-app.use("/api/deck", deckRouter); // Use the new deck router
+app.use("/api/deck", deckRouter);
 app.use("/api/investor-mockroom", investorMockRoomRouter);
+
 /* Health Check Endpoint */
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-/* Error Handling Middleware */
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'A server error occurred' });
+/* --- THE FIX: Enhanced Error Handling Middleware --- */
+// This middleware ensures that ANY unhandled error in the application
+// will still return a clean JSON response.
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error(err.stack); // Log the full error for debugging
+  res.status(500).json({
+    error: 'An unexpected server error occurred.',
+    message: err.message // Provide the error message
+  });
 });
 
 /* Server Startup */

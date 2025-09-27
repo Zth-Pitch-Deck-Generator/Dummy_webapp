@@ -1,3 +1,5 @@
+// backend/routes/investor-mockroom.ts
+
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { geminiJson, geminiText } from "../lib/geminiFlash.js";
@@ -10,10 +12,8 @@ const analyzeBodySchema = z.object({
   deckUrl: z.string().url("A valid URL for the pitch deck is required."),
 });
 
-// --- FIX #1: Make deckContent optional ---
-// The backend will no longer require the full deck text for follow-up questions.
 const chatBodySchema = z.object({
-  deckContent: z.string().optional(), // Changed from .min(100) to .optional()
+  deckContent: z.string().optional(),
   messages: z.array(
     z.object({
       role: z.enum(["user", "model"]),
@@ -65,6 +65,7 @@ router.post("/analyze", async (req: Request, res: Response) => {
     res.json({ ...analysis, deckContent });
   } catch (e: any) {
     console.error("Error in /api/investor-mockroom/analyze:", e);
+    // This is the correct way to handle errors - always returning JSON.
     res.status(500).json({
       error: "Failed to analyze the pitch deck.",
       message: e.message,
@@ -80,40 +81,27 @@ router.post("/ask", async (req: Request, res: Response) => {
         .status(400)
         .json({ error: "Invalid payload", details: parsed.error.flatten() });
     }
-    // We only need the messages now, deckContent is not used for follow-ups
     const { messages } = parsed.data;
     const conversationHistory = messages
       .map((m) => `${m.role}: ${m.content}`)
       .join("\n");
 
-    // --- FIX #2: Simplified prompt for follow-up questions ---
-    // The prompt now relies only on the conversation history.
     const prompt = `
-You are an expert VC analyst acting as a mock investor.
+You are an expert VC analyst acting as a mock investor. You have already analyzed a pitch deck.
+Based ONLY on the conversation history below, provide a direct answer to the most recent user question.
+Do not repeat the user's question. Respond in numbered points (1., 2., 3., ...).
 
-Carefully read the pitch deck content below and the conversation history, then ONLY answer the most recent user question.
-DO NOT repeat or rephrase the user's question in your answer.
-If you need to infer from the deck, do so, and make relevant, thoughtful assumptions if explicit data is missing.
-Do not repeat or rephrase the user's question.
-Do not include the user's question, any "User:", "AI:", or similar labels in your answer.
-Only return a direct answer, in the form of numbered points (1., 2., 3., ...).
-Use paragraph-style points where detail is needed, but never just restate the user query.
-
-Previous chat for context (do **not** reference directly):
+Conversation History:
 ${conversationHistory}
 
-Example output (for any question):
-1. Direct, fact-based answer part one.
-2. Deeper explanation or calculation, if required.
-3. Further points as needed.
-
-Always output **only** numbered points directly answering the latest user question, without repeating or rephrasing the user's prompt.
+Your task is to act as the investor and directly answer the last user message in the history.
 `;
 
     const responseText = await geminiText(prompt);
     res.json({ answer: responseText });
   } catch (e: any) {
     console.error("Error in /api/investor-mockroom/ask:", e);
+    // This is also correct.
     res
       .status(500)
       .json({ error: "Failed to get an answer.", message: e.message });
