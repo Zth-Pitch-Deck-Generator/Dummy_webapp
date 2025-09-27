@@ -12,8 +12,8 @@ import { AnalysisDisplay } from "./AnalysisDisplay";
 import { ChatInterface } from "./ChatInterface";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase"; // Make sure you have this file configured
-import { v4 as uuidv4 } from "uuid"; // To generate unique file names
+import { supabase } from "@/lib/supabase";
+import { v4 as uuidv4 } from "uuid";
 
 export function InvestorMockRoom() {
   const [deckFile, setDeckFile] = useState<File | null>(null);
@@ -25,7 +25,7 @@ export function InvestorMockRoom() {
   const [isLoading, setIsLoading] = useState(false);
   const [fileName, setFileName] = useState("");
 
-  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB in bytes
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -57,7 +57,7 @@ export function InvestorMockRoom() {
       const filePath = `public/${newFileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("Investor_mockroom_decks") // Correct bucket name
+        .from("Investor_mockroom_decks") // Your correct bucket name
         .upload(filePath, deckFile);
 
       if (uploadError) {

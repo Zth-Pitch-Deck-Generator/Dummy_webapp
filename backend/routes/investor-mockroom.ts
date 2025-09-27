@@ -2,12 +2,13 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { geminiJson, geminiText } from "../lib/geminiFlash.js";
 import pdf from "pdf-parse";
-import fetch from "node-fetch";
+import fetch from "node-fetch"; // Switched to node-fetch for robustness
 
 const router = Router();
 
+// Zod schema to validate that the request body contains a valid URL
 const analyzeBodySchema = z.object({
-  deckUrl: z.string().url("Invalid URL provided."),
+  deckUrl: z.string().url("A valid URL for the pitch deck is required."),
 });
 
 const chatBodySchema = z.object({
@@ -22,30 +23,34 @@ const chatBodySchema = z.object({
 
 const MAX_DECK_LENGTH = 15000;
 
+// This endpoint is now much cleaner and only handles URLs.
 router.post("/analyze", async (req: Request, res: Response) => {
   try {
+    // 1. Validate the incoming request has a `deckUrl`
     const parsed = analyzeBodySchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
-      return;
+      return res
+        .status(400)
+        .json({ error: "Invalid payload", details: parsed.error.flatten() });
     }
     const { deckUrl } = parsed.data;
 
+    // 2. Fetch the PDF from the Supabase URL
     const pdfResponse = await fetch(deckUrl);
     if (!pdfResponse.ok) {
-      throw new Error(
-        `Failed to fetch PDF from URL: ${pdfResponse.statusText}`
-      );
+      throw new Error(`Failed to fetch PDF from URL: ${pdfResponse.statusText}`);
     }
     const fileBuffer = await pdfResponse.arrayBuffer();
     const buffer = Buffer.from(fileBuffer);
 
+    // 3. (THE FIX) Use pdf-parse ONLY with the buffer from the fetched file
     const data = await pdf(buffer);
     const deckContent = data.text;
 
     if (deckContent.length < 100) {
-      res.status(400).json({ error: "The content of the PDF is too short to analyze." });
-      return;
+      return res
+        .status(400)
+        .json({ error: "The content of the PDF is too short to analyze." });
     }
 
     const truncatedContent = deckContent.substring(0, MAX_DECK_LENGTH);
