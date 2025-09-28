@@ -8,9 +8,7 @@
     {
       "src": "package.json",
       "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "config": { "distDir": "dist" }
     }
   ],
   "routes": [
@@ -19,8 +17,12 @@
       "dest": "backend/server.ts"
     },
     {
-      "src": "/(.*)",
+      "src": "/(.*\\.js|.*\\.css|.*\\.svg|.*\\.png|.*\\.jpg|.*\\.ico|.*\\.txt|robots\\.txt)",
       "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }

@@ -55,8 +55,8 @@ router.post("/analyze", async (req: Request, res: Response) => {
     const truncatedContent = deckContent.substring(0, MAX_DECK_LENGTH);
     const prompt = `
       You are an expert VC analyst. Analyze the following pitch deck content and provide:
-      1.  **Key Elements**: A list of the strongest elements that will attract investors.
-      2.  **Potential Questions**: A list of questions an investor might ask about this pitch.
+      1.  Key Elements: A list of the strongest elements that will attract investors.
+      2.  Potential Questions: A list of questions an investor might ask about this pitch.
       Pitch Deck Content:
       """
       ${truncatedContent}
@@ -89,14 +89,23 @@ router.post("/ask", async (req: Request, res: Response) => {
       .join("\n");
 
     const prompt = `
-You are an expert VC analyst acting as a mock investor. You have already analyzed a pitch deck.
-Based ONLY on the conversation history below, provide a direct answer to the most recent user question.
-Do not repeat the user's question. Respond in numbered points (1., 2., 3., ...).
+You are an expert VC analyst acting as a mock investor.
+DO NOT repeat or rephrase the user's question in your answer.
+If you need to infer from the deck, do so, and make relevant, thoughtful assumptions if explicit data is missing.
+Do not repeat or rephrase the user's question.
+Do not include the user's question, any "User:", "AI:", or similar labels in your answer.
+Only return a direct answer, in the form of numbered points (1., 2., 3., ...).
+Use paragraph-style points where detail is needed, but never just restate the user query.
 
-Conversation History:
+Previous chat for context (do **not** reference directly):
 ${conversationHistory}
 
-Your task is to act as the investor and directly answer the last user message in the history.
+Example output (for any question):
+1. Direct, fact-based answer part one.
+2. Deeper explanation or calculation, if required.
+3. Further points as needed.
+
+Always output only numbered points directly answering the latest user question and Use paragraph-style points where detail is needed, without repeating or rephrasing the user's prompt.
 `;
 
     const responseText = await geminiText(prompt);
