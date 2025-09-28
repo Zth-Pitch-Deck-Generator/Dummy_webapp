@@ -108,8 +108,8 @@ export function InvestorMockRoom() {
           Investor Mock Room
         </CardTitle>
         <CardDescription className="text-blue-700 text-lg">
-          Upload your pitch deck (PDF, max 5MB) to get{" "}
-          <span className="font-semibold">AI-powered feedback</span> and
+          Upload your pitch deck (PDF, max 5MB upto 15 slides) to get feedback from our {" "}
+          <span className="font-semibold">Smart Engine Deck</span> and
           practice your pitch with a mock investor.
         </CardDescription>
       </CardHeader>

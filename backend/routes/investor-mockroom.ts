@@ -61,6 +61,7 @@ router.post("/analyze", async (req: Request, res: Response) => {
       """
       ${truncatedContent}
       """
+      Don’t include quotation marks in the text being returned.
       Return a single, valid JSON object with two keys: "keyElements" and "potentialQuestions".
     `;
     const analysis = await geminiJson(prompt);
@@ -97,7 +98,7 @@ Do not include the user's question, any "User:", "AI:", or similar labels in you
 Only return a direct answer, in the form of numbered points (1., 2., 3., ...).
 Use paragraph-style points where detail is needed, but never just restate the user query.
 
-Previous chat for context (do **not** reference directly):
+Previous chat for context (do not reference directly):
 ${conversationHistory}
 
 Example output (for any question):
@@ -105,6 +106,7 @@ Example output (for any question):
 2. Deeper explanation or calculation, if required.
 3. Further points as needed.
 
+Don’t include quotation marks in the text being returned.
 Always output only numbered points directly answering the latest user question and Use paragraph-style points where detail is needed, without repeating or rephrasing the user's prompt.
 `;
 
