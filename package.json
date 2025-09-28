@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "postinstall": "patch-package",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
@@ -64,6 +65,7 @@
     "next-themes": "^0.3.0",
     "node-fetch": "^3.3.2",
     "openai": "^5.9.0",
+    "patch-package": "^8.0.0",
     "pdf-parse": "^1.1.1",
     "pdf.js-extract": "^0.2.1",
     "pptx-parser": "^1.1.7-beta.9",
