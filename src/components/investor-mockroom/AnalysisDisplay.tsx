@@ -20,12 +20,12 @@ export function AnalysisDisplay({
             Key Elements for Investors
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <ul className="space-y-3 list-disc ml-6 text-blue-800 text-lg">
+        <CardContent className="text-left">{/* ADD text-left here */}
+          <ul className="space-y-3 list-disc ml-6 text-blue-800 text-lg text-left">{/* ADD text-left here */}
             {keyElements.length
               ? keyElements.map((element, idx) => (
-                  <li key={idx} className="pl-2">{element}</li>
-                ))
+                <li key={idx} className="pl-2">{element}</li>
+              ))
               : <li className="text-gray-400">No key elements found.</li>
             }
           </ul>
@@ -40,12 +40,12 @@ export function AnalysisDisplay({
             Potential Investor Questions
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <ul className="space-y-3 list-disc ml-6 text-blue-800 text-lg">
+        <CardContent className="text-left">{/* ADD text-left here */}
+          <ul className="space-y-3 list-disc ml-6 text-blue-800 text-lg text-left">{/* ADD text-left here */}
             {potentialQuestions.length
               ? potentialQuestions.map((question, idx) => (
-                  <li key={idx} className="pl-2">{question}</li>
-                ))
+                <li key={idx} className="pl-2">{question}</li>
+              ))
               : <li className="text-gray-400">No potential questions found.</li>
             }
           </ul>

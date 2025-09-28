@@ -55,7 +55,7 @@ export function ChatInterface({ deckContent }: ChatInterfaceProps) {
   };
 
   const Avatar = ({ role }: { role: "user" | "model" }) => (
-    <div className={cn("w-8 h-8 flex items-center justify-center rounded-full shadow-inner", 
+    <div className={cn("w-8 h-8 flex items-center justify-center rounded-full shadow-inner",
       role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
     )}>
       {role === "user" ? <User size={16} /> : <Bot size={16} />}
@@ -69,16 +69,31 @@ export function ChatInterface({ deckContent }: ChatInterfaceProps) {
         {messages.map((msg, idx) => (
           <div key={idx} className={cn("flex items-start gap-3", msg.role === "user" ? "justify-end" : "justify-start")}>
             {msg.role !== "user" && <Avatar role="model" />}
-            <div className={cn("max-w-xl px-4 py-2.5 rounded-xl prose prose-sm", 
+            <div className={cn(
+              "max-w-xl px-4 py-2.5 rounded-xl prose prose-sm",
               msg.role === "user"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted"
-              )}>
-              <ReactMarkdown>{msg.content}</ReactMarkdown>
+                ? "bg-primary text-primary-foreground text-center"
+                : "bg-muted text-left"
+            )}>
+              {/* For bot/model messages: custom list rendering */}
+              {msg.role === "model"
+                ? (
+                  <ul className="space-y-3 list-disc ml-6 text-blue-800 text-lg">
+                    {msg.content
+                      .split(/\n\d+\.\s+/) // split each numbered point
+                      .filter(Boolean)
+                      .map((point, i) => (
+                        <li key={i}>{point.trim().replace(/^\d+\.\s*/, "")}</li>
+                      ))}
+                  </ul>
+                )
+                : <ReactMarkdown>{msg.content}</ReactMarkdown> /* user message as usual */
+              }
             </div>
             {msg.role === "user" && <Avatar role="user" />}
           </div>
         ))}
+
         {isLoading && (
           <div className="flex items-center gap-3 justify-start">
             <Avatar role="model" />

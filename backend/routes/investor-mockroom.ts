@@ -36,7 +36,9 @@ router.post("/analyze", async (req: Request, res: Response) => {
 
     const pdfResponse = await fetch(deckUrl);
     if (!pdfResponse.ok) {
-      throw new Error(`Failed to fetch PDF from URL: ${pdfResponse.statusText}`);
+      throw new Error(
+        `Failed to fetch PDF from URL: ${pdfResponse.statusText}`
+      );
     }
     const fileBuffer = await pdfResponse.arrayBuffer();
     const buffer = Buffer.from(fileBuffer);
@@ -90,24 +92,26 @@ router.post("/ask", async (req: Request, res: Response) => {
       .join("\n");
 
     const prompt = `
-You are an expert VC analyst acting as a mock investor.
-DO NOT repeat or rephrase the user's question in your answer.
-If you need to infer from the deck, do so, and make relevant, thoughtful assumptions if explicit data is missing.
-Do not repeat or rephrase the user's question.
-Do not include the user's question, any "User:", "AI:", or similar labels in your answer.
-Only return a direct answer, in the form of numbered points (1., 2., 3., ...).
-Use paragraph-style points where detail is needed, but never just restate the user query.
+You are an expert VC analyst acting as a mock investor. Your task is to answer the user's question based on the provided pitch deck content and conversation history.
 
-Previous chat for context (do not reference directly):
+Conversation History for Context:
+"""
 ${conversationHistory}
+"""
 
-Example output (for any question):
-1. Direct, fact-based answer part one.
-2. Deeper explanation or calculation, if required.
-3. Further points as needed.
+Your Instructions:
+1. **Always format your response as a numbered list**, starting each point with its number (e.g., "1.", "2.").
+2. **Each answer MUST be split into individual points**. Use paragraph-style sentences for each point where more explanation/detail is needed, but never combine multiple concepts into a single block paragraph or summary.
+3. **Start your response immediately with "1." without any greeting, preamble, or restatement of the user's question.**
+4. **Make expert assumptions ONLY where specific info is missing, and clearly state "Assumption:" at the start of those points.**
+5. **Do NOT include any extra labels or formatting ("User:", "AI:", "Answer:", etc.).**
+6. **Each point must stand alone as an independent explanation, fact, or logical step. Do not bundle points together.**
+7. **Be as concise and direct as possible.**
 
-Don’t include quotation marks in the text being returned.
-Always output only numbered points directly answering the latest user question and Use paragraph-style points where detail is needed, without repeating or rephrasing the user's prompt.
+Example response:
+1. Our customer acquisition cost is currently estimated at $150 per user.
+2. Assumption: As the deck does not specify marketing channels, I assume organic reach will improve post-launch, driving costs down.
+3. We project CAC to decrease to under $100 with scaled marketing.
 `;
 
     const responseText = await geminiText(prompt);
