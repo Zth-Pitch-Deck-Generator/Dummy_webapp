@@ -41,7 +41,9 @@ router.post("/analyze", async (req: Request, res: Response) => {
     const fileBuffer = await pdfResponse.arrayBuffer();
     const buffer = Buffer.from(fileBuffer);
 
-    const data = await pdf(buffer);
+    const data = await pdf(buffer, {
+      pagerender: (pageData) => pageData.getTextContent(),
+    });
     const deckContent = data.text;
 
     if (deckContent.length < 100) {
