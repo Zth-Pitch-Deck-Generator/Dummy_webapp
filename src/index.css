@@ -4,7 +4,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Premium Swiss-inspired design system */
+@tailwind utilities;
+
+/* The Fix: Global styles to prevent horizontal overflow */
+html,
+body {
+  width: 100vw;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  margin: 0 auto;
+  text-align: center;
+}
 
 @layer base {
   :root {
