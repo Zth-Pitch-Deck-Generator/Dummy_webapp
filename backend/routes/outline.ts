@@ -19,14 +19,15 @@ const handleOutline: any = async (req: any, res: any) => {
 
     const { projectId, regenerate } = parse.data;
 
-    if (!regenerate) {
+if (!regenerate) {
       const { data } = await supabase
         .from("outlines")
-        .select("outline_json")
+        .select("id, outline_json") // <--- Change: Select 'id' as well
         .eq("project_id", projectId)
         .maybeSingle();
       if (data) {
-        return void res.json(data.outline_json);
+        // <--- Change: Return an object with 'id' and 'outline_json'
+        return void res.json({ id: data.id, outline_json: data.outline_json });
       }
     }
 
@@ -159,18 +160,19 @@ const handleOutline: any = async (req: any, res: any) => {
       return void res.status(502).json({ error: "Outline JSON schema invalid from AI" });
     }
 
-    const { error, data: upserted } = await supabase
+const { data: upsertedOutline, error } = await supabase
       .from("outlines")
       .upsert({ project_id: projectId, outline_json: outline })
-      .select("id")
+      .select("id, outline_json") // Select both id and the content
       .single();
       
     if (error) {
-      console.error("Supabase upsert error:", error);
-      return void res.status(500).json({ error: "DB upsert failed" });
+      console.error("Supabase outline upsert error:", error);
+      return void res.status(500).json({ error: "DB outline upsert failed" });
     }
 
-    return void res.json(outline);
+    // Return an object containing the new outline's ID and its content
+    return void res.json({ id: upsertedOutline.id, outline_json: upsertedOutline.outline_json });
   } catch (e: any) {
     console.error("Error in /api/outline:", e);
     return void res.status(500).json({ error: "Failed to generate outline.", message: e.message });
@@ -183,40 +185,49 @@ router.post("/", handleOutline);
 router.post("/eval", async (req, res) => {
   try {
     const schema = z.object({
-      projectId: z.string().uuid(),
+      outlineId: z.string().uuid(), // Expect 'outlineId' from the frontend
+      regenerate: z.boolean().optional(),
     });
     const parse = schema.safeParse(req.body);
     if (!parse.success) {
       return void res.status(400).json({ error: "Bad payload" });
     }
-    const { projectId } = parse.data;
+    const { outlineId, regenerate } = parse.data;
 
-    // Fetch outline and transcript for the project
-    const { data: outlineData, error: outlineError } = await supabase
-      .from("outlines")
-      .select("outline_json")
-      .eq("project_id", projectId)
-      .maybeSingle();
-
-    if (outlineError || !outlineData || !outlineData.outline_json) {
-      return void res.status(404).json({ error: "Outline not found" });
+     if (!regenerate) {
+      const { data: existingReview } = await supabase
+        .from("outline_reviews")
+        .select("swot_json")
+        .eq("outline_id", outlineId)
+        .maybeSingle();
+      if (existingReview && existingReview.swot_json) {
+        return void res.json(existingReview.swot_json);
+      }
     }
-
-    const { data: sessionData, error: sessionError } = await supabase
-      .from('qa_sessions')
-      .select('transcript')
-      .eq('project_id', projectId)
-      .limit(1)
+    // Fetch the outline and its project_id for context
+    const { data: outlineData } = await supabase
+      .from("outlines")
+      .select("outline_json, project_id")
+      .eq("id", outlineId)
       .single();
 
-    if (sessionError || !sessionData || !sessionData.transcript) {
-      return void res.status(404).json({ error: "Q&A session missing or transcript is empty" });
+    if (!outlineData) {
+      return void res.status(404).json({ error: "Outline not found" });
+    }
+// Fetch the transcript using the project_id from the outline
+    const { data: sessionData } = await supabase
+      .from('qa_sessions')
+      .select('transcript')
+      .eq('project_id', outlineData.project_id)
+      .single();
+
+    if (!sessionData || !sessionData.transcript) {
+      return void res.status(404).json({ error: "Q&A transcript not found" });
     }
 
     const transcript = sessionData.transcript
       .map((m: any) => `${m.role === "user" ? "Founder" : "Analyst"}: ${m.content}`)
       .join("\n");
-
     // Prompt for SWOT analysis
     const prompt = `
       Using the following pitch deck outline and founder interview transcript, generate a SWOT analysis (Strengths, Weaknesses, Opportunities, Threats) for this startup.
@@ -239,7 +250,16 @@ router.post("/eval", async (req, res) => {
     if (!valid.success) {
       return void res.status(502).json({ error: "SWOT JSON schema invalid from AI" });
     }
+    const { error: upsertError } = await supabase
+      .from("outline_reviews")
+      .upsert({ outline_id: outlineId, swot_json: swot }) // Use outline_id and swot_json
+      .select("id") // Select 'id' to confirm upsert, though not used in return
+      .single();
 
+    if (upsertError) {
+      console.error("Supabase SWOT upsert error:", upsertError); // Add logging
+      return void res.status(500).json({ error: "Failed to save SWOT analysis to DB." });
+    }
     return void res.json(swot);
   } catch (e: any) {
     console.error("Error in /api/outline/eval:", e);
