@@ -1,39 +1,88 @@
+// backend/routes/outline.ts
+
 import { Router } from "express";
 import { z } from "zod";
-import { supabase } from "../supabase.js";
+import { supabase } from "../supabase.js"; // ADJUSTED: Using your specific supabase client path
 import { geminiJson } from "../lib/geminiFlash.js";
 
 const router = Router();
 
+// --- Zod Schemas for Validation ---
+
+// Existing schema for /api/outline
+const OutlineRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  regenerate: z.boolean().optional(),
+});
+
+// Existing schema for /api/outline/eval
+const OutlineEvalRequestSchema = z.object({
+  outlineId: z.string().uuid(),
+  regenerate: z.boolean().optional(),
+});
+
+// NEW: Schema for user_edits (matching frontend's Map<number, OutlinePoint[]>)
+// User edits will be an object where keys are slide indices (strings) and values are arrays of OutlinePoint
+const UserEditPointSchema = z.object({
+  content: z.string(),
+  isUserAdded: z.literal(true), // Ensure this is always true for user edits saved
+  tempId: z.string().optional(), // Can be optional as backend might re-assign or not care
+});
+
+// NEW: Schema for the structure of the userEdits object that comes from the frontend
+// It's a record where keys are stringified slide indices (e.g., "0", "1")
+// and values are arrays of UserEditPointSchema.
+const UserEditsSchema = z.record(z.string().regex(/^\d+$/), z.array(UserEditPointSchema));
+
+// NEW: Schema for /api/outline/edits request body
+const SaveUserEditsRequestSchema = z.object({
+  outlineId: z.string().uuid(),
+  userEdits: UserEditsSchema, // Expects the structured userEdits object
+});
+
 /* ---------- POST /api/outline ---------- */
 const handleOutline: any = async (req: any, res: any) => {
   try {
-    const schema = z.object({
-      projectId: z.string().uuid(),
-      regenerate: z.boolean().optional(),
-    });
-    const parse = schema.safeParse(req.body);
+    const parse = OutlineRequestSchema.safeParse(req.body);
     if (!parse.success) {
-      return void res.status(400).json({ error: "Bad payload" });
+      return void res.status(400).json({ error: "Bad payload", details: parse.error.errors }); // ADJUSTED: Added details for better error messages
     }
 
     const { projectId, regenerate } = parse.data;
 
-if (!regenerate) {
-      const { data } = await supabase
+    if (!regenerate) {
+      const { data, error } = await supabase
         .from("outlines")
-        .select("id, outline_json") // <--- Change: Select 'id' as well
+        .select(
+          `
+          id,
+          outline_json,
+          outline_reviews(user_edits) // Selecting user_edits from related outline_reviews
+          `
+        )
         .eq("project_id", projectId)
         .maybeSingle();
+
+      if (error) {
+        console.error("Supabase fetch outline with edits error:", error);
+        // Continue without user_edits if there's an error, or throw.
+        // For now, let's proceed to allow generation if fetch failed for existing.
+      }
+
       if (data) {
-        // <--- Change: Return an object with 'id' and 'outline_json'
-        return void res.json({ id: data.id, outline_json: data.outline_json });
+        // Extract user_edits from the nested structure, defaulting to an empty object if none
+        const userEdits = data.outline_reviews?.[0]?.user_edits || {};
+        return void res.json({
+          id: data.id,
+          outline_json: data.outline_json,
+          user_edits: userEdits, // Include user_edits in the response
+        });
       }
     }
 
     const { data: projectData, error: projectError } = await supabase
       .from('projects')
-      .select('slide_count, decktype') // decktype now holds the subtype
+      .select('slide_count, decktype')
       .eq('id', projectId)
       .single();
 
@@ -52,21 +101,16 @@ if (!regenerate) {
       return void res.status(404).json({ error: "Q&A session missing or transcript is empty" });
     }
 
-    const transcript = sessionData.transcript;
-    const transcriptTxt = transcript
+    const transcript = sessionData.transcript
       .map((m: any) => `${m.role === "user" ? "Founder" : "Analyst"}: ${m.content}`)
       .join("\n");
 
     let prompt;
     const deckSubtype = projectData.decktype;
 
-        // --- Dynamic Prompt Generation based on Deck Subtype ---
+    // --- Dynamic Prompt Generation based on Deck Subtype ---
     if (deckSubtype === 'basic_pitch_deck') {
-        // Generates a highly empathetic and insightful outline for basic pitch decks.
-        // The AI is instructed to deeply understand, strategically synthesize,
-        // and implicitly highlight key information within concise bullet points.
-        // Output adheres to original Zod schema: title and bullet_points.
-        prompt = `
+      prompt = `
         You are a highly empathetic and perceptive strategic partner for a startup founder. Your goal is to transform their raw interview transcript into an incredibly compelling, 8-slide "Basic Pitch Deck" outline that makes them feel their vision has been *perfectly understood and articulated*.
 
         **Your Mission:**
@@ -119,7 +163,7 @@ if (!regenerate) {
           }
         ]
 
-        Transcript:"""${transcriptTxt}"""`;
+        Transcript:"""${transcript}"""`; // FIXED: Changed transcriptTxt to transcript
     } else {
       // Prompt for other deck types, retaining original behavior for bullet_points and data_needed.
       const slideCount = projectData.slide_count || 12;
@@ -132,7 +176,7 @@ if (!regenerate) {
         ...
       ]
 
-      Transcript:"""${transcriptTxt}"""`;
+      Transcript:"""${transcript}"""`; // FIXED: Changed transcriptTxt to transcript
     }
     // --- End Dynamic Prompt Generation ---
 
@@ -149,23 +193,23 @@ if (!regenerate) {
       data_needed: z.array(z.string()),
     });
     // Selects the appropriate Zod schema based on deck subtype for validation.
-    const outlineSchema = deckSubtype === 'basic_pitch_deck' 
-        ? z.array(basicSlideSchema).length(8)
-        : z.array(otherDeckSlideSchema).min(1);
+    const outlineSchema = deckSubtype === 'basic_pitch_deck'
+      ? z.array(basicSlideSchema).length(8)
+      : z.array(otherDeckSlideSchema).min(1);
     // --- End Zod Schema Definitions & Conditional Validation ---
     const valid = outlineSchema.safeParse(outline);
-    
+
     if (!valid.success) {
       console.error("Zod validation failed for outline:", valid.error.format());
       return void res.status(502).json({ error: "Outline JSON schema invalid from AI" });
     }
 
-const { data: upsertedOutline, error } = await supabase
+    const { data: upsertedOutline, error } = await supabase
       .from("outlines")
       .upsert({ project_id: projectId, outline_json: outline })
       .select("id, outline_json") // Select both id and the content
       .single();
-      
+
     if (error) {
       console.error("Supabase outline upsert error:", error);
       return void res.status(500).json({ error: "DB outline upsert failed" });
@@ -184,17 +228,13 @@ router.post("/", handleOutline);
 /* ---------- POST /api/outline/eval ---------- */
 router.post("/eval", async (req, res) => {
   try {
-    const schema = z.object({
-      outlineId: z.string().uuid(), // Expect 'outlineId' from the frontend
-      regenerate: z.boolean().optional(),
-    });
-    const parse = schema.safeParse(req.body);
+    const parse = OutlineEvalRequestSchema.safeParse(req.body); // ADJUSTED: Using predefined schema
     if (!parse.success) {
-      return void res.status(400).json({ error: "Bad payload" });
+      return void res.status(400).json({ error: "Bad payload", details: parse.error.errors }); // ADJUSTED: Added details
     }
     const { outlineId, regenerate } = parse.data;
 
-     if (!regenerate) {
+    if (!regenerate) {
       const { data: existingReview } = await supabase
         .from("outline_reviews")
         .select("swot_json")
@@ -214,7 +254,7 @@ router.post("/eval", async (req, res) => {
     if (!outlineData) {
       return void res.status(404).json({ error: "Outline not found" });
     }
-// Fetch the transcript using the project_id from the outline
+    // Fetch the transcript using the project_id from the outline
     const { data: sessionData } = await supabase
       .from('qa_sessions')
       .select('transcript')
@@ -252,18 +292,67 @@ router.post("/eval", async (req, res) => {
     }
     const { error: upsertError } = await supabase
       .from("outline_reviews")
-      .upsert({ outline_id: outlineId, swot_json: swot }) // Use outline_id and swot_json
-      .select("id") // Select 'id' to confirm upsert, though not used in return
+      .upsert({ outline_id: outlineId, swot_json: swot })
+      .select("id")
       .single();
 
     if (upsertError) {
-      console.error("Supabase SWOT upsert error:", upsertError); // Add logging
+      console.error("Supabase SWOT upsert error:", upsertError);
       return void res.status(500).json({ error: "Failed to save SWOT analysis to DB." });
     }
     return void res.json(swot);
   } catch (e: any) {
     console.error("Error in /api/outline/eval:", e);
     return void res.status(500).json({ error: "Failed to generate SWOT analysis.", message: e.message });
+  }
+});
+
+// --- NEW: Endpoint to Save User Edits ---
+router.post("/edits", async (req, res) => { // ADJUSTED: Removed authenticateToken
+  try {
+    const parse = SaveUserEditsRequestSchema.safeParse(req.body); // ADJUSTED: Using predefined schema
+    if (!parse.success) {
+      return void res.status(400).json({ error: "Bad payload", details: parse.error.errors }); // ADJUSTED: Added details
+    }
+    const { outlineId, userEdits } = parse.data;
+
+    // Supabase upsert operation
+    // We update the user_edits column for the review associated with outlineId
+    const { data, error } = await supabase
+      .from("outline_reviews")
+      .upsert(
+        {
+          outline_id: outlineId,
+          user_edits: userEdits, // This will store the object received from frontend
+        },
+        {
+          onConflict: "outline_id", // If a record with this outline_id exists, update it
+          ignoreDuplicates: false, // Ensure update happens if conflict
+        }
+      )
+      .select("id, outline_id, user_edits") // Select what was upserted for confirmation
+      .single(); // Expect a single record to be returned
+
+    if (error) {
+      console.error("Supabase upsert user edits error:", error);
+      return res.status(500).json({ error: "Failed to save user edits to database." });
+    }
+
+    if (!data) {
+      // This case should ideally not happen with upsert.single(), but good to guard
+      return res.status(500).json({ error: "No data returned after saving user edits." });
+    }
+
+    // Respond with the saved user edits
+    res.json({ message: "User edits saved successfully", savedEdits: data.user_edits });
+
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      console.error("User edits validation error:", error.errors);
+      return res.status(400).json({ error: "Invalid request data for user edits.", details: error.errors });
+    }
+    console.error("Error saving user edits:", error);
+    res.status(500).json({ error: "An unexpected error occurred while saving user edits." });
   }
 });
 
