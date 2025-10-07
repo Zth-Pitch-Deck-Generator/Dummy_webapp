@@ -2,7 +2,7 @@
   "name": "Basic Pitch Deck",
   "description": "Core narrative, 8 slides.",
   "slideCount": 8,
-  "maxQuestions": 20,
+  "maxQuestions": 3,
   "questions": [
     {
       "topic": "Company",
@@ -17,7 +17,7 @@
     {
       "topic": "Audience",
       "question": "Who is your primary target audience or customer segment?",
-      "answerType": "free_text"
+      "answerType": "multiple_choice"
     },
     {
       "topic": "Alternatives",
@@ -32,12 +32,7 @@
     {
       "topic": "Solution",
       "question": "What are the key features of your product/service?",
-      "answerType": "free_text"
-    },
-    {
-      "topic": "Solution",
-      "question": "Can you provide a link to a demo, or describe what a mockup would look like?",
-      "answerType": "free_text"
+      "answerType": "multiple_choice"
     },
     {
       "topic": "Market Opportunity",

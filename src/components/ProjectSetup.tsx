@@ -235,17 +235,19 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-3">
                         <Label className="text-text-primary font-medium">Industry</Label>
+                        {/* --- THE FIX --- */}
+                        {/* The `value` now matches the keys in `industryTemplates` exactly. */}
                         <Select value={formData.industry} onValueChange={(v) => setFormData((p) => ({ ...p, industry: v }))}>
                           <SelectTrigger className="input-field h-12">
                             <SelectValue placeholder="Select industry" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="technology">Technology</SelectItem>
-                            <SelectItem value="startup">Startup</SelectItem>
-                            <SelectItem value="finance">Finance</SelectItem>
-                            <SelectItem value="edtech">EdTech</SelectItem>
-                            <SelectItem value="e-commerce">E-commerce</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
+                            <SelectItem value="Technology">Technology</SelectItem>
+                            <SelectItem value="Startup">Startup</SelectItem>
+                            <SelectItem value="FinTech">Fintech</SelectItem>
+                            <SelectItem value="Edtech">EdTech</SelectItem>
+                            <SelectItem value="Ecommerce">E-commerce</SelectItem>
+                            <SelectItem value="General">Other</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -304,37 +306,37 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                         <div className="space-y-6">
                             <div className="grid gap-4">
                                 <Card
-                                  onClick={() => handleDeckTypeSelect('pitch-deck')}
-                                  className={`card-interactive p-6 ${formData.decktype === 'pitch-deck' ? 'ring-2 ring-brand border-brand' : ''}`}
+                                    onClick={() => handleDeckTypeSelect('pitch-deck')}
+                                    className={`card-interactive p-6 ${formData.decktype === 'pitch-deck' ? 'ring-2 ring-brand border-brand' : ''}`}
                                 >
-                                  <div className="flex items-start space-x-4">
-                                    <div className="icon-container icon-container-md bg-surface border border-border">
-                                      <FileText className="w-5 h-5 text-text-secondary" />
+                                    <div className="flex items-start space-x-4">
+                                        <div className="icon-container icon-container-md bg-surface border border-border">
+                                            <FileText className="w-5 h-5 text-text-secondary" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-lg font-medium text-text-primary mb-2">Pitch Deck</h3>
+                                            <p className="text-text-secondary font-light leading-relaxed">
+                                                Create a compelling narrative to present to investors and stakeholders.
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                      <h3 className="text-lg font-medium text-text-primary mb-2">Pitch Deck</h3>
-                                      <p className="text-text-secondary font-light leading-relaxed">
-                                        Create a compelling narrative to present to investors and stakeholders.
-                                      </p>
-                                    </div>
-                                  </div>
                                 </Card>
 
                                 <Card
-                                  onClick={() => handleDeckTypeSelect('dataroom')}
-                                  className={`card-interactive p-6 ${formData.decktype === 'dataroom' ? 'ring-2 ring-brand border-brand' : ''}`}
+                                    onClick={() => handleDeckTypeSelect('dataroom')}
+                                    className={`card-interactive p-6 ${formData.decktype === 'dataroom' ? 'ring-2 ring-brand border-brand' : ''}`}
                                 >
-                                  <div className="flex items-start space-x-4">
-                                    <div className="icon-container icon-container-md bg-surface border border-border">
-                                      <Database className="w-5 h-5 text-text-secondary" />
+                                    <div className="flex items-start space-x-4">
+                                        <div className="icon-container icon-container-md bg-surface border border-border">
+                                            <Database className="w-5 h-5 text-text-secondary" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-lg font-medium text-text-primary mb-2">Data Room</h3>
+                                            <p className="text-text-secondary font-light leading-relaxed">
+                                                Compile detailed metrics and data for due diligence processes.
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                      <h3 className="text-lg font-medium text-text-primary mb-2">Data Room</h3>
-                                      <p className="text-text-secondary font-light leading-relaxed">
-                                        Compile detailed metrics and data for due diligence processes.
-                                      </p>
-                                    </div>
-                                  </div>
                                 </Card>
                             </div>
 
@@ -343,7 +345,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                                 <div className="space-y-4 animate-fade-in">
                                     <div className="border-t border-border pt-6">
                                         <h4 className="text-sm font-medium text-text-secondary mb-4 uppercase tracking-wider">
-                                          Choose Template
+                                            Choose Template
                                         </h4>
                                         <div className="grid md:grid-cols-2 gap-4">
                                             {deckTypes[formData.decktype].map((dt) => {
@@ -351,25 +353,25 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                                                 const selected = formData.deckSubtype === dt.id
                                                 return (
                                                 <Card
-                                                  key={dt.id}
-                                                  onClick={() => handleDeckSubtypeSelect(dt.id)}
-                                                  className={`card-interactive p-6 ${selected ? 'ring-2 ring-brand border-brand' : ''}`}
+                                                    key={dt.id}
+                                                    onClick={() => handleDeckSubtypeSelect(dt.id)}
+                                                    className={`card-interactive p-6 ${selected ? 'ring-2 ring-brand border-brand' : ''}`}
                                                 >
-                                                  <div className="flex items-start justify-between mb-4">
-                                                    <div className="icon-container icon-container-md bg-surface border border-border">
-                                                      <Icon className="w-5 h-5 text-text-secondary" />
+                                                    <div className="flex items-start justify-between mb-4">
+                                                        <div className="icon-container icon-container-md bg-surface border border-border">
+                                                            <Icon className="w-5 h-5 text-text-secondary" />
+                                                        </div>
+                                                        <Badge variant={selected ? "default" : "secondary"} className="text-xs">
+                                                            {dt.badge}
+                                                        </Badge>
                                                     </div>
-                                                    <Badge variant={selected ? "default" : "secondary"} className="text-xs">
-                                                      {dt.badge}
-                                                    </Badge>
-                                                  </div>
-                                                  <h5 className="text-lg font-medium text-text-primary mb-2">{dt.name}</h5>
-                                                  <p className="text-text-secondary text-sm font-light mb-3 leading-relaxed">
-                                                    {dt.description}
-                                                  </p>
-                                                  <p className="text-xs font-medium text-text-tertiary uppercase tracking-wider">
-                                                    {dt.slides}
-                                                  </p>
+                                                    <h5 className="text-lg font-medium text-text-primary mb-2">{dt.name}</h5>
+                                                    <p className="text-text-secondary text-sm font-light mb-3 leading-relaxed">
+                                                        {dt.description}
+                                                    </p>
+                                                    <p className="text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                                                        {dt.slides}
+                                                    </p>
                                                 </Card>
                                                 )
                                             })}
@@ -436,4 +438,3 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
 }
 
 export default ProjectSetup;
-

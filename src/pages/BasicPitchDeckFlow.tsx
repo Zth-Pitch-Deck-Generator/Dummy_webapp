@@ -95,14 +95,16 @@ const BasicPitchDeckFlow = () => {
             case 'outline':
                 return <Outline onAccept={handleOutlineAccept} />;
             case 'template':
-                return <Template onGenerate={handleGenerateDeck} />;
+                // --- THE FIX ---
+                // Pass the industry from the projectData state to the Template component
+                return <Template onGenerate={handleGenerateDeck} industry={projectData.industry} />;
             case 'preview':
                 return <DeckPreview 
-                         projectData={projectData} 
-                         qaData={qaData} 
-                         generatedSlides={generatedSlides} 
-                         downloadUrl={downloadUrl} 
-                       />;
+                            projectData={projectData} 
+                            qaData={qaData} 
+                            generatedSlides={generatedSlides} 
+                            downloadUrl={downloadUrl} 
+                          />;
             default:
                 return null;
         }
