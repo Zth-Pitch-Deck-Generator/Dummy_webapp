@@ -11,22 +11,17 @@ export type ProjectData = {
   stage: string;
   description: string;
   revenue: 'pre-revenue' | 'revenue';
-  slide_mode: 'manual' | 'ai';
-  slide_count: number;
   decktype: "pitch-deck" | "dataroom";
   deckSubtype: "basic_pitch_deck" | "complete_pitch_deck" | "guided_dataroom" | "direct_dataroom";
 };
 
-export type QAData = {
-  question: string;
-  answer: string;
-  timestamp: number;
-}[];
+export interface QAData extends Array<{ question: string; answer: string }> {}
 
-export type GeneratedSlide = {
-  title: string;
-  content: string[];
-};
+export interface GeneratedSlide {
+    title: string;
+    content: string;
+    notes: string;
+}
 
 const Index = () => {
   return (

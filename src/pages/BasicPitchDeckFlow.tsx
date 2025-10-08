@@ -26,7 +26,6 @@ const BasicPitchDeckFlow = () => {
     useEffect(() => {
         const fetchProject = async () => {
             if (!projectId) return;
-            // Set localStorage for other components that might need it
             localStorage.setItem("projectId", projectId);
 
             const { data, error } = await supabase
@@ -47,8 +46,6 @@ const BasicPitchDeckFlow = () => {
                     stage: data.stage,
                     description: data.description,
                     revenue: data.revenue,
-                    slide_mode: data.slide_mode,
-                    slide_count: data.slide_count,
                     decktype: type,
                     deckSubtype: subtype
                 });
@@ -95,8 +92,6 @@ const BasicPitchDeckFlow = () => {
             case 'outline':
                 return <Outline onAccept={handleOutlineAccept} />;
             case 'template':
-                // --- THE FIX ---
-                // Pass the industry from the projectData state to the Template component
                 return <Template onGenerate={handleGenerateDeck} industry={projectData.industry} />;
             case 'preview':
                 return <DeckPreview 

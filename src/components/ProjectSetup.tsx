@@ -1,4 +1,3 @@
-// src/components/ProjectSetup.tsx
 import { useState } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -21,10 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { FileText, TrendingUp, Users, Database, Loader2, ArrowLeft, ArrowRight, Building, BarChart3 } from "lucide-react"
 
+// Updated FormData to remove slide count/mode
 export type FormData = Omit<ProjectData, "revenue" | "decktype" | "deckSubtype"> & {
   revenue: "" | ProjectData["revenue"]
   decktype: "" | ProjectData["decktype"]
@@ -35,23 +34,15 @@ interface ProjectSetupProps {
   onComplete: (data: ProjectData, projectId: string) => void;
 }
 
-const rangeByDeck = {
-  basic_pitch_deck: [8, 8],
-  complete_pitch_deck: [12, 12],
-  guided_dataroom: [12, 13],
-  direct_dataroom: [12, 13],
-} as const
-
 const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
   const [step, setStep] = useState(1)
-  const [formData, setFormData] = useState<FormData>({
+  // Removed slide_count and slide_mode from initial state
+  const [formData, setFormData] = useState<Omit<FormData, 'slide_count' | 'slide_mode'>>({
     projectName: "",
     industry: "",
     stage: "",
     revenue: "",
     description: "",
-    slide_count: 8,
-    slide_mode: "manual",
     decktype: "",
     deckSubtype: "",
   })
@@ -75,14 +66,13 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
 
     setIsLoading(true);
     try {
+      // Removed slide_count and slide_mode from the payload
       const apiPayload = {
         projectName: formData.projectName,
         industry: formData.industry,
         stage: formData.stage,
         revenue: formData.revenue,
         description: formData.description,
-        slide_count: formData.slide_count,
-        slide_mode: formData.slide_mode,
         decktype: formData.deckSubtype,
       };
 
@@ -106,14 +96,11 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
 
   const handlePrevious = () => step > 1 && setStep(step - 1)
 
+  // Simplified validation for step 3
   const isStepValid = () => {
     if (step === 1) return formData.projectName.trim() && formData.industry && formData.stage && formData.revenue;
     if (step === 2) return formData.description.trim();
-    if (step === 3) {
-        if (!formData.deckSubtype) return false;
-        const [min, max] = rangeByDeck[formData.deckSubtype as keyof typeof rangeByDeck];
-        return (formData.slide_mode === "ai" || (formData.slide_count >= min && formData.slide_count <= max));
-    }
+    if (step === 3) return !!formData.deckSubtype;
     return false;
   };
 
@@ -122,29 +109,11 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
   }
 
   const handleDeckSubtypeSelect = (subtype: string) => {
-    const [min] = rangeByDeck[subtype as keyof typeof rangeByDeck];
     setFormData((p) => ({
       ...p,
       deckSubtype: subtype as FormData["deckSubtype"],
-      slide_mode: "manual",
-      slide_count: min,
     }))
   }
-
-  const handleSlideMode = (mode: "manual" | "ai") => {
-    const selectedDeck = formData.deckSubtype;
-    if (!selectedDeck) return
-    const [min, max] = rangeByDeck[selectedDeck as keyof typeof rangeByDeck];
-    if (mode === "ai") {
-      const auto = Math.floor(Math.random() * (max - min + 1)) + min
-      setFormData((p) => ({ ...p, slide_mode: "ai", slide_count: auto }))
-    } else {
-      setFormData((p) => ({ ...p, slide_mode: "manual", slide_count: min }))
-    }
-  }
-
-  const selectedDeckKey = formData.deckSubtype;
-  const [min, max] = selectedDeckKey ? rangeByDeck[selectedDeckKey as keyof typeof rangeByDeck] : [5, 14];
 
   const StepIndicator = () => (
     <div className="flex items-center justify-center mb-12">
@@ -184,7 +153,6 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
         />
         <main className="flex-1 p-0">
           <div className="max-w-4xl mx-auto px-6 py-12">
-            {/* Header */}
             <div className="text-center mb-12">
               <h1 className="text-3xl md:text-4xl font-light text-text-primary mb-4 tracking-tight">
                 Project Setup
@@ -235,13 +203,12 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-3">
                         <Label className="text-text-primary font-medium">Industry</Label>
-                        {/* --- THE FIX --- */}
-                        {/* The `value` now matches the keys in `industryTemplates` exactly. */}
                         <Select value={formData.industry} onValueChange={(v) => setFormData((p) => ({ ...p, industry: v }))}>
                           <SelectTrigger className="input-field h-12">
                             <SelectValue placeholder="Select industry" />
                           </SelectTrigger>
                           <SelectContent>
+                            {/* --- THE FIX: Values now match the keys in Template.tsx --- */}
                             <SelectItem value="Technology">Technology</SelectItem>
                             <SelectItem value="Startup">Startup</SelectItem>
                             <SelectItem value="FinTech">Fintech</SelectItem>
@@ -302,7 +269,6 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                 )}
                 {step === 3 && (
                     <div className="space-y-8">
-                        {/* Deck Type Selection */}
                         <div className="space-y-6">
                             <div className="grid gap-4">
                                 <Card
@@ -340,7 +306,6 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                                 </Card>
                             </div>
 
-                            {/* Subtype Selection */}
                             {formData.decktype && (
                                 <div className="space-y-4 animate-fade-in">
                                     <div className="border-t border-border pt-6">
@@ -380,35 +345,11 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                                 </div>
                             )}
                         </div>
-
-                        {formData.deckSubtype && (
-                            <div className="space-y-6 pt-6 border-t">
-                                <div className="space-y-3">
-                                    <Label className="text-blue-700 font-semibold">Slide Count Preference *</Label>
-                                    <p className="text-sm text-gray-500 mb-2">Choose how you’d like to set the slide count:</p>
-                                    <Select value={formData.slide_mode} onValueChange={(v) => handleSlideMode(v as any)}>
-                                        <SelectTrigger><SelectValue placeholder="Select preference" /></SelectTrigger>
-                                        <SelectContent>
-                                        <SelectItem value="manual">I'll choose the number of slides</SelectItem>
-                                        <SelectItem value="ai">Let AI decide for me</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {formData.slide_mode === "manual" && (
-                                <div className="space-y-3">
-                                    <Label className="text-blue-700 font-semibold">Target Slide Count: {formData.slide_count}</Label>
-                                    <Slider min={min} max={max} step={1} value={[formData.slide_count]} onValueChange={([val]) => setFormData((p) => ({ ...p, slide_count: val }))} />
-                                </div>
-                                )}
-                            </div>
-                        )}
                     </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Navigation */}
             <div className="flex items-center justify-between mt-8">
               <Button
                 variant="ghost"
