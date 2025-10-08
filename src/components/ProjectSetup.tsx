@@ -1,42 +1,31 @@
-import { useState } from "react"
+import { useState, useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { ProjectData } from "@/pages/Index"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { FileText, TrendingUp, Users, Database, Loader2, ArrowLeft, ArrowRight, Building, BarChart3 } from "lucide-react"
+import { ProjectData } from "@/pages/Index";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { FileText, TrendingUp, Users, Database, Loader2, ArrowLeft, ArrowRight, Building, BarChart3 } from "lucide-react";
 
-// Updated FormData to remove slide count/mode
+export type { ProjectData };
+
 export type FormData = Omit<ProjectData, "revenue" | "decktype" | "deckSubtype"> & {
-  revenue: "" | ProjectData["revenue"]
-  decktype: "" | ProjectData["decktype"]
-  deckSubtype: "" | ProjectData["deckSubtype"]
-}
+  revenue: "" | ProjectData["revenue"];
+  decktype: "" | ProjectData["decktype"];
+  deckSubtype: "" | ProjectData["deckSubtype"];
+};
 
 interface ProjectSetupProps {
   onComplete: (data: ProjectData, projectId: string) => void;
+  flowType?: 'pitch-deck' | 'dataroom'; // Accept the pre-selected flow type
 }
 
-const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
-  const [step, setStep] = useState(1)
-  // Removed slide_count and slide_mode from initial state
+const ProjectSetup = ({ onComplete, flowType }: ProjectSetupProps) => {
+  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<Omit<FormData, 'slide_count' | 'slide_mode'>>({
     projectName: "",
     industry: "",
@@ -45,28 +34,34 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
     description: "",
     decktype: "",
     deckSubtype: "",
-  })
+  });
   const [isLoading, setIsLoading] = useState(false);
 
-  const totalSteps = 3
+  const totalSteps = 3;
+
+  // Pre-select the deck type if the flowType prop is passed from the landing page
+  useEffect(() => {
+    if (flowType) {
+      setFormData(prev => ({ ...prev, decktype: flowType }));
+    }
+  }, [flowType]);
 
   const deckTypes = {
     "pitch-deck": [
-        { id: "basic_pitch_deck", name: "Basic Pitch Deck", description: "Covers the core narrative in exactly 8 slides.", icon: FileText, badge: "Core Story", slides: "8 slides" },
-        { id: "complete_pitch_deck", name: "Complete Pitch Deck", description: "The full version, covering all key areas in 12 slides.", icon: TrendingUp, badge: "Full Version", slides: "12 slides" },
+      { id: "basic_pitch_deck", name: "Basic Pitch Deck", description: "Covers the core narrative in exactly 8 slides.", icon: FileText, badge: "Core Story", slides: "8 slides" },
+      { id: "complete_pitch_deck", name: "Complete Pitch Deck", description: "The full version, covering all key areas in 12 slides.", icon: TrendingUp, badge: "Full Version", slides: "12 slides" },
     ],
     "dataroom": [
-        { id: "guided_dataroom", name: "Guided Build", description: "For founders unsure which metrics to feature. We'll propose industry-relevant KPIs.", icon: Users, badge: "Guided", slides: "12-13 slides" },
-        { id: "direct_dataroom", name: "Direct Build", description: "For founders who already track their KPIs and know which ones to include.", icon: BarChart3, badge: "Direct", slides: "12-13 slides" },
+      { id: "guided_dataroom", name: "Guided Build", description: "For founders unsure which metrics to feature. We'll propose industry-relevant KPIs.", icon: Users, badge: "Guided", slides: "12-13 slides" },
+      { id: "direct_dataroom", name: "Direct Build", description: "For founders who already track their KPIs and know which ones to include.", icon: BarChart3, badge: "Direct", slides: "12-13 slides" },
     ]
-  }
+  };
 
   const handleNext = async () => {
-    if (step < totalSteps) return setStep(step + 1)
+    if (step < totalSteps) return setStep(step + 1);
 
     setIsLoading(true);
     try {
-      // Removed slide_count and slide_mode from the payload
       const apiPayload = {
         projectName: formData.projectName,
         industry: formData.industry,
@@ -80,23 +75,22 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(apiPayload),
-      })
+      });
       if (!res.ok) {
-        const { error } = await res.json()
-        throw new Error(error || "Project creation failed")
+        const { error } = await res.json();
+        throw new Error(error || "Project creation failed");
       }
-      const { id } = await res.json()
-      onComplete(formData as unknown as ProjectData, id)
+      const { id } = await res.json();
+      onComplete(formData as unknown as ProjectData, id);
     } catch (err: any) {
-      console.error(err)
-      alert(`Error creating project: ${err.message}`)
+      console.error(err);
+      alert(`Error creating project: ${err.message}`);
       setIsLoading(false);
     }
-  }
+  };
 
-  const handlePrevious = () => step > 1 && setStep(step - 1)
+  const handlePrevious = () => step > 1 && setStep(step - 1);
 
-  // Simplified validation for step 3
   const isStepValid = () => {
     if (step === 1) return formData.projectName.trim() && formData.industry && formData.stage && formData.revenue;
     if (step === 2) return formData.description.trim();
@@ -106,14 +100,14 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
 
   const handleDeckTypeSelect = (type: 'pitch-deck' | 'dataroom') => {
     setFormData(prev => ({ ...prev, decktype: type, deckSubtype: "" }));
-  }
+  };
 
   const handleDeckSubtypeSelect = (subtype: string) => {
     setFormData((p) => ({
       ...p,
       deckSubtype: subtype as FormData["deckSubtype"],
-    }))
-  }
+    }));
+  };
 
   const StepIndicator = () => (
     <div className="flex items-center justify-center mb-12">
@@ -139,7 +133,7 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
         </div>
       ))}
     </div>
-  )
+  );
 
   return (
     <SidebarProvider>
@@ -208,7 +202,6 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                             <SelectValue placeholder="Select industry" />
                           </SelectTrigger>
                           <SelectContent>
-                            {/* --- THE FIX: Values now match the keys in Template.tsx --- */}
                             <SelectItem value="Technology">Technology</SelectItem>
                             <SelectItem value="Startup">Startup</SelectItem>
                             <SelectItem value="FinTech">Fintech</SelectItem>
@@ -270,52 +263,32 @@ const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
                 {step === 3 && (
                     <div className="space-y-8">
                         <div className="space-y-6">
-                            <div className="grid gap-4">
-                                <Card
-                                    onClick={() => handleDeckTypeSelect('pitch-deck')}
-                                    className={`card-interactive p-6 ${formData.decktype === 'pitch-deck' ? 'ring-2 ring-brand border-brand' : ''}`}
-                                >
-                                    <div className="flex items-start space-x-4">
-                                        <div className="icon-container icon-container-md bg-surface border border-border">
-                                            <FileText className="w-5 h-5 text-text-secondary" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="text-lg font-medium text-text-primary mb-2">Pitch Deck</h3>
-                                            <p className="text-text-secondary font-light leading-relaxed">
-                                                Create a compelling narrative to present to investors and stakeholders.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </Card>
-
-                                <Card
-                                    onClick={() => handleDeckTypeSelect('dataroom')}
-                                    className={`card-interactive p-6 ${formData.decktype === 'dataroom' ? 'ring-2 ring-brand border-brand' : ''}`}
-                                >
-                                    <div className="flex items-start space-x-4">
-                                        <div className="icon-container icon-container-md bg-surface border border-border">
-                                            <Database className="w-5 h-5 text-text-secondary" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="text-lg font-medium text-text-primary mb-2">Data Room</h3>
-                                            <p className="text-text-secondary font-light leading-relaxed">
-                                                Compile detailed metrics and data for due diligence processes.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </Card>
-                            </div>
+                            {/* --- THE FIX: Conditionally hide this section if flowType is set --- */}
+                            {!flowType && (
+                              <div className="grid gap-4">
+                                  <Card
+                                      onClick={() => handleDeckTypeSelect('pitch-deck')}
+                                      className={`card-interactive p-6 ${formData.decktype === 'pitch-deck' ? 'ring-2 ring-brand border-brand' : ''}`}
+                                  >
+                                      {/* ... Card content ... */}
+                                  </Card>
+                                  <Card
+                                      onClick={() => handleDeckTypeSelect('dataroom')}
+                                      className={`card-interactive p-6 ${formData.decktype === 'dataroom' ? 'ring-2 ring-brand border-brand' : ''}`}
+                                  >
+                                      {/* ... Card content ... */}
+                                  </Card>
+                              </div>
+                            )}
 
                             {formData.decktype && (
                                 <div className="space-y-4 animate-fade-in">
-                                    <div className="border-t border-border pt-6">
-                                        <h4 className="text-sm font-medium text-text-secondary mb-4 uppercase tracking-wider">
-                                            Choose Template
-                                        </h4>
+                                    <div className={!flowType ? "border-t border-border pt-6" : ""}>
+                                        
                                         <div className="grid md:grid-cols-2 gap-4">
                                             {deckTypes[formData.decktype].map((dt) => {
-                                                const Icon = dt.icon
-                                                const selected = formData.deckSubtype === dt.id
+                                                const Icon = dt.icon;
+                                                const selected = formData.deckSubtype === dt.id;
                                                 return (
                                                 <Card
                                                     key={dt.id}

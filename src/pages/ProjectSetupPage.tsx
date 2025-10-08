@@ -1,29 +1,23 @@
-// src/pages/ProjectSetupPage.tsx
+import { useNavigate, useLocation } from 'react-router-dom';
 import ProjectSetup from '../components/ProjectSetup';
-import { useNavigate } from "react-router-dom";
-import { ProjectData } from "./Index";
+import { ProjectData } from './Index';
 
 const ProjectSetupPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleProjectCreated = (data: ProjectData, projectId: string) => {
-    // Navigate to the specific flow based on the deck subtype
-    if (data.deckSubtype === 'basic_pitch_deck') {
-      navigate(`/create/basic-pitch-deck/${projectId}`);
-    } 
-    // Add else-if blocks here for other deck types in the future
-    // else if (data.deckSubtype === 'complete_pitch_deck') {
-    //   navigate(`/create/complete-pitch-deck/${projectId}`);
-    // }
-    else {
-        // Fallback or default navigation
-        console.warn(`No dedicated route for deck subtype: ${data.deckSubtype}.`);
-        // For now, we can redirect to a generic path or the basic one
-        navigate(`/create/basic-pitch-deck/${projectId}`);
-    }
+  // Get the flowType from the link state passed from the landing page
+  const flowType = location.state?.flowType;
+
+  const handleProjectComplete = (data: ProjectData, projectId: string) => {
+    // Navigate to the main project flow page after setup is complete
+    navigate(`/project/${projectId}`);
   };
 
-  return <ProjectSetup onComplete={handleProjectCreated} />;
+  return (
+    // Pass the flowType down to the ProjectSetup component
+    <ProjectSetup onComplete={handleProjectComplete} flowType={flowType} />
+  );
 };
 
 export default ProjectSetupPage;

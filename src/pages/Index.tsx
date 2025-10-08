@@ -58,13 +58,16 @@ const Index = () => {
               to build compelling narratives that resonate with your audience.
             </p>
 
-            {/* CTA Buttons */}
+            {/* --- THE FIX: Replaced single button with two options --- */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16 animate-fade-in [animation-delay:400ms]">
-              <Button asChild size="lg" className="btn-primary group px-8 py-4 text-base font-semibold shadow-lg hover:shadow-xl">
-                <Link to="/create">
-                  Start building
-                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
-                </Link>
+              <Link to="/create" state={{ flowType: 'pitch-deck' }}>
+                <Button size="lg" className="btn-primary group px-8 py-4 text-base font-semibold shadow-lg hover:shadow-xl w-full sm:w-auto">
+                    Create Pitch Deck
+                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
+                </Button>
+              </Link>
+              <Button size="lg" variant="outline" disabled className="w-full sm:w-auto">
+                Dataroom 
               </Button>
               <Button asChild variant="ghost" className="text-text-secondary hover:text-text-primary font-medium">
                 <Link to="/investor-mock-room">
@@ -72,7 +75,6 @@ const Index = () => {
                   <ChevronRight className="w-4 h-4 ml-1" />
                 </Link>
               </Button>
-
             </div>
           </div>
 
