@@ -16,7 +16,7 @@ const ProjectSetupPage = () => {
 
   return (
     // Pass the flowType down to the ProjectSetup component
-    <ProjectSetup onComplete={handleProjectComplete} flowType={flowType} />
+    <ProjectSetup onComplete={handleProjectComplete} />
   );
 };
 

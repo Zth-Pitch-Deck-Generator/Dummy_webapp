@@ -1,17 +1,27 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ProjectData } from "@/pages/Index";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { FileText, TrendingUp, Users, Database, Loader2, ArrowLeft, ArrowRight, Building, BarChart3 } from "lucide-react";
-
-export type { ProjectData };
 
 export type FormData = Omit<ProjectData, "revenue" | "decktype" | "deckSubtype"> & {
   revenue: "" | ProjectData["revenue"];
@@ -21,10 +31,9 @@ export type FormData = Omit<ProjectData, "revenue" | "decktype" | "deckSubtype">
 
 interface ProjectSetupProps {
   onComplete: (data: ProjectData, projectId: string) => void;
-  flowType?: 'pitch-deck' | 'dataroom'; // Accept the pre-selected flow type
 }
 
-const ProjectSetup = ({ onComplete, flowType }: ProjectSetupProps) => {
+const ProjectSetup = ({ onComplete }: ProjectSetupProps) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<Omit<FormData, 'slide_count' | 'slide_mode'>>({
     projectName: "",
@@ -39,13 +48,6 @@ const ProjectSetup = ({ onComplete, flowType }: ProjectSetupProps) => {
 
   const totalSteps = 3;
 
-  // Pre-select the deck type if the flowType prop is passed from the landing page
-  useEffect(() => {
-    if (flowType) {
-      setFormData(prev => ({ ...prev, decktype: flowType }));
-    }
-  }, [flowType]);
-
   const deckTypes = {
     "pitch-deck": [
       { id: "basic_pitch_deck", name: "Basic Pitch Deck", description: "Covers the core narrative in exactly 8 slides.", icon: FileText, badge: "Core Story", slides: "8 slides" },
@@ -58,7 +60,10 @@ const ProjectSetup = ({ onComplete, flowType }: ProjectSetupProps) => {
   };
 
   const handleNext = async () => {
-    if (step < totalSteps) return setStep(step + 1);
+    if (step < totalSteps) {
+      setStep(step + 1);
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -76,6 +81,7 @@ const ProjectSetup = ({ onComplete, flowType }: ProjectSetupProps) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(apiPayload),
       });
+
       if (!res.ok) {
         const { error } = await res.json();
         throw new Error(error || "Project creation failed");
@@ -91,9 +97,11 @@ const ProjectSetup = ({ onComplete, flowType }: ProjectSetupProps) => {
 
   const handlePrevious = () => step > 1 && setStep(step - 1);
 
+  // --- THE FIX ---
+  // The validation for step 3 has been corrected to only check for a deck subtype.
   const isStepValid = () => {
-    if (step === 1) return formData.projectName.trim() && formData.industry && formData.stage && formData.revenue;
-    if (step === 2) return formData.description.trim();
+    if (step === 1) return !!(formData.projectName.trim() && formData.industry && formData.stage && formData.revenue);
+    if (step === 2) return !!formData.description.trim();
     if (step === 3) return !!formData.deckSubtype;
     return false;
   };
@@ -183,108 +191,94 @@ const ProjectSetup = ({ onComplete, flowType }: ProjectSetupProps) => {
 
               <CardContent className="space-y-8 px-8 pb-8">
                 {step === 1 && (
-                  <div className="grid gap-6">
-                    <div className="space-y-3">
-                      <Label className="text-text-primary font-medium">Project Name</Label>
-                      <Input
-                        value={formData.projectName}
-                        onChange={(e) => setFormData((p) => ({ ...p, projectName: e.target.value }))}
-                        placeholder="Enter your project name"
-                        className="input-field h-12"
-                        autoFocus
-                      />
+                    <div className="grid gap-6">
+                        <div className="space-y-3">
+                            <Label className="text-text-primary font-medium">Project Name</Label>
+                            <Input
+                                value={formData.projectName}
+                                onChange={(e) => setFormData((p) => ({ ...p, projectName: e.target.value }))}
+                                placeholder="Enter your project name"
+                                className="input-field h-12"
+                                autoFocus
+                            />
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div className="space-y-3">
+                                <Label className="text-text-primary font-medium">Industry</Label>
+                                <Select value={formData.industry} onValueChange={(v) => setFormData((p) => ({ ...p, industry: v }))}>
+                                    <SelectTrigger className="input-field h-12">
+                                        <SelectValue placeholder="Select industry" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Technology">Technology</SelectItem>
+                                        <SelectItem value="Startup">Startup</SelectItem>
+                                        <SelectItem value="FinTech">Fintech</SelectItem>
+                                        <SelectItem value="Edtech">EdTech</SelectItem>
+                                        <SelectItem value="Ecommerce">E-commerce</SelectItem>
+                                        <SelectItem value="General">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-3">
+                                <Label className="text-text-primary font-medium">Company Stage</Label>
+                                <Select value={formData.stage} onValueChange={(v) => setFormData((p) => ({ ...p, stage: v }))}>
+                                    <SelectTrigger className="input-field h-12">
+                                        <SelectValue placeholder="Select stage" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="pre-seed">Pre-Seed (Ideation)</SelectItem>
+                                        <SelectItem value="seed">Seed (Ideation-development)</SelectItem>
+                                        <SelectItem value="series-a">Series A (Development)</SelectItem>
+                                        <SelectItem value="series-b">Series B (Growth)</SelectItem>
+                                        <SelectItem value="series-c">Series C+ (Expansion)</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <Label className="text-text-primary font-medium">Revenue Status</Label>
+                            <Select value={formData.revenue} onValueChange={(v) => setFormData((p) => ({ ...p, revenue: v as FormData["revenue"] }))}>
+                                <SelectTrigger className="input-field h-12">
+                                    <SelectValue placeholder="Select revenue status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="pre-revenue">Pre-Revenue</SelectItem>
+                                    <SelectItem value="revenue">Revenue-Generating</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <Label className="text-text-primary font-medium">Industry</Label>
-                        <Select value={formData.industry} onValueChange={(v) => setFormData((p) => ({ ...p, industry: v }))}>
-                          <SelectTrigger className="input-field h-12">
-                            <SelectValue placeholder="Select industry" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Technology">Technology</SelectItem>
-                            <SelectItem value="Startup">Startup</SelectItem>
-                            <SelectItem value="FinTech">Fintech</SelectItem>
-                            <SelectItem value="Edtech">EdTech</SelectItem>
-                            <SelectItem value="Ecommerce">E-commerce</SelectItem>
-                            <SelectItem value="General">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-3">
-                        <Label className="text-text-primary font-medium">Company Stage</Label>
-                        <Select value={formData.stage} onValueChange={(v) => setFormData((p) => ({ ...p, stage: v }))}>
-                          <SelectTrigger className="input-field h-12">
-                            <SelectValue placeholder="Select stage" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pre-seed">Pre-Seed (Ideation)</SelectItem>
-                            <SelectItem value="seed">Seed (Ideation-development)</SelectItem>
-                            <SelectItem value="series-a">Series A (Development)</SelectItem>
-                            <SelectItem value="series-b">Series B (Growth)</SelectItem>
-                            <SelectItem value="series-c">Series C+ (Expansion)</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <Label className="text-text-primary font-medium">Revenue Status</Label>
-                      <Select value={formData.revenue} onValueChange={(v) => setFormData((p) => ({ ...p, revenue: v as FormData["revenue"] }))}>
-                        <SelectTrigger className="input-field h-12">
-                          <SelectValue placeholder="Select revenue status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pre-revenue">Pre-Revenue</SelectItem>
-                          <SelectItem value="revenue">Revenue-Generating</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
                 )}
                 {step === 2 && (
-                  <div className="space-y-4">
-                    <div className="space-y-3">
-                      <Label className="text-text-primary font-medium">Project Description</Label>
-                      <Textarea
-                        rows={8}
-                        placeholder="Describe your project, its goals, target audience, and what makes it unique..."
-                        value={formData.description}
-                        onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
-                        className="input-field resize-none"
-                        autoFocus
-                      />
-                      <p className="text-sm text-text-tertiary font-light">
-                        A detailed description helps our AI generate more relevant and targeted questions.
-                      </p>
+                    <div className="space-y-4">
+                        <div className="space-y-3">
+                            <Label className="text-text-primary font-medium">Project Description</Label>
+                            <Textarea
+                                rows={8}
+                                placeholder="Describe your project, its goals, target audience, and what makes it unique..."
+                                value={formData.description}
+                                onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
+                                className="input-field resize-none"
+                                autoFocus
+                            />
+                            <p className="text-sm text-text-tertiary font-light">
+                                A detailed description helps our AI generate more relevant and targeted questions.
+                            </p>
+                        </div>
                     </div>
-                  </div>
                 )}
                 {step === 3 && (
                     <div className="space-y-8">
                         <div className="space-y-6">
-                            {/* --- THE FIX: Conditionally hide this section if flowType is set --- */}
-                            {!flowType && (
-                              <div className="grid gap-4">
-                                  <Card
-                                      onClick={() => handleDeckTypeSelect('pitch-deck')}
-                                      className={`card-interactive p-6 ${formData.decktype === 'pitch-deck' ? 'ring-2 ring-brand border-brand' : ''}`}
-                                  >
-                                      {/* ... Card content ... */}
-                                  </Card>
-                                  <Card
-                                      onClick={() => handleDeckTypeSelect('dataroom')}
-                                      className={`card-interactive p-6 ${formData.decktype === 'dataroom' ? 'ring-2 ring-brand border-brand' : ''}`}
-                                  >
-                                      {/* ... Card content ... */}
-                                  </Card>
-                              </div>
-                            )}
+                                
 
                             {formData.decktype && (
                                 <div className="space-y-4 animate-fade-in">
-                                    <div className={!flowType ? "border-t border-border pt-6" : ""}>
-                                        
+                                    <div className="border-t border-border pt-6">
+                                        <h4 className="text-sm font-medium text-text-secondary mb-4 uppercase tracking-wider">
+                                            Choose Template
+                                        </h4>
                                         <div className="grid md:grid-cols-2 gap-4">
                                             {deckTypes[formData.decktype].map((dt) => {
                                                 const Icon = dt.icon;
