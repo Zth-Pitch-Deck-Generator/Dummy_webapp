@@ -59,7 +59,7 @@ const DeckPreview = ({ projectData, qaData, generatedSlides, downloadUrl }: Deck
       return {
         id: slide.title.toLowerCase().replace(/\s+/g, '-') || `slide-${index}`,
         title: slide.title,
-        content: slide.content,
+        content: slide.content.split('\n'),
         ...metadata,
       };
     });

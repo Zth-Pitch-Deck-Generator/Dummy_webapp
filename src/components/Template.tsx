@@ -112,7 +112,7 @@ const normalizeIndustry = (selectedIndustry: string): string => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId: projectId,
-          templateId: selectedTemplate // Use template ID instead of slug
+          templateSlug: normalizeIndustry(industry),
         }),
       });
 
