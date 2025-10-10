@@ -7,7 +7,7 @@ import qaRouter from "./routes/qa.js";
 import outlineRouter from "./routes/outline.js";
 import templateRouter from "./routes/template.js";
 import generateDeckRouter from "./routes/generate-deck.js";
-import deckRouter from "./routes/deck.js";
+import deckRouter from "./routes/notes-feedback.js";
 import investorMockRoomRouter from "./routes/investor-mockroom.js";
 
 const app = express();

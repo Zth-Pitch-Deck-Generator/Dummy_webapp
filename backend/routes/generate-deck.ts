@@ -1,60 +1,60 @@
-// backend/routes/generate-deck.ts
 import { Router } from "express";
 import { z } from "zod";
 import { createRequire } from "module";
-import { geminiJson } from "../lib/geminiFlash.js"; // Note: This might need updating to support multimodal (PDF) inputs
+import { geminiJson } from "../lib/geminiFlash.js";
 import { supabase } from "../supabase.js";
-import puppeteer from 'puppeteer'; // Import Puppeteer
-import fs from 'fs/promises'; // To read the PDF file
-import path from 'path';
-
-// --- Template Configurations ---
-// Updated to include the path to the reference PDF for each template.
-const templates: Record<string, any> = {
-  'technology': {
-    name: 'Technology Pitch Deck',
-    pdfPath: 'public/Technology Pitch Deck Template.pdf',
-    promptFragment: "a sleek, modern, and professional design suitable for a technology company. Use clean lines, sans-serif fonts, and a professional color palette (blues, dark grays, whites).",
-  },
-  'startup': {
-    name: 'Startup Pitch Deck',
-    pdfPath: 'public/Startup Pitch Deck Template.pdf',
-    promptFragment: "a clean, bold, and minimalist design perfect for an early-stage startup seeking investment. Focus on clarity and strong typography.",
-  },
-  'ecommerce': {
-    name: 'E-commerce Pitch Deck',
-    pdfPath: 'public/E-commerce Pitch Deck Template.pdf',
-    promptFragment: "a vibrant, engaging, and visual design for an e-commerce brand. Use high-quality product imagery and a bright, appealing color scheme.",
-  },
-  // Add other templates here...
-  'default': {
-    name: 'General Pitch Deck',
-    pdfPath: 'public/General Pitch Deck Template.pdf',
-    promptFragment: "a versatile and classic business presentation style. It should be clear, professional, and easily adaptable.",
-  }
-};
 
 const require = createRequire(import.meta.url);
 const PptxGenJS = require('pptxgenjs');
 
+// Define a type for our structured slide content
+interface SlideContent {
+  title: string;
+  bulletPoints?: string[];
+  body?: string;
+}
+
 const router = Router();
 
+// The body now only requires the projectId
 const bodySchema = z.object({
   projectId: z.string().uuid(),
-  templateSlug: z.string(),
 });
 
 router.post("/", async (req, res) => {
   try {
     const parsed = bodySchema.safeParse(req.body);
     if (!parsed.success) {
-      return void res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+      return res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
     }
-    const { projectId, templateSlug } = parsed.data;
+    const { projectId } = parsed.data;
 
-    const template = templates[templateSlug] || templates['default'];
-    console.log(`[${projectId}] Using template: ${template.name}`);
+    // 1. Fetch project to get the saved template_id
+    const { data: projectData, error: projectError } = await supabase
+      .from('projects')
+      .select('template_id, industry') // Also fetch industry for the prompt
+      .eq('id', projectId)
+      .single();
 
+    if (projectError || !projectData || !projectData.template_id) {
+      throw new Error(`Project or selected template not found for project ${projectId}. Details: ${projectError?.message}`);
+    }
+    const templateId = projectData.template_id;
+
+    // 2. Fetch the specific template's details from the database
+    const { data: templateData, error: templateError } = await supabase
+      .from('templates')
+      .select('name, description') // Fetch details for the prompt
+      .eq('id', templateId)
+      .single();
+
+    if (templateError || !templateData) {
+      throw new Error(`Template details not found for template ${templateId}. Details: ${templateError?.message}`);
+    }
+    
+    console.log(`[${projectId}] Using template from DB: ${templateData.name}`);
+
+    // 3. Fetch the project's outline
     const { data: outlineData, error: outlineError } = await supabase
       .from('outlines')
       .select('outline_json')
@@ -66,77 +66,58 @@ router.post("/", async (req, res) => {
     }
     const outline = outlineData.outline_json;
 
-    // --- 1. Multimodal AI Content & Design Generation ---
-    // In a real implementation, you would pass the PDF file buffer to a multimodal-capable Gemini function.
-    // For now, we describe the style in the prompt as a stand-in.
-    console.log(`[${projectId}] Starting AI content and HTML/CSS generation...`);
+    // 4. Generate structured, editable content from AI
+    console.log(`[${projectId}] Generating structured content for slides...`);
     const prompt = `
-      You are a world-class presentation designer and content strategist.
-      Your task is to generate a pitch deck based on a user's outline and inspired by a reference PDF template.
+      You are a world-class business consultant and content strategist. 
+      Your task is to generate the professional content for a pitch deck.
 
-      **Style Reference**: The design should be inspired by the provided template, which has ${template.promptFragment}. Do NOT copy it exactly, but use it as a guide for layout, typography, and color.
-
-      **User's Outline**:
+      The deck is for a company in the **${projectData.industry}** industry.
+      The chosen presentation style is described as: "${templateData.name} - ${templateData.description}".
+      
+      Based on the following slide outline, generate the content for each slide.
+      Outline:
       ${JSON.stringify(outline, null, 2)}
 
-      **Your Task**:
-      For each slide in the outline, generate a JSON object containing a single key "slideHtml".
-      The value of "slideHtml" must be a string containing a single, self-contained HTML file.
-      This HTML MUST include all necessary CSS within a <style> tag.
-      The HTML should be structured for a 16:9 aspect ratio (e.g., a container div of 1280px by 720px).
-      Use placeholder images from a service like Pexels or Unsplash if needed.
+      For each slide, provide a "title" and either "bulletPoints" (an array of concise, impactful strings) or a "body" (a single paragraph string).
 
-      Return a valid JSON array of these objects, e.g., [{ "slideHtml": "<html>...</html>" }, { "slideHtml": "<html>...</html>" }].
+      Return ONLY a valid JSON array of these slide objects.
     `;
 
-    // This function call assumes `geminiJson` can handle a large text-only prompt.
-    // A true multimodal implementation would pass the PDF file itself.
-    const generatedSlides: { slideHtml: string }[] = await geminiJson(prompt);
-    console.log(`[${projectId}] HTML/CSS for ${generatedSlides.length} slides generated.`);
+    const generatedSlides: SlideContent[] = await geminiJson(prompt);
+    console.log(`[${projectId}] Content for ${generatedSlides.length} slides generated.`);
 
-
-    // --- 2. Convert HTML/CSS to Images using Puppeteer ---
-    console.log(`[${projectId}] Converting HTML slides to images...`);
-    const browser = await puppeteer.launch();
-    const slideImageBuffers: Buffer[] = [];
-
-    for (const slide of generatedSlides) {
-      const page = await browser.newPage();
-      // Set viewport to a standard 16:9 presentation size
-      await page.setViewport({ width: 1280, height: 720 });
-      await page.setContent(slide.slideHtml, { waitUntil: 'networkidle0' });
-      const screenshot = await page.screenshot({ type: 'png' });
-      const imageBuffer = Buffer.from(screenshot); // Convert Uint8Array to Buffer
-      slideImageBuffers.push(imageBuffer);
-      await page.close();
-    }
-    await browser.close();
-    console.log(`[${projectId}] Image conversion complete.`);
-
-
-    // --- 3. Assemble Images into a PPTX ---
-    console.log(`[${projectId}] Assembling PPTX file...`);
+    // 5. Assemble Editable PPTX
+    console.log(`[${projectId}] Assembling editable PPTX file...`);
     const pres = new PptxGenJS();
     pres.layout = 'LAYOUT_16x9';
 
-    for (const imageBuffer of slideImageBuffers) {
+    for (const slideContent of generatedSlides) {
       const slide = pres.addSlide();
-      // Add the screenshot image, covering the whole slide.
-      slide.addImage({
-        data: `data:image/png;base64,${imageBuffer.toString('base64')}`,
-        x: 0,
-        y: 0,
-        w: '100%',
-        h: '100%',
+      // Add title (editable)
+      slide.addText(slideContent.title, { 
+        x: 0.5, y: 0.25, w: '90%', h: 1, 
+        fontSize: 32, bold: true, align: 'center', color: '363636'
+      });
+      // Add content (editable)
+      const content = slideContent.bulletPoints 
+        ? slideContent.bulletPoints.map(point => ({ text: point }))
+        : [{ text: slideContent.body || '' }];
+
+      slide.addText(content, { 
+        x: 1, y: 1.5, w: '80%', h: 4, 
+        fontSize: 18, 
+        color: '494949',
+        bullet: !!slideContent.bulletPoints 
       });
     }
 
-    // --- 4. Upload and Finalize ---
+    // 6. Upload and Finalize
     const pptxBuffer = await pres.write({ outputType: 'nodebuffer' });
     const filePath = `deck-${projectId}-${Date.now()}.pptx`;
 
     const { error: uploadError } = await supabase.storage
-      .from('pitch-decks')
+      .from('deck-templates') // Use the correct bucket name
       .upload(filePath, pptxBuffer as ArrayBuffer, {
         contentType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
         upsert: true,
@@ -146,10 +127,10 @@ router.post("/", async (req, res) => {
       throw new Error(`Failed to upload to Supabase Storage: ${uploadError.message}`);
     }
 
-    const { data: urlData } = supabase.storage.from('pitch-decks').getPublicUrl(filePath);
+    const { data: urlData } = supabase.storage.from('deck-templates').getPublicUrl(filePath);
 
     res.status(200).json({
-      slides: generatedSlides.map((s, i) => ({ title: `Slide ${i + 1}`, content: "HTML content generated" })), // Return a simplified slide structure
+      slides: generatedSlides.map(s => ({ title: s.title, content: s.bulletPoints?.join('\n') || s.body || "" })),
       downloadUrl: urlData.publicUrl,
     });
 
