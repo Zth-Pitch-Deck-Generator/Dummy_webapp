@@ -6,17 +6,24 @@ const ProjectSetupPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get the flowType from the link state passed from the landing page
-  const flowType = location.state?.flowType;
+  // Get the flowType from router state
+  const flowType = location.state?.flowType || 'pitch-deck';
 
   const handleProjectComplete = (data: ProjectData, projectId: string) => {
-    // Navigate to the main project flow page after setup is complete
-    navigate(`/project/${projectId}`);
+    // After setup, navigate to the correct DECK flow route
+    if (data.deckSubtype === 'basic_pitch_deck') {
+      navigate(`/create/basic-pitch-deck/${projectId}`);
+    } else if (data.deckSubtype === 'complete_pitch_deck') {
+      navigate(`/create/complete-pitch-deck/${projectId}`);
+    } else {
+      // Fallback if new subtype added
+      navigate(`/create/basic-pitch-deck/${projectId}`);
+    }
   };
 
+  // Pass flowType into ProjectSetup as prop
   return (
-    // Pass the flowType down to the ProjectSetup component
-    <ProjectSetup onComplete={handleProjectComplete} />
+    <ProjectSetup onComplete={handleProjectComplete} flowType={flowType} />
   );
 };
 
