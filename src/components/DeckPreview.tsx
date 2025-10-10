@@ -1,4 +1,3 @@
-// src/components/DeckPreview.tsx
 import { useState, useMemo } from 'react';
 import { ProjectData, QAData, GeneratedSlide } from '@/pages/Index.tsx';
 import { Button } from "@/components/ui/button";
@@ -25,27 +24,19 @@ export interface SlideData {
   notes?: string;
 }
 
-// This function determines if a slide is "crucial" for a VC audience.
 const getSlideMetadata = (title: string): { icon: React.ElementType; type: 'title' | 'content' | 'data' | 'conclusion'; isCrucial: boolean } => {
   const lowerCaseTitle = title.toLowerCase();
-  // Core narrative slides are crucial
   if (lowerCaseTitle.includes('problem')) return { icon: AlertTriangle, type: 'content', isCrucial: true };
   if (lowerCaseTitle.includes('solution')) return { icon: Lightbulb, type: 'content', isCrucial: true };
-  // Financials and the "ask" are crucial
   if (lowerCaseTitle.includes('business model') || lowerCaseTitle.includes('revenue')) return { icon: DollarSign, type: 'content', isCrucial: true };
   if (lowerCaseTitle.includes('financials') || lowerCaseTitle.includes('projections')) return { icon: TrendingUp, type: 'data', isCrucial: true };
   if (lowerCaseTitle.includes('funding') || lowerCaseTitle.includes('ask')) return { icon: DollarSign, type: 'content', isCrucial: true };
-  // Team is crucial
   if (lowerCaseTitle.includes('team')) return { icon: Users, type: 'content', isCrucial: true };
-  
-  // Other slides are important but not marked as "crucial" to keep the focus tight.
   if (lowerCaseTitle.includes('market')) return { icon: Target, type: 'content', isCrucial: false };
   if (lowerCaseTitle.includes('traction')) return { icon: TrendingUp, type: 'data', isCrucial: false };
   if (lowerCaseTitle.includes('competition')) return { icon: Users, type: 'content', isCrucial: false };
   if (lowerCaseTitle.includes('roadmap') || lowerCaseTitle.includes('milestones')) return { icon: Calendar, type: 'content', isCrucial: false };
   if (lowerCaseTitle.includes('conclusion') || lowerCaseTitle.includes('next steps')) return { icon: Trophy, type: 'conclusion', isCrucial: false };
-  
-  // Default for title slides or others
   return { icon: FileText, type: 'title', isCrucial: false };
 };
 
@@ -68,13 +59,17 @@ const DeckPreview = ({ projectData, qaData, generatedSlides, downloadUrl }: Deck
   const crucialSlides = slides.filter(slide => slide.isCrucial);
 
   const handleDownload = async () => {
-    if (!downloadUrl) return;
+    if (!downloadUrl) {
+      alert("Download URL is not available.");
+      return;
+    }
     setIsDownloading(true);
     try {
       const response = await fetch(downloadUrl);
       if (!response.ok) {
-        console.error("Supabase response error:", await response.text());
-        throw new Error("File not found or access denied by storage policy.");
+        const errorText = await response.text();
+        console.error("Supabase response error:", errorText);
+        throw new Error("File not found or access denied. Please check your Supabase bucket policies.");
       }
       const blob = await response.blob();
       const link = document.createElement('a');
@@ -87,7 +82,7 @@ const DeckPreview = ({ projectData, qaData, generatedSlides, downloadUrl }: Deck
       URL.revokeObjectURL(link.href);
     } catch (error) {
       console.error("Download failed:", error);
-      alert("Could not download the file. Please ensure the Supabase bucket policy is set correctly.");
+      alert(`Could not download the file. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
     } finally {
       setIsDownloading(false);
     }

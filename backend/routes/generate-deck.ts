@@ -117,7 +117,7 @@ router.post("/", async (req, res) => {
     const filePath = `deck-${projectId}-${Date.now()}.pptx`;
 
     const { error: uploadError } = await supabase.storage
-      .from('deck-templates') // Use the correct bucket name
+      .from('pitch-decks') // FIX: Corrected bucket name
       .upload(filePath, pptxBuffer as ArrayBuffer, {
         contentType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
         upsert: true,
@@ -127,7 +127,7 @@ router.post("/", async (req, res) => {
       throw new Error(`Failed to upload to Supabase Storage: ${uploadError.message}`);
     }
 
-    const { data: urlData } = supabase.storage.from('deck-templates').getPublicUrl(filePath);
+    const { data: urlData } = supabase.storage.from('pitch-decks').getPublicUrl(filePath); // FIX: Corrected bucket name
 
     res.status(200).json({
       slides: generatedSlides.map(s => ({ title: s.title, content: s.bulletPoints?.join('\n') || s.body || "" })),
