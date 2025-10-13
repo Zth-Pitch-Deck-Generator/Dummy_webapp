@@ -9,6 +9,8 @@ import templateRouter from "./routes/template.js";
 import generateDeckRouter from "./routes/generate-deck.js";
 import deckRouter from "./routes/notes-feedback.js";
 import investorMockRoomRouter from "./routes/investor-mockroom.js";
+import slidesRouter from './routes/slides.js';
+import compileDeckRouter from './routes/compile-deck.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +34,8 @@ app.use("/api/template", templateRouter);
 app.use("/api/generate-deck", generateDeckRouter);
 app.use("/api/deck", deckRouter);
 app.use("/api/investor-mockroom", investorMockRoomRouter);
+app.use('/api/slides', slidesRouter);
+app.use('/api/compile-deck', compileDeckRouter);
 
 /* Health Check Endpoint */
 app.get("/health", (_req, res) => {
