@@ -14,16 +14,23 @@ router.post("/", async (req, res) => {
   try {
     const { projectId } = bodySchema.parse(req.body);
 
-    // 1. Fetch Project, Template, and Outline data from Supabase
     const { data: projectData, error: projectError } = await supabase
       .from('projects')
-      .select('industry, templates ( name, description )')
+      .select(`
+        industry,
+        templates ( name, description )
+      `)
       .eq('id', projectId)
       .single();
 
-    if (projectError || !projectData || !projectData.templates) {
-      throw new Error(`Project or template not found: ${projectError?.message}`);
-    }
+    if (projectError) throw new Error(`Project query failed: ${projectError.message}`);
+    if (!projectData) throw new Error(`Project with ID ${projectId} not found.`);
+    
+    const template = Array.isArray(projectData.templates) 
+      ? projectData.templates[0] 
+      : projectData.templates;
+
+    if (!template) throw new Error("Template not found for this project.");
 
     const { data: outlineData, error: outlineError } = await supabase
       .from('outlines')
@@ -31,13 +38,10 @@ router.post("/", async (req, res) => {
       .eq('project_id', projectId)
       .single();
 
-    if (outlineError || !outlineData) throw new Error(`Outline not found`);
-    
-    const template = projectData.templates;
+    if (outlineError || !outlineData) throw new Error(`Outline not found for project.`);
+
     const outline = outlineData.outline_json;
 
-    // 2. Instruct the AI to generate HTML/CSS for each slide
-    console.log(`[${projectId}] Generating HTML/CSS slides with '${template.name}' style...`);
     const prompt = `
       You are an expert frontend developer specializing in HTML and CSS for presentations.
       Based on the user's outline and the desired template style, generate the complete HTML and CSS for each slide.
@@ -47,14 +51,13 @@ router.post("/", async (req, res) => {
 
       For each slide in the outline, generate a JSON object with:
       - "title": A concise title for the slide.
-      - "html_content": A single string containing a complete, self-contained HTML document for the slide. This HTML MUST include all necessary CSS within a <style> tag. The design must be responsive and visually match the template description. Use a 16:9 aspect ratio container.
+      - "html_content": A single string containing a complete, self-contained HTML document for the slide. This HTML MUST include all necessary CSS within a <style> tag. The design must be responsive, visually match the template description, and use a 16:9 aspect ratio container.
 
       Return ONLY a valid JSON array of these slide objects.
     `;
     
     const generatedSlides: { title: string; html_content: string }[] = await geminiJson(prompt);
 
-    // 3. Save each generated slide to the database
     const slidesToInsert = generatedSlides.map((slide, index) => ({
       project_id: projectId,
       slide_number: index + 1,
@@ -67,9 +70,7 @@ router.post("/", async (req, res) => {
       .insert(slidesToInsert)
       .select();
 
-    if (insertError) {
-      throw new Error(`Failed to save slides: ${insertError.message}`);
-    }
+    if (insertError) throw new Error(`Failed to save slides: ${insertError.message}`);
 
     console.log(`[${projectId}] Successfully saved ${savedSlides.length} slides.`);
     res.status(201).json(savedSlides);

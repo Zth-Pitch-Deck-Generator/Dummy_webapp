@@ -1,8 +1,7 @@
 // src/pages/Index.tsx
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowRight, FileText, Brain, BarChart3, ChevronRight, Palette, MessageSquare } from 'lucide-react';
+import { ArrowRight, ChevronRight, Brain, Palette, MessageSquare } from 'lucide-react';
 import { Header } from '../components/Header.tsx';
 
 export type ProjectData = {
@@ -12,7 +11,7 @@ export type ProjectData = {
   description: string;
   revenue: 'pre-revenue' | 'revenue';
   decktype: "pitch-deck" | "dataroom";
-  deckSubtype: "basic_pitch_deck" | "complete_pitch_deck" | "guided_dataroom" | "direct_dataroom";
+  // NOTE: deckSubtype has been removed to align with the database schema
 };
 
 export interface QAData extends Array<{ question: string; answer: string }> {}
@@ -58,7 +57,7 @@ const Index = () => {
               to build compelling narratives that resonate with your audience.
             </p>
 
-            {/* --- THE FIX: Replaced single button with two options --- */}
+            {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16 animate-fade-in [animation-delay:400ms]">
               <Link to="/create" state={{ flowType: 'pitch-deck' }}>
                 <Button size="lg" className="btn-primary group px-8 py-4 text-base font-semibold shadow-lg hover:shadow-xl w-full sm:w-auto">
@@ -67,12 +66,12 @@ const Index = () => {
                 </Button>
               </Link>
               <Button size="lg" variant="outline" disabled className="w-full sm:w-auto">
-                Dataroom 
+                Dataroom
               </Button>
               <Button asChild variant="ghost" className="text-text-secondary hover:text-text-primary font-medium">
                 <Link to="/investor-mock-room">
-                  Investor Mock Room
-                  <ChevronRight className="w-4 h-4 ml-1" />
+                    Investor Mock Room
+                    <ChevronRight className="w-4 h-4 ml-1" />
                 </Link>
               </Button>
             </div>
@@ -170,7 +169,6 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      {/* Features Section */}
       <section className="py-32 bg-gradient-to-b from-surface/20 to-background relative">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.03),transparent_70%)]"></div>
 
@@ -201,16 +199,13 @@ const Index = () => {
                   <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-brand to-brand/80 rounded-2xl mb-8 shadow-lg group-hover:shadow-brand/25 transition-shadow duration-300">
                     <Brain className="w-8 h-8 text-white" />
                   </div>
-
                   <h3 className="text-2xl font-bold text-text-primary mb-4 group-hover:text-brand transition-colors duration-300">
                     Smart Content Generation
                   </h3>
-
                   <p className="text-text-secondary leading-relaxed text-lg mb-6">
                     Our AI understands your business model and generates compelling,
                     investor-ready content that tells your unique story with precision.
                   </p>
-
                   <div className="flex items-center text-brand font-semibold group-hover:translate-x-2 transition-transform duration-300">
                     <span className="text-sm">Learn more</span>
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -224,16 +219,13 @@ const Index = () => {
                   <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-brand to-brand/80 rounded-2xl mb-8 shadow-lg group-hover:shadow-brand/25 transition-shadow duration-300">
                     <Palette className="w-8 h-8 text-white" />
                   </div>
-
                   <h3 className="text-2xl font-bold text-text-primary mb-4 group-hover:text-brand transition-colors duration-300">
                     Professional Templates
                   </h3>
-
                   <p className="text-text-secondary leading-relaxed text-lg mb-6">
                     Choose from our curated collection of proven templates used by
                     successful startups that have raised over $500M in funding.
                   </p>
-
                   <div className="flex items-center text-brand font-semibold group-hover:translate-x-2 transition-transform duration-300">
                     <span className="text-sm">Explore templates</span>
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -247,16 +239,13 @@ const Index = () => {
                   <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-brand to-brand/80 rounded-2xl mb-8 shadow-lg group-hover:shadow-brand/25 transition-shadow duration-300">
                     <MessageSquare className="w-8 h-8 text-white" />
                   </div>
-
                   <h3 className="text-2xl font-bold text-text-primary mb-4 group-hover:text-brand transition-colors duration-300">
                     Interactive Q&A
                   </h3>
-
                   <p className="text-text-secondary leading-relaxed text-lg mb-6">
                     Practice your pitch with AI-powered questions that simulate
                     real investor conversations and comprehensive due diligence.
                   </p>
-
                   <div className="flex items-center text-brand font-semibold group-hover:translate-x-2 transition-transform duration-300">
                     <span className="text-sm">Try Q&A</span>
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -317,14 +306,12 @@ const Index = () => {
                   </div>
                   <span className="text-lg font-medium">500+ decks created</span>
                 </div>
-
                 <div className="flex items-center space-x-2">
                   <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
                     <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                   </div>
                   <span className="text-lg font-medium">$50M+ funding raised</span>
                 </div>
-
                 <div className="flex items-center space-x-2">
                   <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center">
                     <div className="w-3 h-3 rounded-full bg-purple-500"></div>
@@ -340,7 +327,6 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border/50 bg-gradient-to-b from-surface/30 to-background relative">
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
-
         <div className="container max-w-7xl mx-auto px-6 py-16">
           <div className="flex flex-col lg:flex-row justify-between items-start space-y-12 lg:space-y-0">
             {/* Brand */}
