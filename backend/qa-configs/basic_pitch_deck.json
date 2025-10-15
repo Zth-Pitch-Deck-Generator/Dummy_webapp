@@ -2,7 +2,7 @@
   "name": "Basic Pitch Deck",
   "description": "Core narrative, 8 slides.",
   "slideCount": 8,
-  "maxQuestions": 3,
+  "maxQuestions":30,
   "questions": [
     {
       "topic": "Company",
@@ -26,27 +26,17 @@
     },
     {
       "topic": "Solution",
-      "question": "In one sentence, what is your solution?",
+      "question": "What is your solution?",
       "answerType": "free_text"
     },
     {
       "topic": "Solution",
-      "question": "What are the key features of your product/service?",
+      "question": "What are the key features of your product/service? How do you want customers to percieve your product/service?",
       "answerType": "multiple_choice"
     },
     {
       "topic": "Market Opportunity",
-      "question": "What is the Total Addressable Market (TAM) for your solution?",
-      "answerType": "free_text"
-    },
-    {
-      "topic": "Market Opportunity",
-      "question": "What is your Serviceable Available Market (SAM)?",
-      "answerType": "free_text"
-    },
-    {
-      "topic": "Market Opportunity",
-      "question": "What is your Serviceable Obtainable Market (SOM)?",
+      "question": "What is the Total Addressable Market (TAM), Serviceable Available Market (SAM) and Serviceable Obtainable Market (SOM), CAGR for your solution?",
       "answerType": "free_text"
     },
     {
@@ -56,7 +46,7 @@
     },
     {
       "topic": "Traction",
-      "question": "How many active users do you have?",
+      "question": "How many active customers do you have?",
       "answerType": "multiple_choice"
     },
     {
@@ -71,23 +61,18 @@
     },
     {
       "topic": "Team",
-      "question": "Who are the founders of your company?",
-      "answerType": "free_text"
-    },
-    {
-      "topic": "Team",
-      "question": "What is the relevant experience of your core team members?",
-      "answerType": "free_text"
-    },
-    {
-      "topic": "Team",
-      "question": "Why is your team the right one to solve this problem?",
+      "question": "Who are the founders of your company and what are their backgrounds?",
       "answerType": "free_text"
     },
     {
       "topic": "Competition",
       "question": "Who are your main competitors?",
       "answerType": "free_text"
+    },
+    {
+      "topic": "Go-To-Market Strategy",
+      "question": "How much money are you raising?",
+      "answerType": "multiple_choice"
     },
     {
       "topic": "The Ask",

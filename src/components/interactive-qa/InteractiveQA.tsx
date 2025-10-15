@@ -10,11 +10,13 @@ import { Info, ArrowLeft } from 'lucide-react';
 import useQASession from './useQASession';
 import type { InteractiveQAProps } from './types';
 import { Skeleton } from '../ui/skeleton';
+import qaConfig from '../../../backend/qa-configs/basic_pitch_deck.json';
 
 const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   const { currentQuestion, isLoading, handleSend, handlePrevious, getPreviousAnswer, questionCount, history, canGoBack } = useQASession(projectData, onComplete);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
+
   // Always restore previous answer for the current question
   useEffect(() => {
     if (currentQuestion) {
@@ -54,22 +56,11 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
     }
   }, [currentQuestion?.question]);
 
-  // Determine if we're likely on the last question based on question count and deck type
+  // Return true only when current question index equals maxQuestions from config
   const isLikelyLastQuestion = () => {
-    const numericQuestionCount = parseInt(questionCount.split('.')[0]);
-
-    // Conservative thresholds - show "Next" for most questions, only "Submit Answer" near the very end
-    switch (projectData.deckSubtype) {
-      case 'basic_pitch_deck':
-        return numericQuestionCount >= 18; // Show "Submit Answer" for the last few questions
-      case 'complete_pitch_deck':
-        return numericQuestionCount >= 18; // Complete has up to 20 questions
-      case 'guided_dataroom':
-      case 'direct_dataroom':
-        return numericQuestionCount >= 15; // Dataroom
-      default:
-        return numericQuestionCount >= 18; // Default - very conservative
-    }
+    const maxq = Number(qaConfig?.maxQuestions ?? 0);
+    const current = parseInt(String(questionCount).match(/\d+/)?.[0] ?? '0', 10);
+    return current === maxq && maxq > 0;
   };
 
   const handleSubmit = () => {
@@ -146,22 +137,22 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
   };
 
   const isSubmitDisabled = () => {
-      if (isLoading) return true;
-      if (currentQuestion?.answerType === 'multiple_choice') {
-        const otherSelected = selectedChoices.includes('Other');
-        if (otherSelected) {
-            return currentAnswer.trim() === '' && selectedChoices.length === 1;
-        }
-        return selectedChoices.length === 0;
+    if (isLoading) return true;
+    if (currentQuestion?.answerType === 'multiple_choice') {
+      const otherSelected = selectedChoices.includes('Other');
+      if (otherSelected) {
+        return currentAnswer.trim() === '' && selectedChoices.length === 1;
       }
-      return currentAnswer.trim() === '';
+      return selectedChoices.length === 0;
+    }
+    return currentAnswer.trim() === '';
   };
 
   return (
     <div className="max-w-3xl mx-auto">
-       <div className="mb-6 text-center">
-            <h1 className="text-3xl font-bold text-gray-900">Interactive Q&A Session</h1>
-            <p className="text-gray-500 mt-2">The AI will ask questions to understand your venture. This session won't exceed 20 questions.</p>
+      <div className="mb-6 text-center">
+        <h1 className="text-3xl font-bold text-gray-900">Interactive Q&amp;A Session</h1>
+        <p className="text-gray-500 mt-2">The AI will ask questions to understand your venture. This session won't exceed 20 questions.</p>
       </div>
 
       <Card className="shadow-lg">
@@ -179,11 +170,11 @@ const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
             </CardHeader>
             <CardContent className="space-y-4">
               {currentQuestion.explanation && (
-                 <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertTitle>Quick Explanation</AlertTitle>
-                    <AlertDescription>{currentQuestion.explanation}</AlertDescription>
-                 </Alert>
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>Quick Explanation</AlertTitle>
+                  <AlertDescription>{currentQuestion.explanation}</AlertDescription>
+                </Alert>
               )}
               <p className="text-gray-700 text-lg">{currentQuestion.question}</p>
               <div className="mt-4">

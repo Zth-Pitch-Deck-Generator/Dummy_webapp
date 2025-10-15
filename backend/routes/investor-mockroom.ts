@@ -56,15 +56,22 @@ router.post("/analyze", async (req: Request, res: Response) => {
 
     const truncatedContent = deckContent.substring(0, MAX_DECK_LENGTH);
     const prompt = `
-      You are an expert VC analyst. Analyze the following pitch deck content and provide:
-      1.  Key Elements: A list of the strongest elements that will attract investors.
-      2.  Potential Questions: A list of questions an investor might ask about this pitch.
+      You are an expert VC analyst at Y-Combinator. Your task is to analyze the provided pitch deck content.
+      Your analysis must be based strictly on the information within the pitch deck. Do not infer or add external information. Do not make assumptions beyond what is explicitly stated in the content.
+
+      From the content, provide:
+      1.  Key Elements: For the key elements, analyze the entire pitch deck given based on that think like an analyst or an investor and give 8 to 10 most important key elements in and out of the pitch deck based on the market as well. 
+      2.  Potential Questions: A list of critical questions a skeptical investor would ask. These questions should probe for weaknesses, seek clarification on vague points, or request more detail on key metrics. Include questions that address potential risks or gaps in the information presented.
+      These questions should be challenging and should provide new insights about the pitch deck content.
+
       Pitch Deck Content:
       """
       ${truncatedContent}
       """
-      Don’t include quotation marks in the text being returned.
+
       Return a single, valid JSON object with two keys: "keyElements" and "potentialQuestions".
+      The value for each key should be an array of strings.
+      Do not use quotation marks inside the strings you return.
     `;
     const analysis = await geminiJson(prompt);
     res.json({ ...analysis, deckContent });
