@@ -64,8 +64,7 @@ const qaHandler: RequestHandler = async (req: Request, res: Response): Promise<v
         return;
     }
 
-    // const MAX_QUESTIONS = qaConfig.maxQuestions || qaConfig.questions.length;
-    const MAX_QUESTIONS = 3;
+    const MAX_QUESTIONS = qaConfig.maxQuestions || qaConfig.questions.length;
 
     const userMessages = messages.filter((m) => m.role === "user");
     const nextQuestionIndex = userMessages.length;
@@ -187,7 +186,7 @@ const qaHandler: RequestHandler = async (req: Request, res: Response): Promise<v
 
         if (parsedChoices.success) {
           finalQuestion.choices = parsedChoices.data.choices;
-          if (!finalQuestion.choices.map(c => c.toLowerCase()).includes('other')) {
+          if (!finalQuestion.choices.map((c: string) => c.toLowerCase()).includes('other')) {
             finalQuestion.choices.push('Other');
           }
           console.log(`✅ Generated ${finalQuestion.choices.length} contextual choices for multiple choice question`);
