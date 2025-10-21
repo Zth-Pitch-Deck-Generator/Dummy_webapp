@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Download, Save } from 'lucide-react';
+import { Loader2, Download, Save, Eye, Code2 } from 'lucide-react'; // For toggle icons
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { supabase } from '@/lib/supabase';
 
@@ -11,11 +11,11 @@ interface DeckSlide {
   title: string;
   html_content: string;
 }
-
 interface DeckEditorProps {
   projectId: string;
-  templateInfo?: { name: string; description: string }; // Optionally pass selected template
-  outline?: any; // Optionally pass generated outline
+  templateInfo?: { name: string; description: string };
+  outline?: any;
+  productDescription?: string;
   onDownloadReady?: (url: string) => void;
 }
 
@@ -23,16 +23,18 @@ const DeckEditor = ({
   projectId,
   templateInfo,
   outline,
+  productDescription, 
   onDownloadReady,
 }: DeckEditorProps) => {
   const [slides, setSlides] = useState<DeckSlide[]>([]);
   const [activeSlide, setActiveSlide] = useState<DeckSlide | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false); // new: track slide gen
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
-  // Only generate slides if not present, and both template+outline given
+  // Generate slides with Gemini
   const handleGenerateSlides = async () => {
     if (!projectId || !templateInfo || !outline) return;
     setIsGenerating(true);
@@ -40,7 +42,10 @@ const DeckEditor = ({
       const res = await fetch('/api/generate-deck', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId })
+        body: JSON.stringify({
+          projectId,
+          productDescription: productDescription || "", 
+        }),
       });
       if (!res.ok) throw new Error('Failed to generate slides.');
       const generatedSlides = await res.json();
@@ -69,9 +74,7 @@ const DeckEditor = ({
   }, [projectId]);
 
   const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (activeSlide) {
-      setActiveSlide({ ...activeSlide, html_content: e.target.value });
-    }
+    if (activeSlide) setActiveSlide({ ...activeSlide, html_content: e.target.value });
   };
 
   // Save slide
@@ -93,9 +96,7 @@ const DeckEditor = ({
         .order('slide_number');
       setSlides(data || []);
       setActiveSlide((data && data.find(s => s.id === activeSlide.id)) || null);
-    } finally {
-      setIsSaving(false);
-    }
+    } finally { setIsSaving(false); }
   };
 
   // Compile & download PPTX
@@ -111,14 +112,26 @@ const DeckEditor = ({
       const { downloadUrl } = await res.json();
       setDownloadUrl(downloadUrl);
       if (onDownloadReady) onDownloadReady(downloadUrl);
-    } finally {
-      setIsCompiling(false);
-    }
+    } finally { setIsCompiling(false); }
   };
 
-  // UI: Slide nav, editor, preview, generation, download button
+  // UI: Slide nav, editor, preview, generation, download button, toggle
   return (
     <div className="h-full flex flex-col">
+      <div className="mb-4 flex justify-end gap-4">
+        <Button
+          variant={viewMode === 'preview' ? 'default' : 'outline'}
+          onClick={() => setViewMode('preview')}
+        >
+          <Eye className="mr-2 w-4 h-4" /> Slide Preview
+        </Button>
+        <Button
+          variant={viewMode === 'code' ? 'default' : 'outline'}
+          onClick={() => setViewMode('code')}
+        >
+          <Code2 className="mr-2 w-4 h-4" /> Code View
+        </Button>
+      </div>
       {/* Slide Generation */}
       {!slides.length && templateInfo && outline && (
         <div className="my-4">
@@ -141,7 +154,9 @@ const DeckEditor = ({
                   key={slide.id}
                   onClick={() => setActiveSlide(slide)}
                   className={`px-3 py-1 rounded ${
-                    activeSlide?.id === slide.id ? 'bg-blue-500 text-white' : 'bg-gray-200'
+                    activeSlide?.id === slide.id
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-200"
                   }`}
                 >
                   {slide.slide_number}
@@ -150,11 +165,19 @@ const DeckEditor = ({
             </div>
             <div className="flex items-center space-x-2">
               <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
                 <span className="ml-2">Save Slide</span>
               </Button>
               <Button onClick={handleCompileAndDownload} disabled={isCompiling}>
-                {isCompiling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {isCompiling ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
                 <span className="ml-2">Download PPTX</span>
               </Button>
             </div>
@@ -162,29 +185,34 @@ const DeckEditor = ({
 
           {/* Editor and Preview */}
           <ResizablePanelGroup direction="horizontal" className="flex-grow">
-            <ResizablePanel defaultSize={50}>
-              <textarea
-                value={activeSlide?.html_content || ''}
-                onChange={handleCodeChange}
-                className="w-full h-full p-4 font-mono text-sm resize-none border-0 focus:ring-0"
-                placeholder="Loading slide code..."
-              />
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={50}>
-              <iframe
-                srcDoc={activeSlide?.html_content || ''}
-                title="Slide Preview"
-                className="w-full h-full border-0"
-                sandbox="allow-scripts allow-same-origin"
-              />
+            <ResizablePanel defaultSize={100}>
+              {viewMode === "code" ? (
+                <textarea
+                  value={activeSlide?.html_content || ""}
+                  onChange={handleCodeChange}
+                  className="w-full h-full p-4 font-mono text-sm resize-none border-0 focus:ring-0"
+                  placeholder="Loading slide code..."
+                />
+              ) : (
+                <iframe
+                  srcDoc={activeSlide?.html_content || ""}
+                  title="Slide Preview"
+                  className="w-full h-full border-0"
+                  sandbox="allow-scripts allow-same-origin"
+                />
+              )}
             </ResizablePanel>
           </ResizablePanelGroup>
 
           {/* Final download link */}
           {downloadUrl && (
             <div className="mt-6">
-              <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+              <a
+                href={downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline"
+              >
                 Download Pitch Deck
               </a>
             </div>
@@ -194,5 +222,4 @@ const DeckEditor = ({
     </div>
   );
 };
-
 export default DeckEditor;

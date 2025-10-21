@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 interface TemplateProps {
   onGenerate: (slides: GeneratedSlide[], url: string) => void;
   industry: string;
+  productDescription?: string;   // <-- Accept as prop for Gemini
 }
 
 interface Template {
@@ -22,7 +23,7 @@ interface Template {
   preview_url?: string;
 }
 
-const Template = ({ onGenerate, industry }: TemplateProps) => {
+const Template = ({ onGenerate, industry, productDescription }: TemplateProps) => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,7 +65,6 @@ const Template = ({ onGenerate, industry }: TemplateProps) => {
         } else if (normalizedIndustry !== 'general') {
           await fetchTemplates('general');
         }
-
       } catch (error) {
         console.error('Unexpected error:', error);
       } finally {
@@ -110,11 +110,14 @@ const Template = ({ onGenerate, industry }: TemplateProps) => {
         throw new Error('Could not save your template selection. Please try again.');
       }
 
-      // Step 2: Trigger deck generation (only sending projectId)
+      // Step 2: Trigger deck generation (sending product description)
       const generateResponse = await fetch('/api/generate-deck', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId }),
+        body: JSON.stringify({
+          projectId,
+          productDescription: productDescription || ""
+        }),
       });
 
       if (!generateResponse.ok) {
@@ -123,6 +126,7 @@ const Template = ({ onGenerate, industry }: TemplateProps) => {
       }
 
       const result = await generateResponse.json();
+      // If backend returns { slides, downloadUrl }
       onGenerate(result.slides, result.downloadUrl);
 
     } catch (error) {
@@ -155,10 +159,11 @@ const Template = ({ onGenerate, industry }: TemplateProps) => {
     <div className="max-w-5xl mx-auto p-4">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-2">Choose Your Template</h1>
-        <p className="text-lg text-gray-600">
+        <div className="text-lg text-gray-600 flex items-center gap-1 justify-center">
           You've selected the <Badge className="text-lg mx-1">{industry}</Badge> industry.
           Select a design for your presentation below.
-        </p>
+        </div>
+
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
@@ -168,9 +173,8 @@ const Template = ({ onGenerate, industry }: TemplateProps) => {
             <Card
               key={template.id}
               onClick={() => setSelectedTemplate(template.id)}
-              className={`cursor-pointer transition-all duration-200 hover:shadow-xl flex flex-col justify-between ${
-                selectedTemplate === template.id ? 'ring-2 ring-blue-500 scale-105' : 'hover:scale-105'
-              }`}
+              className={`cursor-pointer transition-all duration-200 hover:shadow-xl flex flex-col justify-between ${selectedTemplate === template.id ? 'ring-2 ring-blue-500 scale-105' : 'hover:scale-105'
+                }`}
             >
               <div>
                 <CardHeader>
@@ -214,7 +218,7 @@ const Template = ({ onGenerate, industry }: TemplateProps) => {
           );
         })}
       </div>
-      
+
       <div className="flex justify-center items-center gap-4 mt-10 border-t pt-8">
         <Button
           onClick={handleGenerateClick}

@@ -100,6 +100,7 @@ const BasicPitchDeckFlow = () => {
             projectId={projectId}
             templateInfo={templateInfo!}
             outline={outline!}
+            productDescription={projectData?.description || ""}
             onDownloadReady={handleDownloadReady}
           />
         );
