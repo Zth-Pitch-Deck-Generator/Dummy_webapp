@@ -61,7 +61,7 @@ const handleOutline: any = async (req: any, res: any) => {
           `
           id,
           outline_json,
-          outline_reviews(user_edits) // Selecting user_edits from related outline_reviews
+          outline_reviews(user_edits)
           `
         )
         .eq("project_id", projectId)
