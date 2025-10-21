@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect} from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 
-export function Header() {
+export function Header({handleAuthRedirect}: {handleAuthRedirect: () => void}) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navLinks = [
@@ -35,8 +35,8 @@ export function Header() {
 
           {/* CTA Button */}
           <div className="hidden sm:block">
-            <Button asChild className="btn-primary">
-              <Link to="/create">Get Started</Link>
+            <Button asChild className="btn-primary" onClick={handleAuthRedirect}>
+              Get Started
             </Button>
           </div>
 
@@ -68,10 +68,13 @@ export function Header() {
                 {link.label}
               </a>
             ))}
-            <Button asChild className="btn-primary w-3/4 mt-4">
-              <Link to="/create" onClick={() => setIsMenuOpen(false)}>
+            <Button className="btn-primary w-3/4 mt-4"
+              onClick={() => {
+              setIsMenuOpen(false);
+              handleAuthRedirect();
+            }}
+              >
                 Get Started
-              </Link>
             </Button>
           </nav>
         </div>
