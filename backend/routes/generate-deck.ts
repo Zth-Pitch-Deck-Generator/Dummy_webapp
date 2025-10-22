@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { z } from "zod";
-import { geminiJson } from "../lib/geminiFlash.js";
 import { geminiProHtmlSlides } from "../lib/geminiPro.js";
 import { supabase } from "../supabase.js";
 import { authenticate } from "../middleware/auth.js";
@@ -9,27 +8,34 @@ const router = Router();
 
 const bodySchema = z.object({
   projectId: z.string().uuid(),
-  productDescription: z.string().optional(), // Add this field for personalization
+  productDescription: z.string().optional(),
 });
 
 router.post("/", authenticate, async (req: any, res) => {
   try {
     const { projectId, productDescription = "" } = bodySchema.parse(req.body);
 
-    // Fetch template info from project
+    // 1. Get project and templateId (assume your projects table has template_id)
     const { data: projectData, error: projectError } = await supabase
       .from('projects')
-      .select('templates ( name, description ), user_id')
+      .select('template_id, user_id')
       .eq('id', projectId)
       .single();
     if (projectError) throw new Error(`Project error: ${projectError.message}`);
     if (projectData.user_id !== req.user?.id) throw new Error('Forbidden');
-    const template = Array.isArray(projectData.templates)
-      ? projectData.templates[0]
-      : projectData.templates;
-    if (!template) throw new Error("Template not found!");
+    if (!projectData.template_id) throw new Error("No template selected for this project.");
 
-    // Fetch outline
+    // 2. Fetch template with UI/UX description
+    const { data: template, error: templateError } = await supabase
+      .from('templates')
+      .select('name, description, ui_ux_description')
+      .eq('id', projectData.template_id)
+      .single();
+
+    if (templateError) throw new Error("Template fetch error: " + templateError.message);
+    if (!template?.ui_ux_description) throw new Error("Template is missing UI/UX description.");
+
+    // 3. Fetch outline JSON
     const { data: outlineData, error: outlineError } = await supabase
       .from('outlines')
       .select('outline_json')
@@ -39,24 +45,20 @@ router.post("/", authenticate, async (req: any, res) => {
 
     const outline = outlineData.outline_json;
 
-    // -- Step 1: Extract design info using Flash --
-    const flashPrompt = `
-Analyze this template and extract a detailed UI/UX description (colors, fonts, animations, style, layout):
-Template Name: "${template.name}"
-Description: "${template.description}"
-`;
-    const designDescription = await geminiJson(flashPrompt);
+    // 4. Use the UI/UX description as design description
+    const designDescription =
+      typeof template.ui_ux_description === "string"
+        ? template.ui_ux_description
+        : JSON.stringify(template.ui_ux_description);
 
-    // -- Step 2: Generate HTML/CSS slides from Pro --
+    // 5. Generate HTML/CSS slides via Gemini Pro
     const generatedSlides = await geminiProHtmlSlides({
-      designDescription: typeof designDescription === "string"
-        ? designDescription
-        : JSON.stringify(designDescription),
+      designDescription,
       outline,
       productDescription,
     });
 
-    // -- Save slides in DB --
+    // 6. Save slides in DB
     const slidesToInsert = generatedSlides.map((slide, i) => ({
       project_id: projectId,
       slide_number: i + 1,
@@ -69,10 +71,9 @@ Description: "${template.description}"
       .select();
     if (insertError) throw new Error("Failed to save slides: " + insertError.message);
 
-    // -- Optionally run compile-deck to generate PPTX now or handle via UI later --
     res.status(201).json(savedSlides);
   } catch (error: any) {
-    res.status(500).json({error: error.message || "Failed to generate deck"});
+    res.status(500).json({ error: error.message || "Failed to generate deck" });
   }
 });
 export default router;

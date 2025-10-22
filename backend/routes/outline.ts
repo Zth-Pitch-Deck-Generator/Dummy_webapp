@@ -1,7 +1,7 @@
 // backend/routes/outline.ts
 import { Router } from "express";
 import { z } from "zod";
-import { supabase } from "../supabase.js"; // ADJUSTED: Using your specific supabase client path
+import { supabase } from "../supabase.js";
 import { geminiJson } from "../lib/geminiFlash.js";
 import { authenticate } from "../middleware/auth.js";
 
@@ -9,48 +9,40 @@ const router = Router();
 
 // --- Zod Schemas for Validation ---
 
-// Existing schema for /api/outline
 const OutlineRequestSchema = z.object({
   projectId: z.string().uuid(),
   regenerate: z.boolean().optional(),
 });
 
-// Existing schema for /api/outline/eval
 const OutlineEvalRequestSchema = z.object({
   outlineId: z.string().uuid(),
   regenerate: z.boolean().optional(),
 });
 
-// NEW: Schema for user_edits (matching frontend's Map<number, OutlinePoint[]>)
-// User edits will be an object where keys are slide indices (strings) and values are arrays of OutlinePoint
 const UserEditPointSchema = z.object({
   content: z.string(),
-  isUserAdded: z.literal(true), // Ensure this is always true for user edits saved
-  tempId: z.string().optional(), // Can be optional as backend might re-assign or not care
+  isUserAdded: z.literal(true),
+  tempId: z.string().optional(),
 });
 
-// NEW: Schema for the structure of the userEdits object that comes from the frontend
-// It's a record where keys are stringified slide indices (e.g., "0", "1")
-// and values are arrays of UserEditPointSchema.
 const UserEditsSchema = z.record(
   z.string().regex(/^\d+$/),
   z.array(UserEditPointSchema)
 );
 
-// NEW: Schema for /api/outline/edits request body
 const SaveUserEditsRequestSchema = z.object({
   outlineId: z.string().uuid(),
-  userEdits: UserEditsSchema, // Expects the structured userEdits object
+  userEdits: UserEditsSchema,
 });
 
 /* ---------- POST /api/outline ---------- */
-const handleOutline: any = async (req: any, res: any) => {
+const handleOutline = async (req: any, res: any) => {
   try {
     const parse = OutlineRequestSchema.safeParse(req.body);
     if (!parse.success) {
-      return void res
+      return res
         .status(400)
-        .json({ error: "Bad payload", details: parse.error.errors }); // ADJUSTED: Added details for better error messages
+        .json({ error: "Bad payload", details: parse.error.errors });
     }
 
     const { projectId, regenerate } = parse.data;
@@ -63,39 +55,39 @@ const handleOutline: any = async (req: any, res: any) => {
       .single();
 
     if (projErr || !projectOwnerData) {
-      return void res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Project not found' });
     }
 
     if (projectOwnerData.user_id !== req.user?.id) {
-      return void res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden' });
     }
 
     if (!regenerate) {
-      const { data, error } = await supabase
+        // **FIXED QUERY**: Select user_edits directly from the outlines table
+        const { data, error } = await supabase
         .from("outlines")
         .select(
           `
-          id,
-          outline_json,
-          outline_reviews(user_edits)
+            id,
+            outline_json,
+            user_edits,
+            outline_reviews (*)
           `
         )
         .eq("project_id", projectId)
-        .maybeSingle();
+        .single();
 
       if (error) {
         console.error("Supabase fetch outline with edits error:", error);
-        // Continue without user_edits if there's an error, or throw.
-        // For now, let's proceed to allow generation if fetch failed for existing.
+        // Fall through to generate a new one if fetching fails
       }
 
       if (data) {
-        // Extract user_edits from the nested structure, defaulting to an empty object if none
-        const userEdits = data.outline_reviews?.[0]?.user_edits || {};
-        return void res.json({
+        return res.json({
           id: data.id,
           outline_json: data.outline_json,
-          user_edits: userEdits, // Include user_edits in the response
+          // **FIXED DATA ACCESS**: Access user_edits directly from the outline data
+          user_edits: data.user_edits || {}, 
         });
       }
     }
@@ -107,7 +99,7 @@ const handleOutline: any = async (req: any, res: any) => {
       .single();
 
     if (projectError || !projectData) {
-      return void res.status(404).json({ error: "Project not found" });
+      return res.status(404).json({ error: "Project not found" });
     }
 
     const { data: sessionData, error: sessionError } = await supabase
@@ -118,7 +110,7 @@ const handleOutline: any = async (req: any, res: any) => {
       .single();
 
     if (sessionError || !sessionData || !sessionData.transcript) {
-      return void res
+      return res
         .status(404)
         .json({ error: "Q&A session missing or transcript is empty" });
     }
@@ -132,9 +124,8 @@ const handleOutline: any = async (req: any, res: any) => {
     let prompt;
     const deckSubtype = projectData.decktype;
 
-    // --- Dynamic Prompt Generation based on Deck Subtype ---
     if (deckSubtype === "basic_pitch_deck") {
-      prompt = `  
+        prompt = ` 
         You are a highly empathetic and perceptive strategic investor at Y - Combinator and have invested in several startups based on the answers that the founders give us in the questions that we ask them you need to strategically recreate there answers in a way that will look interesting from an investors point of view consider that the founders are new they dont have any idea about the pitch.
         Your goal is to present there answers or idea in such a way that an investor who is reading it can relate in a pitch deck.
 
@@ -151,47 +142,22 @@ const handleOutline: any = async (req: any, res: any) => {
         1.  Provide the exact "title" from the list above.
         2.  Generate 3-4 highly synthesized and impactful "bullet_points" that capture the essence of the slide, naturally incorporating and highlighting any key insights or impressive data from the transcript. For the "Cover" slide, include the company name and a compelling tagline.
         3. For all the answers which we get from the founder they should be rephrased in a more investor ready manner, think like you are an investor at Y-Combinator based on all your experiences.How would you want
-4. For the market opportunity slide make sure that you add the market size, growth rate, key developments that might take place and the opportunity in the outline part (Example: The fintech market is currently of 80 billion dollars and is subjected to grow at a CGAR of 12% and the key trends and the other competitors are.) Add the CAGR as well for this insutry, and one important metrics that shows the growth in this industry.
+        4. For the market opportunity slide make sure that you add the market size, growth rate, key developments that might take place and the opportunity in the outline part (Example: The fintech market is currently of 80 billion dollars and is subjected to grow at a CGAR of 12% and the key trends and the other competitors are.) Add the CAGR as well for this insutry, and one important metrics that shows the growth in this industry.
         **Output Format:**
         Return ONLY a valid JSON array of exactly 8 slide objects with this exact structure:
         [
-          {
-            "title": "Cover",
-            "bullet_points": string[]
-          },
-          {
-            "title": "Problem",
-            "bullet_points": string[]
-          },
-          {
-            "title": "Solution",
-            "bullet_points": string[]
-          },
-          {
-            "title": "Market Opportunity",
-            "bullet_points": string[]
-          },
-          {
-            "title": "Traction",
-            "bullet_points": string[]
-          },
-          {
-            "title": "Team",
-            "bullet_points": string[]
-          },
-          {
-            "title": "Go-To-Market",
-            "bullet_points": string[]
-          },
-          {
-            "title": "The Ask",
-            "bullet_points": string[]
-          }
+          { "title": "Cover", "bullet_points": string[] },
+          { "title": "Problem", "bullet_points": string[] },
+          { "title": "Solution", "bullet_points": string[] },
+          { "title": "Market Opportunity", "bullet_points": string[] },
+          { "title": "Traction", "bullet_points": string[] },
+          { "title": "Team", "bullet_points": string[] },
+          { "title": "Go-To-Market", "bullet_points": string[] },
+          { "title": "The Ask", "bullet_points": string[] }
         ]
 
-        Transcript:"""${transcript}"""`; // FIXED: Changed transcriptTxt to transcript
+        Transcript:"""${transcript}"""`;
     } else {
-      // Prompt for other deck types, retaining original behavior for bullet_points and data_needed.
       const slideCount = projectData.slide_count || 12;
       prompt = `
       Using the following interview transcript, create a ${slideCount}-slide pitch deck outline for a "${deckSubtype}" deck.
@@ -202,13 +168,11 @@ const handleOutline: any = async (req: any, res: any) => {
         ...
       ]
 
-      Transcript:"""${transcript}"""`; // FIXED: Changed transcriptTxt to transcript
+      Transcript:"""${transcript}"""`;
     }
-    // --- End Dynamic Prompt Generation ---
 
     const outline = await geminiJson(prompt);
-    // --- Zod Schema Definitions & Conditional Validation ---
-    // Schema for basic_pitch_deck: only title and bullet_points.
+
     const basicSlideSchema = z.object({
       title: z.string(),
       bullet_points: z.array(z.string()),
@@ -218,17 +182,17 @@ const handleOutline: any = async (req: any, res: any) => {
       bullet_points: z.array(z.string()),
       data_needed: z.array(z.string()),
     });
-    // Selects the appropriate Zod schema based on deck subtype for validation.
+
     const outlineSchema =
       deckSubtype === "basic_pitch_deck"
         ? z.array(basicSlideSchema).length(8)
         : z.array(otherDeckSlideSchema).min(1);
-    // --- End Zod Schema Definitions & Conditional Validation ---
+
     const valid = outlineSchema.safeParse(outline);
 
     if (!valid.success) {
       console.error("Zod validation failed for outline:", valid.error.format());
-      return void res
+      return res
         .status(502)
         .json({ error: "Outline JSON schema invalid from AI" });
     }
@@ -236,22 +200,21 @@ const handleOutline: any = async (req: any, res: any) => {
     const { data: upsertedOutline, error } = await supabase
       .from("outlines")
       .upsert({ project_id: projectId, outline_json: outline })
-      .select("id, outline_json") // Select both id and the content
+      .select("id, outline_json")
       .single();
 
     if (error) {
       console.error("Supabase outline upsert error:", error);
-      return void res.status(500).json({ error: "DB outline upsert failed" });
+      return res.status(500).json({ error: "DB outline upsert failed" });
     }
 
-    // Return an object containing the new outline's ID and its content
-    return void res.json({
+    return res.json({
       id: upsertedOutline.id,
       outline_json: upsertedOutline.outline_json,
     });
   } catch (e: any) {
     console.error("Error in /api/outline:", e);
-    return void res
+    return res
       .status(500)
       .json({ error: "Failed to generate outline.", message: e.message });
   }
@@ -262,28 +225,27 @@ router.post("/", authenticate, handleOutline);
 /* ---------- POST /api/outline/eval ---------- */
 router.post("/eval", authenticate, async (req, res) => {
   try {
-    const parse = OutlineEvalRequestSchema.safeParse(req.body); // ADJUSTED: Using predefined schema
+    const parse = OutlineEvalRequestSchema.safeParse(req.body);
     if (!parse.success) {
-      return void res
+      return res
         .status(400)
-        .json({ error: "Bad payload", details: parse.error.errors }); // ADJUSTED: Added details
+        .json({ error: "Bad payload", details: parse.error.errors });
     }
     const { outlineId, regenerate } = parse.data;
 
-    // Verify the outline belongs to a project owned by the requesting user
     const { data: outlineRow } = await supabase
       .from('outlines')
       .select('project_id')
       .eq('id', outlineId)
       .single();
-    if (!outlineRow) return void res.status(404).json({ error: 'Outline not found' });
+    if (!outlineRow) return res.status(404).json({ error: 'Outline not found' });
 
     const { data: projRow } = await supabase
       .from('projects')
       .select('user_id')
       .eq('id', outlineRow.project_id)
       .single();
-  if (!projRow || projRow.user_id !== (req as any).user?.id) return void res.status(403).json({ error: 'Forbidden' });
+    if (!projRow || projRow.user_id !== (req as any).user?.id) return res.status(403).json({ error: 'Forbidden' });
 
     if (!regenerate) {
       const { data: existingReview } = await supabase
@@ -292,10 +254,9 @@ router.post("/eval", authenticate, async (req, res) => {
         .eq("outline_id", outlineId)
         .maybeSingle();
       if (existingReview && existingReview.swot_json) {
-        return void res.json(existingReview.swot_json);
+        return res.json(existingReview.swot_json);
       }
     }
-    // Fetch the outline and its project_id for context
     const { data: outlineData } = await supabase
       .from("outlines")
       .select("outline_json, project_id")
@@ -303,9 +264,8 @@ router.post("/eval", authenticate, async (req, res) => {
       .single();
 
     if (!outlineData) {
-      return void res.status(404).json({ error: "Outline not found" });
+      return res.status(404).json({ error: "Outline not found" });
     }
-    // Fetch the transcript using the project_id from the outline
     const { data: sessionData } = await supabase
       .from("qa_sessions")
       .select("transcript")
@@ -313,7 +273,7 @@ router.post("/eval", authenticate, async (req, res) => {
       .single();
 
     if (!sessionData || !sessionData.transcript) {
-      return void res.status(404).json({ error: "Q&A transcript not found" });
+      return res.status(404).json({ error: "Q&A transcript not found" });
     }
 
     const transcript = sessionData.transcript
@@ -321,7 +281,6 @@ router.post("/eval", authenticate, async (req, res) => {
         (m: any) => `${m.role === "user" ? "Founder" : "Analyst"}: ${m.content}`
       )
       .join("\n");
-    // Prompt for SWOT analysis
     const prompt = `
       Using the following pitch deck outline and founder interview transcript, generate a SWOT analysis (Strengths, Weaknesses, Opportunities, Threats) for this startup.
       Return ONLY a valid JSON object with four arrays: { "strength": string[], "weakness": string[], "opportunities": string[], "threats": string[] }
@@ -332,7 +291,6 @@ router.post("/eval", authenticate, async (req, res) => {
 
     const swot = await geminiJson(prompt);
 
-    // Validate SWOT structure
     const swotSchema = z.object({
       strength: z.array(z.string()),
       weakness: z.array(z.string()),
@@ -341,7 +299,7 @@ router.post("/eval", authenticate, async (req, res) => {
     });
     const valid = swotSchema.safeParse(swot);
     if (!valid.success) {
-      return void res
+      return res
         .status(502)
         .json({ error: "SWOT JSON schema invalid from AI" });
     }
@@ -353,14 +311,14 @@ router.post("/eval", authenticate, async (req, res) => {
 
     if (upsertError) {
       console.error("Supabase SWOT upsert error:", upsertError);
-      return void res
+      return res
         .status(500)
         .json({ error: "Failed to save SWOT analysis to DB." });
     }
-    return void res.json(swot);
+    return res.json(swot);
   } catch (e: any) {
     console.error("Error in /api/outline/eval:", e);
-    return void res
+    return res
       .status(500)
       .json({ error: "Failed to generate SWOT analysis.", message: e.message });
   }
@@ -368,63 +326,50 @@ router.post("/eval", authenticate, async (req, res) => {
 
 // --- NEW: Endpoint to Save User Edits ---
 router.post("/edits", authenticate, async (req, res) => {
-  // ADJUSTED: Removed authenticateToken
   try {
-    const parse = SaveUserEditsRequestSchema.safeParse(req.body); // ADJUSTED: Using predefined schema
+    const parse = SaveUserEditsRequestSchema.safeParse(req.body);
     if (!parse.success) {
-      return void res
+      return res
         .status(400)
-        .json({ error: "Bad payload", details: parse.error.errors }); // ADJUSTED: Added details
+        .json({ error: "Bad payload", details: parse.error.errors });
     }
     const { outlineId, userEdits } = parse.data;
 
-    // Verify the outline belongs to the requesting user's project
     const { data: outlineRow } = await supabase
       .from('outlines')
       .select('project_id')
       .eq('id', outlineId)
       .single();
-    if (!outlineRow) return void res.status(404).json({ error: 'Outline not found' });
+    if (!outlineRow) return res.status(404).json({ error: 'Outline not found' });
 
     const { data: projRow } = await supabase
       .from('projects')
       .select('user_id')
       .eq('id', outlineRow.project_id)
       .single();
-  if (!projRow || projRow.user_id !== (req as any).user?.id) return void res.status(403).json({ error: 'Forbidden' });
+    if (!projRow || projRow.user_id !== (req as any).user?.id) return res.status(403).json({ error: 'Forbidden' });
 
-    // Supabase upsert operation
-    // We update the user_edits column for the review associated with outlineId
+    // **FIXED UPDATE LOGIC**: Update the user_edits column on the 'outlines' table
     const { data, error } = await supabase
-      .from("outline_reviews")
-      .upsert(
-        {
-          outline_id: outlineId,
-          user_edits: userEdits, // This will store the object received from frontend
-        },
-        {
-          onConflict: "outline_id", // If a record with this outline_id exists, update it
-          ignoreDuplicates: false, // Ensure update happens if conflict
-        }
-      )
-      .select("id, outline_id, user_edits") // Select what was upserted for confirmation
-      .single(); // Expect a single record to be returned
+      .from("outlines")
+      .update({ user_edits: userEdits })
+      .eq("id", outlineId)
+      .select("id, user_edits") 
+      .single(); 
 
     if (error) {
-      console.error("Supabase upsert user edits error:", error);
+      console.error("Supabase update user edits error:", error);
       return res
         .status(500)
         .json({ error: "Failed to save user edits to database." });
     }
 
     if (!data) {
-      // This case should ideally not happen with upsert.single(), but good to guard
       return res
         .status(500)
         .json({ error: "No data returned after saving user edits." });
     }
 
-    // Respond with the saved user edits
     res.json({
       message: "User edits saved successfully",
       savedEdits: data.user_edits,

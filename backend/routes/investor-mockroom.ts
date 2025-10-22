@@ -154,13 +154,16 @@ router.post("/chat", authenticate, async (req: Request, res: Response) => {
 
       Your Instructions:
       1.  First, try to answer using the pitch deck content.
-      2.  If the answer isn't in the deck, provide a strategic answer based on the user's product and market, as described in the deck.
+      2.  If the answer isn't in the deck, provide a strategic answer based on the uhat might lead to the gser's product and market, as described in the deck.
       3.  Always format your response as a numbered list.
       4.  Start your response immediately with "1." without any preamble.
       5.  Clearly state "Assumption:" at the start of any points that are expert assumptions.
       6.  Do NOT use the '*' character anywhere in your response.
-      7.  Do NOT include markdown, headings, or code fences. Plain text only.
-    `;
+      7.  Do NOT include markdown, headings, or code fences. Plain text only. 
+      8. Tell the market numbers in terms of growth and size in the questions, with data.
+      
+      
+      `;
 
   // Step 4: Get the answer from Gemini
   const responseText = await geminiText(prompt);
