@@ -1,9 +1,13 @@
+// src/components/investor-mockroom/ChatInterface.tsx
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Loader2, User, Bot } from "lucide-react";
+import { supabase } from "@/lib/supabase"; // Import supabase for auth
+import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
-import { cn } from "@/lib/utils"; // Assuming you have a utility for classnames
+
 
 type Message = {
   role: "user" | "model";
@@ -11,10 +15,10 @@ type Message = {
 };
 
 interface ChatInterfaceProps {
-  deckContent: string;
+  mockroomId: string;
 }
 
-export function ChatInterface({ deckContent }: ChatInterfaceProps) {
+export function ChatInterface({ mockroomId }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "model",
@@ -30,25 +34,32 @@ export function ChatInterface({ deckContent }: ChatInterfaceProps) {
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !mockroomId) return;
     const userMessage: Message = { role: "user", content: input };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+
     try {
-      const res = await fetch("/api/investor-mockroom/ask", {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Authentication required.");
+
+      const res = await fetch("/api/investor-mockroom/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages, deckContent }),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ mockroomId, question: input }),
       });
+
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Failed to get a response from the server.");
       }
-      setMessages([...newMessages, { role: "model", content: data.answer }]);
+      setMessages(prev => [...prev, { role: "model", content: data.answer }]);
     } catch (error: any) {
-      setMessages([...newMessages, { role: "model", content: `Sorry, I ran into an error: ${error.message}` }]);
+      setMessages(prev => [...prev, { role: "model", content: `Sorry, I ran into an error: ${error.message}` }]);
     } finally {
       setIsLoading(false);
     }
@@ -75,25 +86,21 @@ export function ChatInterface({ deckContent }: ChatInterfaceProps) {
                 ? "bg-primary text-primary-foreground text-center"
                 : "bg-muted text-left"
             )}>
-              {/* For bot/model messages: custom list rendering */}
-              {msg.role === "model"
-                ? (
-                  <ul className="space-y-3 list-disc ml-6 text-blue-800 text-lg">
-                    {msg.content
-                      .split(/\n\d+\.\s+/) // split each numbered point
-                      .filter(Boolean)
-                      .map((point, i) => (
-                        <li key={i}>{point.trim().replace(/^\d+\.\s*/, "")}</li>
-                      ))}
-                  </ul>
-                )
-                : <ReactMarkdown>{msg.content}</ReactMarkdown> /* user message as usual */
+              {msg.role === "model" ? (
+                <ul className="space-y-3 list-disc ml-6 text-blue-800 text-lg">
+                  {msg.content
+                    .split(/\n\d+\.\s+/)
+                    .filter(Boolean)
+                    .map((point, i) => (
+                      <li key={i}>{point.trim().replace(/^\d+\.\s*/, "")}</li>
+                    ))}
+                </ul>
+              ) : <ReactMarkdown>{msg.content}</ReactMarkdown>
               }
             </div>
             {msg.role === "user" && <Avatar role="user" />}
           </div>
         ))}
-
         {isLoading && (
           <div className="flex items-center gap-3 justify-start">
             <Avatar role="model" />
@@ -121,13 +128,7 @@ export function ChatInterface({ deckContent }: ChatInterfaceProps) {
           aria-label="Enter your question"
           className="flex-grow"
         />
-        <Button
-          type="submit"
-          disabled={isLoading || !input.trim()}
-          aria-label="Send message"
-          size="icon"
-          className="flex-shrink-0"
-        >
+        <Button type="submit" disabled={isLoading || !input.trim()} aria-label="Send message" size="icon" className="flex-shrink-0">
           <Send className="w-5 h-5" />
         </Button>
       </form>

@@ -2,133 +2,189 @@
 
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { geminiJson, geminiText } from "../lib/geminiFlash.js";
+import multer from "multer";
 import pdf from "pdf-parse";
-import fetch from "node-fetch";
+import { v4 as uuidv4 } from "uuid";
+import { supabase } from "../supabase.js"; // Your Supabase client
+import { geminiJson, geminiText } from "../lib/geminiFlash.js";
+import { authenticate } from "../middleware/auth.js"; // Your auth middleware
 
 const router = Router();
-
-const analyzeBodySchema = z.object({
-  deckUrl: z.string().url("A valid URL for the pitch deck is required."),
-});
-
-const chatBodySchema = z.object({
-  deckContent: z.string().optional(),
-  messages: z.array(
-    z.object({
-      role: z.enum(["user", "model"]),
-      content: z.string(),
-    })
-  ),
-});
+const upload = multer({ storage: multer.memoryStorage() });
 
 const MAX_DECK_LENGTH = 15000;
 
-router.post("/analyze", async (req: Request, res: Response) => {
+// Schema for the chat endpoint
+const chatBodySchema = z.object({
+  mockroomId: z.string().uuid(),
+  question: z.string().min(1),
+});
+
+// 1. UPLOAD & ANALYZE ENDPOINT
+router.post("/upload", authenticate, upload.single("deckFile"), async (req: Request, res: Response) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded." });
+  }
+
+  const { buffer, originalname } = req.file;
+  const userId = (req as any).user.id; // From authenticate middleware
+  const fileExt = originalname.split(".").pop();
+  const newFileName = `${uuidv4()}.${fileExt}`;
+  const filePath = `${userId}/${newFileName}`;
+
   try {
-    const parsed = analyzeBodySchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res
-        .status(400)
-        .json({ error: "Invalid payload", details: parsed.error.flatten() });
-    }
-    const { deckUrl } = parsed.data;
+    // Step 1: Upload file to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from("Investor_mockroom_decks")
+      .upload(filePath, buffer);
 
-    const pdfResponse = await fetch(deckUrl);
-    if (!pdfResponse.ok) {
-      throw new Error(
-        `Failed to fetch PDF from URL: ${pdfResponse.statusText}`
-      );
+    if (uploadError) {
+      throw new Error(`Storage Error: ${uploadError.message}`);
     }
-    const fileBuffer = await pdfResponse.arrayBuffer();
-    const buffer = Buffer.from(fileBuffer);
 
-    const data = await pdf(buffer, {
-      pagerender: (pageData) => pageData.getTextContent(),
-    });
+    // Step 2: Parse PDF content
+    const data = await pdf(buffer);
     const deckContent = data.text;
-
     if (deckContent.length < 100) {
-      return res
-        .status(400)
-        .json({ error: "The content of the PDF is too short to analyze." });
+      return res.status(400).json({ error: "PDF content is too short to analyze." });
     }
 
+    // Step 3: Run analysis with Gemini
     const truncatedContent = deckContent.substring(0, MAX_DECK_LENGTH);
-    const prompt = `
-      You are an expert VC analyst at Y-Combinator. Your task is to analyze the provided pitch deck content.
-      Your analysis must be based strictly on the information within the pitch deck. Do not infer or add external information. Do not make assumptions beyond what is explicitly stated in the content.
-
-      From the content, provide:
-      1.  Key Elements: For the key elements, analyze the entire pitch deck given based on that think like an analyst or an investor and give 8 to 10 most important key elements in and out of the pitch deck based on the market as well. 
-      2.  Potential Questions: A list of critical questions a skeptical investor would ask. These questions should probe for weaknesses, seek clarification on vague points, or request more detail on key metrics. Include questions that address potential risks or gaps in the information presented.
-      These questions should be challenging and should provide new insights about the pitch deck content.
-
-      Pitch Deck Content:
-      """
-      ${truncatedContent}
-      """
-
-      Return a single, valid JSON object with two keys: "keyElements" and "potentialQuestions".
-      The value for each key should be an array of strings.
-      Do not use quotation marks inside the strings you return.
+    const analysisPrompt = `
+      You are an expert VC analyst at Y-Combinator. Analyze the provided pitch deck content strictly based on the information within it.
+      Provide:
+      1. Key Elements: 8 to 10 most important key elements from the pitch deck and the market.
+      2. Potential Questions: A list of critical questions a skeptical investor would ask.
+      Pitch Deck Content: """ ${truncatedContent} """
+      Return a single, valid JSON object with two keys: "keyElements" and "potentialQuestions", each being an array of strings.
     `;
-    const analysis = await geminiJson(prompt);
-    res.json({ ...analysis, deckContent });
-  } catch (e: any) {
-    console.error("Error in /api/investor-mockroom/analyze:", e);
-    // This is the correct way to handle errors - always returning JSON.
-    res.status(500).json({
-      error: "Failed to analyze the pitch deck.",
-      message: e.message,
+    const analysis = await geminiJson(analysisPrompt);
+
+    // Step 4: Create the mock room session in the database
+    const initialHistory = [
+        { role: "model", content: "I have analyzed your pitch deck. Feel free to ask me any questions an investor might have." }
+    ];
+
+    const { data: sessionData, error: insertError } = await supabase
+      .from("investor_mockrooms")
+      .insert({
+        user_id: userId,
+        file_path: filePath,
+        file_name: originalname,
+        key_elements: analysis.keyElements,
+        potential_questions: analysis.potentialQuestions,
+        chat_history: initialHistory,
+      })
+      .select("id")
+      .single();
+
+    if (insertError) {
+      throw new Error(`Database insert error: ${insertError.message}`);
+    }
+
+    // Step 5: Return the analysis and the new session ID
+    res.status(201).json({
+      ...analysis,
+      deckContent: truncatedContent, // Send content for context if needed
+      mockroomId: sessionData.id,
     });
+
+  } catch (e: any) {
+    console.error("Error in /upload:", e);
+    res.status(500).json({ error: "Failed to upload and analyze deck.", message: e.message });
   }
 });
 
-router.post("/ask", async (req: Request, res: Response) => {
+// 2. CHAT ENDPOINT
+router.post("/chat", authenticate, async (req: Request, res: Response) => {
   try {
     const parsed = chatBodySchema.safeParse(req.body);
     if (!parsed.success) {
-      return res
-        .status(400)
-        .json({ error: "Invalid payload", details: parsed.error.flatten() });
+      return res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
     }
-    const { messages } = parsed.data;
-    const conversationHistory = messages
-      .map((m) => `${m.role}: ${m.content}`)
+    const { mockroomId, question } = parsed.data;
+    const userId = (req as any).user.id;
+
+    // Step 1: Retrieve the session and its history
+    const { data: session, error: fetchError } = await supabase
+        .from('investor_mockrooms')
+        .select('chat_history, file_path')
+        .eq('id', mockroomId)
+        .eq('user_id', userId) // Security: Ensure user owns the session
+        .single();
+
+    if (fetchError || !session) {
+        return res.status(404).json({ error: "Session not found or you do not have permission to access it."});
+    }
+
+    // Step 2: Download and parse the original deck for full context
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from("Investor_mockroom_decks")
+      .download(session.file_path);
+
+    if (downloadError) {
+      throw new Error(`Failed to download deck: ${downloadError.message}`);
+    }
+
+    const buffer = Buffer.from(await fileData.arrayBuffer());
+    const pdfData = await pdf(buffer);
+    const deckContent = pdfData.text;
+
+    // Step 3: Construct conversation history for Gemini
+    const conversationHistory = session.chat_history
+      .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
       .join("\n");
 
     const prompt = `
-You are an expert VC analyst acting as a mock investor. Your task is to answer the user's question based on the provided pitch deck content and conversation history.
+      You are an expert VC analyst. Your primary goal is to answer the user's question based on the provided pitch deck content.
+      If the deck does not contain the answer, use your expertise to provide a helpful, insightful response based on the business idea presented in the deck.
 
-Conversation History for Context:
-"""
-${conversationHistory}
-"""
+      Pitch Deck Content:
+      """
+      ${deckContent}
+      """
 
-Your Instructions:
-1. **Always format your response as a numbered list**, starting each point with its number (e.g., "1.", "2.").
-2. **Each answer MUST be split into individual points**. Use paragraph-style sentences for each point where more explanation/detail is needed, but never combine multiple concepts into a single block paragraph or summary.
-3. **Start your response immediately with "1." without any greeting, preamble, or restatement of the user's question.**
-4. **Make expert assumptions ONLY where specific info is missing, and clearly state "Assumption:" at the start of those points.**
-5. **Do NOT include any extra labels or formatting ("User:", "AI:", "Answer:", etc.).**
-6. **Each point must stand alone as an independent explanation, fact, or logical step. Do not bundle points together.**
-7. **Be as concise and direct as possible.**
+      Conversation History:
+      """
+      ${conversationHistory}
+      """
 
-Example response:
-1. Our customer acquisition cost is currently estimated at $150 per user.
-2. Assumption: As the deck does not specify marketing channels, I assume organic reach will improve post-launch, driving costs down.
-3. We project CAC to decrease to under $100 with scaled marketing.
-`;
+      User's New Question: "${question}"
 
-    const responseText = await geminiText(prompt);
-    res.json({ answer: responseText });
+      Your Instructions:
+      1.  First, try to answer using the pitch deck content.
+      2.  If the answer isn't in the deck, provide a strategic answer based on the user's product and market, as described in the deck.
+      3.  Always format your response as a numbered list.
+      4.  Start your response immediately with "1." without any preamble.
+      5.  Clearly state "Assumption:" at the start of any points that are expert assumptions.
+      6.  Do NOT use the '*' character anywhere in your response.
+      7.  Do NOT include markdown, headings, or code fences. Plain text only.
+    `;
+
+  // Step 4: Get the answer from Gemini
+  const responseText = await geminiText(prompt);
+
+  // Sanitize the model reply to enforce prompt rules (e.g., no '*' characters)
+  const cleanedResponse = (responseText || "").replace(/\*/g, "").trim();
+
+  // Step 5: Update the chat history in the database using the cleaned response
+  const updatedHistory = [
+    ...session.chat_history,
+    { role: 'user', content: question },
+    { role: 'model', content: cleanedResponse }
+  ];
+
+  await supabase
+    .from('investor_mockrooms')
+    .update({ chat_history: updatedHistory, updated_at: new Date().toISOString() })
+    .eq('id', mockroomId);
+
+  res.json({ answer: cleanedResponse });
+
   } catch (e: any) {
-    console.error("Error in /api/investor-mockroom/ask:", e);
-    // This is also correct.
-    res
-      .status(500)
-      .json({ error: "Failed to get an answer.", message: e.message });
+    console.error("Error in /chat:", e);
+    res.status(500).json({ error: "Failed to get an answer.", message: e.message });
   }
 });
 
