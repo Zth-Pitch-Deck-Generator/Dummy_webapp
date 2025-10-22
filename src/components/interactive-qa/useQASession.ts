@@ -44,9 +44,11 @@ export default function useQASession(
         const projectId = localStorage.getItem('projectId');
         if (!projectId) throw new Error('Project ID missing');
 
+        const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
+        const token = session?.access_token;
         const res = await fetch('/api/qa', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ projectId, messages: [initialMessage] })
         });
 
@@ -146,9 +148,11 @@ export default function useQASession(
       const projectId = localStorage.getItem('projectId');
       if (!projectId) throw new Error('Project ID missing');
 
+      const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
+      const token = session?.access_token;
       const res = await fetch('/api/qa', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ projectId, messages: updatedMessages })
       });
       if (!res.ok) {
@@ -190,9 +194,11 @@ export default function useQASession(
     }
 
     try {
+      const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
+      const token = session?.access_token;
       const res = await fetch('/api/qa/session/complete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ projectId, messages: finalMessages })
       });
 
@@ -206,11 +212,10 @@ export default function useQASession(
             if (msg.role === 'user') {
                 const questionMsg = finalMessages[i-1];
                 if (questionMsg && questionMsg.role === 'model') {
-                    acc.push({
-                        question: questionMsg.content,
-                        answer: msg.content,
-                        timestamp: Date.now()
-                    });
+          acc.push({
+            question: questionMsg.content,
+            answer: msg.content,
+          });
                 }
             }
             return acc;
@@ -229,11 +234,10 @@ export default function useQASession(
         if (msg.role === 'user') {
             const questionMsg = messages[i-1];
             if (questionMsg) {
-              acc.push({
-                  question: questionMsg.content,
-                  answer: msg.content,
-                  timestamp: Date.now()
-              });
+        acc.push({
+          question: questionMsg.content,
+          answer: msg.content,
+        });
             }
         }
         return acc;

@@ -1,11 +1,12 @@
 import { Router, Request, Response } from "express";
 import { supabase } from "../supabase.js";
+import { authenticate } from "../middleware/auth.js";
 import { geminiJson } from "../lib/geminiFlash.js";
 import { z } from "zod";
 
 const router = Router();
 
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", authenticate, async (req: Request & { user?: any }, res: Response) => {
   try {
     const schema = z.object({
       sector: z.string(),
@@ -19,6 +20,15 @@ router.get("/", async (req: Request, res: Response) => {
     }
 
     const { sector, deckType, projectId } = parsed.data;
+
+    // Ensure the requesting user owns the project
+    const { data: proj } = await supabase
+      .from('projects')
+      .select('user_id')
+      .eq('id', projectId)
+      .single();
+    if (!proj) return void res.status(404).json({ error: 'Project not found' });
+    if (proj.user_id !== (req as any).user?.id) return void res.status(403).json({ error: 'Forbidden' });
 
     const prompt = `
       Based on the following project details, recommend a presentation template slug.
@@ -36,7 +46,8 @@ router.get("/", async (req: Request, res: Response) => {
     const { error } = await supabase
       .from("projects")
       .update({ template: recommendation.decktypeSlug })
-      .eq("id", projectId);
+      .eq("id", projectId)
+      .eq('user_id', (req as any).user?.id);
 
     if (error) {
       console.error("Error updating project with template:", error);

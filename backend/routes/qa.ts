@@ -6,6 +6,7 @@ import { geminiJson } from "../lib/geminiFlash.js";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import { authenticate } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -44,13 +45,18 @@ const qaHandler: RequestHandler = async (req: Request, res: Response): Promise<v
 
     const { data: projectData, error } = await supabase
       .from("projects")
-      .select("name, industry, description, decktype, stage, revenue")
+      .select("name, industry, description, decktype, stage, revenue, user_id")
       .eq("id", projectId)
       .single();
 
     if (error || !projectData) {
       void res.status(404).json({ error: "Project not found" });
       return;
+    }
+
+    // Verify ownership
+    if (projectData.user_id && projectData.user_id !== (req as any).user?.id) {
+      return void res.status(403).json({ error: 'Forbidden' });
     }
 
     const configPath = path.join(__dirname, `../qa-configs/${projectData.decktype}.json`);
@@ -220,7 +226,7 @@ const qaHandler: RequestHandler = async (req: Request, res: Response): Promise<v
     void res.status(500).json({ error: "Failed to process Q&A request.", message: e.message });
   }
 };
-router.post("/", qaHandler);
+router.post("/", authenticate, qaHandler);
 
 const completeHandler: RequestHandler = async (req: Request, res: Response) => {
     try {
@@ -230,6 +236,15 @@ const completeHandler: RequestHandler = async (req: Request, res: Response) => {
         }
 
         const { projectId, messages } = parsed.data;
+
+        // Verify project ownership before saving the transcript
+        const { data: proj } = await supabase
+          .from('projects')
+          .select('user_id')
+          .eq('id', projectId)
+          .single();
+        if (!proj) return void res.status(404).json({ error: 'Project not found' });
+        if (proj.user_id !== (req as any).user?.id) return void res.status(403).json({ error: 'Forbidden' });
 
         const { error } = await supabase.from("qa_sessions").upsert(
           {
@@ -254,6 +269,6 @@ const completeHandler: RequestHandler = async (req: Request, res: Response) => {
         return void res.status(500).json({ error: "Failed to save session.", message: e.message });
     }
 };
-router.post("/session/complete", completeHandler);
+router.post("/session/complete", authenticate, completeHandler);
 
 export default router;

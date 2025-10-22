@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { FileText, TrendingUp, Loader2, ArrowLeft, ArrowRight, Building, BarChart3 } from "lucide-react";
+import { supabase } from "@/lib/supabase"; // Import supabase client
 
 export type FormData = Omit<ProjectData, "revenue" | "decktype" | "deckSubtype"> & {
   revenue: "" | ProjectData["revenue"];
@@ -64,6 +65,11 @@ const ProjectSetup = ({ onComplete, flowType }: ProjectSetupProps) => {
     setIsLoading(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("You must be logged in to create a project.");
+      }
+
       const apiPayload = {
         projectName: formData.projectName,
         industry: formData.industry,
@@ -75,7 +81,10 @@ const ProjectSetup = ({ onComplete, flowType }: ProjectSetupProps) => {
 
       const res = await fetch("/api/projects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify(apiPayload),
       });
 

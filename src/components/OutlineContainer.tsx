@@ -76,9 +76,11 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
         setError(null);
 
         // 1. Fetch Outline and any existing User Edits
+        const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
+        const token = session?.access_token;
         const outlineRes = await fetch("/api/outline", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ projectId }),
         });
 
@@ -132,7 +134,7 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
         if (fetchedOutlineId) {
           const swotRes = await fetch("/api/outline/eval", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
             body: JSON.stringify({ outlineId: fetchedOutlineId }),
           });
 
@@ -174,9 +176,11 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
     setSwotLoading(true);
     setError(null);
     try {
+      const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
+      const token = session?.access_token;
       const res = await fetch("/api/outline/eval", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ outlineId, regenerate: forceRegenerate }),
       });
       if (!res.ok) {
@@ -251,9 +255,11 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
         serializableUserEdits[String(index)] = points;
       });
 
+      const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
+      const token = session?.access_token;
       const res = await fetch("/api/outline/edits", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           outlineId,
           userEdits: serializableUserEdits,

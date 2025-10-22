@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import { supabase } from "../supabase.js";
+import { authenticate } from "../middleware/auth.js";
+
 
 const router = Router();
 
@@ -19,8 +21,28 @@ const updateProjectSchema = z.object({
   templateId: z.string().uuid(),
 });
 
+// GET endpoint to retrieve all projects for the authenticated user
+router.get("/", authenticate, async (req: any, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("projects")
+      .select("*")
+      .eq("user_id", req.user.id);
+
+    if (error) {
+      throw error;
+    }
+
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    res.status(500).json({ error: "Failed to fetch projects" });
+  }
+});
+
+
 // POST endpoint to create a new project
-router.post("/", async (req, res) => {
+router.post("/", authenticate, async (req: any, res) => {
   try {
     const parsedData = projectSchema.parse(req.body);
 
@@ -34,6 +56,7 @@ router.post("/", async (req, res) => {
           revenue: parsedData.revenue,
           description: parsedData.description,
           decktype: parsedData.decktype,
+          user_id: req.user.id, // Add the user_id from the authenticated user
         },
       ])
       .select("id")
@@ -54,7 +77,7 @@ router.post("/", async (req, res) => {
 });
 
 // PATCH endpoint to update a project with a template ID
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", authenticate, async (req: any, res) => {
   try {
     const { id } = req.params;
     const parsed = updateProjectSchema.safeParse(req.body);
@@ -69,6 +92,7 @@ router.patch("/:id", async (req, res) => {
       .from('projects')
       .update({ template_id: templateId, "updatedAt": new Date().toISOString() })
       .eq('id', id)
+      .eq('user_id', req.user.id) // Ensure the user owns the project
       .select()
       .single();
 
@@ -78,7 +102,7 @@ router.patch("/:id", async (req, res) => {
     }
 
     if (!data) {
-      return res.status(404).json({ error: `Project with id ${id} not found` });
+      return res.status(404).json({ error: `Project with id ${id} not found or you don't have permission to update it.` });
     }
 
     res.status(200).json(data);

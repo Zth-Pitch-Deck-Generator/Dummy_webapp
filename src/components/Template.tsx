@@ -99,10 +99,13 @@ const Template = ({ onGenerate, industry, productDescription }: TemplateProps) =
     }
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       // Step 1: Save the selected template to the project
       const updateResponse = await fetch(`/api/projects/${projectId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ templateId: selectedTemplate }),
       });
 
@@ -113,7 +116,7 @@ const Template = ({ onGenerate, industry, productDescription }: TemplateProps) =
       // Step 2: Trigger deck generation (sending product description)
       const generateResponse = await fetch('/api/generate-deck', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           projectId,
           productDescription: productDescription || ""

@@ -3,6 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { supabase } from "../supabase.js"; // ADJUSTED: Using your specific supabase client path
 import { geminiJson } from "../lib/geminiFlash.js";
+import { authenticate } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -53,6 +54,21 @@ const handleOutline: any = async (req: any, res: any) => {
     }
 
     const { projectId, regenerate } = parse.data;
+
+    // Verify project ownership
+    const { data: projectOwnerData, error: projErr } = await supabase
+      .from('projects')
+      .select('user_id')
+      .eq('id', projectId)
+      .single();
+
+    if (projErr || !projectOwnerData) {
+      return void res.status(404).json({ error: 'Project not found' });
+    }
+
+    if (projectOwnerData.user_id !== req.user?.id) {
+      return void res.status(403).json({ error: 'Forbidden' });
+    }
 
     if (!regenerate) {
       const { data, error } = await supabase
@@ -241,10 +257,10 @@ const handleOutline: any = async (req: any, res: any) => {
   }
 };
 
-router.post("/", handleOutline);
+router.post("/", authenticate, handleOutline);
 
 /* ---------- POST /api/outline/eval ---------- */
-router.post("/eval", async (req, res) => {
+router.post("/eval", authenticate, async (req, res) => {
   try {
     const parse = OutlineEvalRequestSchema.safeParse(req.body); // ADJUSTED: Using predefined schema
     if (!parse.success) {
@@ -253,6 +269,21 @@ router.post("/eval", async (req, res) => {
         .json({ error: "Bad payload", details: parse.error.errors }); // ADJUSTED: Added details
     }
     const { outlineId, regenerate } = parse.data;
+
+    // Verify the outline belongs to a project owned by the requesting user
+    const { data: outlineRow } = await supabase
+      .from('outlines')
+      .select('project_id')
+      .eq('id', outlineId)
+      .single();
+    if (!outlineRow) return void res.status(404).json({ error: 'Outline not found' });
+
+    const { data: projRow } = await supabase
+      .from('projects')
+      .select('user_id')
+      .eq('id', outlineRow.project_id)
+      .single();
+  if (!projRow || projRow.user_id !== (req as any).user?.id) return void res.status(403).json({ error: 'Forbidden' });
 
     if (!regenerate) {
       const { data: existingReview } = await supabase
@@ -336,7 +367,7 @@ router.post("/eval", async (req, res) => {
 });
 
 // --- NEW: Endpoint to Save User Edits ---
-router.post("/edits", async (req, res) => {
+router.post("/edits", authenticate, async (req, res) => {
   // ADJUSTED: Removed authenticateToken
   try {
     const parse = SaveUserEditsRequestSchema.safeParse(req.body); // ADJUSTED: Using predefined schema
@@ -346,6 +377,21 @@ router.post("/edits", async (req, res) => {
         .json({ error: "Bad payload", details: parse.error.errors }); // ADJUSTED: Added details
     }
     const { outlineId, userEdits } = parse.data;
+
+    // Verify the outline belongs to the requesting user's project
+    const { data: outlineRow } = await supabase
+      .from('outlines')
+      .select('project_id')
+      .eq('id', outlineId)
+      .single();
+    if (!outlineRow) return void res.status(404).json({ error: 'Outline not found' });
+
+    const { data: projRow } = await supabase
+      .from('projects')
+      .select('user_id')
+      .eq('id', outlineRow.project_id)
+      .single();
+  if (!projRow || projRow.user_id !== (req as any).user?.id) return void res.status(403).json({ error: 'Forbidden' });
 
     // Supabase upsert operation
     // We update the user_edits column for the review associated with outlineId

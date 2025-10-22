@@ -3,6 +3,7 @@ import { z } from "zod";
 import { geminiJson } from "../lib/geminiFlash.js";
 import { geminiProHtmlSlides } from "../lib/geminiPro.js";
 import { supabase } from "../supabase.js";
+import { authenticate } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -11,17 +12,18 @@ const bodySchema = z.object({
   productDescription: z.string().optional(), // Add this field for personalization
 });
 
-router.post("/", async (req, res) => {
+router.post("/", authenticate, async (req: any, res) => {
   try {
     const { projectId, productDescription = "" } = bodySchema.parse(req.body);
 
     // Fetch template info from project
     const { data: projectData, error: projectError } = await supabase
       .from('projects')
-      .select('templates ( name, description )')
+      .select('templates ( name, description ), user_id')
       .eq('id', projectId)
       .single();
     if (projectError) throw new Error(`Project error: ${projectError.message}`);
+    if (projectData.user_id !== req.user?.id) throw new Error('Forbidden');
     const template = Array.isArray(projectData.templates)
       ? projectData.templates[0]
       : projectData.templates;
