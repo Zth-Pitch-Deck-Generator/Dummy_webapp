@@ -390,90 +390,161 @@ const Index = () => {
                 </div>
             </section>
 
-            {/* Footer */}
-            <footer className="border-t border-border/50 bg-gradient-to-b from-surface/30 to-background relative">
-                <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
+        {/* Footer */}
+<footer className="bg-[#111827] text-gray-300 border-t border-gray-700">
+  <div className="max-w-7xl mx-auto px-6 py-14">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+      {/* Brand */}
+      <div className="flex flex-col space-y-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-lg bg-[#2563eb] flex items-center justify-center text-white text-xl font-bold">
+            Z
+          </div>
+          <span className="text-xl font-semibold text-white">Zth</span>
+        </div>
+       <p className="text-gray-400 text-lg leading-relaxed max-w-xl">
+  AI-powered pitch decks creation platform trusted by founders worldwide. Build investor-ready presentations in minutes, not weeks.
+</p>
 
-                <div className="container max-w-7xl mx-auto px-6 py-16">
-                    <div className="flex flex-col lg:flex-row justify-between items-start space-y-12 lg:space-y-0">
-                        {/* Brand */}
-                        <div className="flex-1 max-w-md">
-                            <div className="flex items-center space-x-3 mb-6">
-                                <div className="w-10 h-10 bg-brand rounded-xl flex items-center justify-center shadow-lg">
-                                    <img src="/logo.png" alt="ZTH Logo" className="w-6 h-6" />
-                                </div>
-                                <span className="text-2xl font-bold text-text-primary">ZTH</span>
-                            </div>
-                            <p className="text-text-secondary leading-relaxed text-lg">
-                                AI-powered pitch deck creation platform trusted by founders worldwide.
-                                Build investor-ready presentations in minutes, not weeks.
+
+        {/* Social Links */}
+        <div className="flex items-center space-x-3 mt-2">
+          {/* X (Twitter) */}
+          <a
+            href="https://x.com/Zthsass"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="X"
+            className="w-9 h-9 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center transition"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-5 h-5 text-white"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </a>
+
+          {/* LinkedIn */}
+          <a
+            href="https://www.linkedin.com/company/zth2/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="LinkedIn"
+            className="w-9 h-9 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center transition"
+          >
+            <svg
+              className="w-5 h-5 text-white"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.762 2.239 5 5 5h14c2.762 0 5-2.238 5-5v-14c0-2.761-2.238-5-5-5zm-7.5 19h-2.5v-7h2.5v7zm-1.25-8.12c-.83 0-1.5-.68-1.5-1.5s.67-1.5 1.5-1.5 1.5.68 1.5 1.5-.67 1.5-1.5 1.5zm9.75 8.12h-2.5v-3.73c0-.89-.02-2.04-1.25-2.04-1.25 0-1.44.97-1.44 1.98v3.79h-2.5v-7h2.4v.96h.03c.33-.63 1.15-1.29 2.36-1.29 2.52 0 2.99 1.66 2.99 3.82v3.51z" />
+            </svg>
+          </a>
+        </div>
+      </div>
+
+      {/* Contact */}
+     <div>
+  <h3 className="text-white font-semibold text-lg mb-4">Contact</h3>
+
+  <p>
+                              <a href="https://g.co/kgs/A1SD8fW" className="footer-link" target="_blank" rel="noopener noreferrer" style={{ color: '#60A5FA' }}>Headquarters</a>
                             </p>
-                        </div>
 
-                        {/* Navigation */}
-                        <div className="flex flex-col md:flex-row space-y-8 md:space-y-0 md:space-x-16">
-                            <div>
-                                <h4 className="text-text-primary font-semibold text-lg mb-4">Product</h4>
-                                <ul className="space-y-3">
-                                    <li><a href="#" className="text-text-tertiary hover:text-brand transition-colors duration-300">Features</a></li>
-                                    <li><a href="#" className="text-text-tertiary hover:text-brand transition-colors duration-300">Templates</a></li>
-                                    <li><a href="#" className="text-text-tertiary hover:text-brand transition-colors duration-300">AI Assistant</a></li>
-                                    <li><a href="#" className="text-text-tertiary hover:text-brand transition-colors duration-300">Pricing</a></li>
-                                </ul>
-                            </div>
+  <p>
+  <a
+    href="/Zth Privacy Policy.pdf"
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{ color: '#60A5FA' }}
+  >
+    <b>Privacy Policy</b>
+  </a>
+</p>
 
-                            <div>
-                                <h4 className="text-text-primary font-semibold text-lg mb-4">Resources</h4>
-                                <ul className="space-y-3">
-                                    <li><a href="#" className="text-text-tertiary hover:text-brand transition-colors duration-300">Documentation</a></li>
-                                    <li><a href="#" className="text-text-tertiary hover:text-brand transition-colors duration-300">Guides</a></li>
-                                    <li><a href="#" className="text-text-tertiary hover:text-brand transition-colors duration-300">Blog</a></li>
-                                    <li><a href="#" className="text-text-tertiary hover:text-brand transition-colors duration-300">Support</a></li>
-                                </ul>
-                            </div>
+  <p className="text-base mt-3 text-gray-400">admin@zth.co.in</p>
 
-                            <div>
-                                <h4 className="text-text-primary font-semibold text-lg mb-4">Company</h4>
-                                <ul className="space-y-3">
-                                    <li><a href="#" className="text-text-tertiary hover:text-brand transition-colors duration-300">About</a></li>
-                                    <li><a href="#" className="text-text-tertiary hover:text-brand transition-colors duration-300">Privacy</a></li>
-                                    <li><a href="#" className="text-text-tertiary hover:text-brand transition-colors duration-300">Terms</a></li>
-                                    <li><a href="#" className="text-text-tertiary hover:text-brand transition-colors duration-300">Contact</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+  <a
+        href="https://wa.me/917219422299"
+        className="footer-link"
+        aria-label="Chat with us on WhatsApp"
+        target="_blank"
+        rel="noopener noreferrer"
+         style={{ color: '#60A5FA' }}
+      >
+        +91 721 942 2299
+      </a>
+      <br/>
 
-                    {/* Bottom Section */}
-                    <div className="border-t border-border/50 mt-16 pt-8">
-                        <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-                            <p className="text-text-tertiary text-sm">
-                                © 2025 ZTH. All rights reserved.
-                            </p>
+ <a
+        href="https://wa.me/919356617639"
+        className="footer-link"
+        aria-label="Chat with us on WhatsApp"
+        target="_blank"
+        rel="noopener noreferrer"
+         style={{ color: '#60A5FA' }}
+      >
+        +91 93566 17639
+      </a>
+</div>
 
-                            <div className="flex items-center space-x-6">
-                                <div className="flex items-center space-x-2 text-text-tertiary text-sm">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                    <span>All systems operational</span>
-                                </div>
+      {/* Resources */}
+      <div>
+  <h3 className="text-white font-semibold text-lg mb-4">Resources</h3>
+  <ul className="space-y-2 text-base text-gray-400">
+    <li>
+      <a href="#" className="hover:text-blue-400 transition-colors duration-200">Documentation</a>
+    </li>
+    <li>
+      <a href="#" className="hover:text-blue-400 transition-colors duration-200">Support</a>
+    </li>
+    <li>
+      <a href="#" className="hover:text-blue-400 transition-colors duration-200">Guides</a>
+    </li>
+    <li>
+      <a href="#" className="hover:text-blue-400 transition-colors duration-200">Blog</a>
+    </li>
+  </ul>
+</div>
 
-                                <div className="flex items-center space-x-4">
-                                    <a href="#" className="text-text-tertiary hover:text-brand transition-colors p-2">
-                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
-                                        </svg>
-                                    </a>
-                                    <a href="#" className="text-text-tertiary hover:text-brand transition-colors p-2">
-                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                                        </svg>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </footer>
+      {/* Products */}
+        <div>
+  <h3 className="text-white font-semibold text-lg mb-4">Products</h3>
+  <ul className="space-y-2 text-base text-gray-400">
+    <li>
+      <a href="#" className="hover:text-blue-400 transition-colors duration-200">Zth Smart Engine Deck™</a>
+    </li>
+    <li>
+      <a href="#" className="hover:text-blue-400 transition-colors duration-200">Features</a>
+    </li>
+    <li>
+      <a href="#" className="hover:text-blue-400 transition-colors duration-200">Templates</a>
+    </li>
+    <li>
+      <a href="#" className="hover:text-blue-400 transition-colors duration-200">AI Assistant</a>
+    </li>
+     <li>
+      <a href="#" className="hover:text-blue-400 transition-colors duration-200">Pricing</a>
+    </li>
+  </ul>
+</div>
+     
+    </div>
+
+    {/* Bottom section */}
+    <div className="border-t border-gray-700 mt-10 pt-6 text-center text-sm text-gray-500">
+      <p>© 2025 Zth. Built with <span className="text-red-500">♥</span> for founders.</p>
+      <p className="mt-1">AI-enhanced, founder-driven solutions for fundraising success.</p>
+    </div>
+  </div>
+</footer>
+
+
         </div>
     );
 };
