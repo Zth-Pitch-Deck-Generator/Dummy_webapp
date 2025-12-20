@@ -1,0 +1,107 @@
+openapi: 3.1.0
+info:
+  title: Pitch Deck Generator API
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000/api
+
+paths:
+  /qa:
+    post:
+      summary: Interactive Q&A chat turn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role:    { type: string }
+                      content: { type: string }
+      responses:
+        '200':
+          description: Chat response plus outline & SWOT
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reply:   { type: string }
+                  outline: { type: array, items: { type: object } }
+                  swot:    { type: object }
+
+  /decktype:
+    get:
+      summary: Recommend deck-type slug based on project details
+      parameters:
+        - name: sector
+          in: query
+          required: true
+          schema: { type: string }
+        - name: decktype
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [essentials, matrix, complete_deck]
+      responses:
+        '200':
+          description: Recommended deck-type slug
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  decktypeSlug: { type: string }
+
+  /slides:
+    post:
+      summary: Generate full slide content JSON
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                outline:      { type: array,  items: { type: object } }
+                metrics:      { type: object }
+                decktypeSlug: { type: string }
+      responses:
+        '200':
+          description: Job ID for deck generation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId: { type: string }
+
+  /deck/{jobId}/status:
+    get:
+      summary: Check deck-generation job status
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Job status & download URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [pending, processing, complete, failed]
+                  downloadUrl:
+                    type: string
+                    format: uri

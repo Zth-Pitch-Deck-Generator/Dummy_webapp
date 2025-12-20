@@ -1,0 +1,64 @@
+import { Router, Request, Response } from "express";
+import { supabase } from "../supabase.js";
+import { authenticate } from "../middleware/auth.js";
+import { geminiJson } from "../lib/gemini25Flash.js";
+import { z } from "zod";
+
+const router = Router();
+
+router.get("/", authenticate, async (req: Request & { user?: any }, res: Response) => {
+  try {
+    const schema = z.object({
+      sector: z.string(),
+      deckType: z.string(),
+      projectId: z.string().uuid(),
+    });
+
+    const parsed = schema.safeParse(req.query);
+    if (!parsed.success) {
+      return void res.status(400).json({ error: "Invalid query parameters" });
+    }
+
+    const { sector, deckType, projectId } = parsed.data;
+
+    // Ensure the requesting user owns the project
+    const { data: proj } = await supabase
+      .from('projects')
+      .select('user_id')
+      .eq('id', projectId)
+      .single();
+    if (!proj) return void res.status(404).json({ error: 'Project not found' });
+    if (proj.user_id !== (req as any).user?.id) return void res.status(403).json({ error: 'Forbidden' });
+
+    const prompt = `
+      Based on the following project details, recommend a presentation template slug.
+      Sector: ${sector}
+      Deck Type: ${deckType}
+
+      Available template slugs are: "modern", "modern-tech", "business-professional", "creative-startup", "minimalist", "bold".
+
+      Return ONLY a single JSON object with the key "decktypeSlug".
+    `;
+
+    const recommendation = await geminiJson(prompt);
+
+    // Store the recommended template in the projects table
+    const { error } = await supabase
+      .from("projects")
+      .update({ template: recommendation.decktypeSlug })
+      .eq("id", projectId)
+      .eq('user_id', (req as any).user?.id);
+
+    if (error) {
+      console.error("Error updating project with template:", error);
+      // You might want to handle this error more gracefully
+    }
+
+    res.json(recommendation);
+  } catch (e: any) {
+    console.error("Error in /api/template:", e);
+    res.status(500).json({ error: "Failed to get template recommendation." });
+  }
+});
+
+export default router;

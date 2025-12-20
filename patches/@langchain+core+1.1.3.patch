@@ -1,0 +1,23 @@
+diff --git a/node_modules/@langchain/core/dist/load/map_keys.js b/node_modules/@langchain/core/dist/load/map_keys.js
+index b740b4a..0644595 100644
+--- a/node_modules/@langchain/core/dist/load/map_keys.js
++++ b/node_modules/@langchain/core/dist/load/map_keys.js
+@@ -1,5 +1,5 @@
+-import { decamelize } from "../node_modules/.pnpm/decamelize@6.0.1/node_modules/decamelize/index.js";
+-import { camelCase } from "../node_modules/.pnpm/camelcase@9.0.0/node_modules/camelcase/index.js";
++import decamelize from "decamelize";
++import camelCase from "camelcase";
+ 
+ //#region src/load/map_keys.ts
+ function keyToJson(key, map) {
+diff --git a/node_modules/@langchain/core/dist/utils/async_caller.js b/node_modules/@langchain/core/dist/utils/async_caller.js
+index 8fdb02b..9dc24c6 100644
+--- a/node_modules/@langchain/core/dist/utils/async_caller.js
++++ b/node_modules/@langchain/core/dist/utils/async_caller.js
+@@ -1,5 +1,5 @@
+ import { __export } from "../_virtual/rolldown_runtime.js";
+-import { pRetry } from "../node_modules/.pnpm/p-retry@7.1.0/node_modules/p-retry/index.js";
++import pRetry from "p-retry";
+ import { getAbortSignalError } from "./signal.js";
+ import PQueueMod from "p-queue";
+ 

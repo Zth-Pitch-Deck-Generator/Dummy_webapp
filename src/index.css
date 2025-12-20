@@ -1,0 +1,253 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@tailwind utilities;
+
+/* The Fix: Global styles to prevent horizontal overflow */
+html,
+body {
+  width: 100vw;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  margin: 0 auto;
+  text-align: center;
+}
+
+@layer base {
+  :root {
+    /* Core Brand - Bright Blue (#2563eb) */
+    --brand: 214 88% 58%;
+    --brand-light: 214 88% 90%;
+
+    /* Neutral Foundation - Pure white with light blue backgrounds */
+    --background: 0 0% 100%;
+    --foreground: 221 39% 11%;
+    --surface: 210 100% 99%;
+    --surface-elevated: 0 0% 100%;
+
+    /* Card System - Light blue tinted backgrounds */
+    --card: 0 0% 100%;
+    --card-foreground: 221 39% 11%;
+    --card-border: 210 67% 96%;
+
+    /* Text Hierarchy - Dark Navy colors */
+    --text-primary: 222 47% 11%;
+    --text-secondary: 221 39% 11%;
+    --text-tertiary: 215 16% 47%;
+    --text-inverse: 0 0% 100%;
+
+    /* Interactive Elements - Bright Blue primary */
+    --primary: 214 88% 58%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 214 88% 52%;
+
+    /* Secondary - Light gray with blue tint */
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 221 39% 11%;
+    --secondary-hover: 210 40% 92%;
+
+    /* Borders & Inputs - Light grays */
+    --border: 210 67% 96%;
+    --border-strong: 210 40% 92%;
+    --input: 210 100% 98%;
+    --input-border: 210 67% 96%;
+    --ring: 214 88% 58%;
+
+    /* Status Colors - Keep success/warning/destructive but harmonize with blue theme */
+    --success: 142 71% 45%;
+    --success-light: 142 71% 96%;
+    --warning: 38 92% 50%;
+    --warning-light: 38 92% 96%;
+    --destructive: 0 65% 51%;
+    --destructive-light: 0 65% 96%;
+
+    /* Popover/Menu - Light blue tinted */
+    --popover: 0 0% 100%;
+    --popover-foreground: 221 39% 11%;
+
+    /* Muted/Disabled - Soft grays */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Accent for highlights - Very light blue */
+    --accent: 210 100% 99%;
+    --accent-foreground: 221 39% 11%;
+
+    /* Sidebar - Light blue gradient background */
+    --sidebar-background: 210 100% 98%;
+    --sidebar-foreground: 221 39% 11%;
+    --sidebar-primary: 222 47% 11%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 100% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 210 67% 96%;
+    --sidebar-ring: 214 88% 58%;
+
+    /* Spacing & Typography */
+    --radius: 0.75rem;
+    --radius-sm: 0.5rem;
+    --radius-lg: 1rem;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+
+  .dark {
+    /* Brand - Lighter blue for dark mode */
+    --brand: 214 88% 70%;
+    --brand-light: 214 88% 20%;
+
+    /* Dark backgrounds with blue tint */
+    --background: 222 47% 11%;
+    --foreground: 210 100% 99%;
+    --surface: 222 47% 13%;
+    --surface-elevated: 222 47% 15%;
+
+    /* Dark cards with blue accent */
+    --card: 222 47% 13%;
+    --card-foreground: 210 100% 99%;
+    --card-border: 221 39% 18%;
+
+    /* Text for dark mode */
+    --text-primary: 210 100% 99%;
+    --text-secondary: 210 100% 85%;
+    --text-tertiary: 215 16% 65%;
+    --text-inverse: 222 47% 11%;
+
+    /* Primary - Bright blue, more visible in dark */
+    --primary: 214 88% 70%;
+    --primary-foreground: 222 47% 11%;
+    --primary-hover: 214 88% 75%;
+
+    /* Secondary for dark mode */
+    --secondary: 221 39% 18%;
+    --secondary-foreground: 210 100% 99%;
+    --secondary-hover: 221 39% 22%;
+
+    /* Dark borders */
+    --border: 221 39% 18%;
+    --border-strong: 221 39% 25%;
+    --input: 222 47% 15%;
+    --input-border: 221 39% 20%;
+    --ring: 214 88% 70%;
+
+    /* Status colors for dark mode */
+    --success: 142 71% 55%;
+    --success-light: 142 71% 10%;
+    --warning: 38 92% 60%;
+    --warning-light: 38 92% 10%;
+    --destructive: 0 65% 61%;
+    --destructive-light: 0 65% 10%;
+
+    /* Dark popover */
+    --popover: 222 47% 13%;
+    --popover-foreground: 210 100% 99%;
+
+    /* Dark muted */
+    --muted: 221 39% 18%;
+    --muted-foreground: 215 16% 65%;
+
+    /* Dark accent */
+    --accent: 221 39% 18%;
+    --accent-foreground: 210 100% 99%;
+
+    /* Dark sidebar */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 100% 85%;
+    --sidebar-primary: 210 100% 99%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 222 47% 15%;
+    --sidebar-accent-foreground: 210 100% 99%;
+    --sidebar-border: 221 39% 18%;
+    --sidebar-ring: 214 88% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-inter antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+    font-variation-settings: 'opsz' 32;
+  }
+
+  /* Typography Scale */
+  .text-xs { font-size: 0.75rem; line-height: 1rem; }
+  .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+  .text-base { font-size: 1rem; line-height: 1.5rem; }
+  .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+  .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+  .text-2xl { font-size: 1.5rem; line-height: 2rem; }
+  .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+  .text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+  .text-5xl { font-size: 3rem; line-height: 1; }
+  .text-6xl { font-size: 3.75rem; line-height: 1; }
+}
+
+@layer components {
+  /* Premium button variants */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary-hover;
+    @apply px-6 py-3 rounded-lg font-medium transition-all duration-200;
+    @apply shadow-sm hover:shadow-md;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary-hover;
+    @apply px-6 py-3 rounded-lg font-medium transition-all duration-200;
+    @apply border border-border hover:border-border-strong;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  /* Card variants */
+  .card-elevated {
+    @apply bg-card border border-card-border rounded-lg;
+    @apply shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  .card-interactive {
+    @apply bg-card border border-card-border rounded-lg cursor-pointer;
+    @apply hover:border-border-strong hover:shadow-md transition-all duration-200;
+    @apply focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2;
+  }
+
+  /* Input styling */
+  .input-field {
+    @apply bg-input border border-input-border rounded-lg px-4 py-3;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent;
+    @apply placeholder:text-text-tertiary transition-all duration-200;
+  }
+
+  /* Icon containers */
+  .icon-container {
+    @apply flex items-center justify-center rounded-lg;
+    @apply transition-colors duration-200;
+  }
+
+  .icon-container-sm {
+    @apply w-8 h-8;
+  }
+
+  .icon-container-md {
+    @apply w-12 h-12;
+  }
+
+  .icon-container-lg {
+    @apply w-16 h-16;
+  }
+}

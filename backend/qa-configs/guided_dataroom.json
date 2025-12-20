@@ -1,0 +1,13 @@
+{
+  "name": "Guided Dataroom",
+  "description": "For founders unsure about KPIs. 12-13 slides.",
+  "slideCountRange": [12, 13],
+  "maxQuestions": 20,
+  "questions": [
+    { "topic": "KPI Introduction", "question": "Let's determine the best KPIs for your business. What industry are you in?", "answerType": "multiple_choice", "choices": ["SaaS", "E-commerce", "Marketplace", "Other"] },
+    { "topic": "Monthly Recurring Revenue (MRR)", "question": "MRR is the predictable revenue a company can expect to receive every month. Do you track this?", "answerType": "multiple_choice", "choices": ["Yes", "No", "Not sure"], "explanation": "MRR is a key metric for subscription-based businesses." },
+    { "topic": "Customer Acquisition Cost (CAC)", "question": "CAC is the cost of winning a customer to purchase a product/service. To calculate this, we need your total marketing and sales spend over a period, and the number of new customers acquired in that same period. Can you provide these numbers?", "answerType": "free_text", "isMetricCalculation": true, "explanation": "A lower CAC is generally better." },
+    { "topic": "Customer Lifetime Value (LTV)", "question": "LTV is the total revenue a business can reasonably expect from a single customer account throughout their relationship. Do you know your LTV?", "answerType": "multiple_choice", "choices": ["Yes", "No", "Help me calculate it"], "explanation": "A high LTV indicates valuable customers." },
+    { "topic": "Churn Rate", "question": "Churn rate is the rate at which customers stop doing business with a company. Do you track your churn rate?", "answerType": "multiple_choice", "choices": ["Yes", "No"], "explanation": "A low churn rate is a sign of a healthy business." }
+  ]
+}

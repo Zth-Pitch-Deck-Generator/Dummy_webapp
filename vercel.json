@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/server.ts",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 120,
+        "includeFiles": ["backend/qa-configs/**"]
+      }
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": { 
+        "distDir": "dist",
+        "installCommand": "npm install && npm run postinstall"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/server.ts"
+    },
+    {
+      "src": "/(.*\\.js|.*\\.css|.*\\.svg|.*\\.png|.*\\.jpg|.*\\.ico|.*\\.txt|robots\\.txt)",
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "name": "Basic Pitch Deck",
+  "description": "Core narrative, 10 slides.",
+  "slideCount": 10,
+  "maxQuestions":20,
+  "questions": [
+    {
+      "topic": "Problem/Opportunity",
+      "question": "What is the primary problem, need, or opportunity your company addresses?",
+      "tooltip": "Quantify the pain. eg:- '$5B is lost annually due to X'.",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Audience",
+      "question": "Who is your primary target audience or customer segment?",
+      "tooltip": "Be specific. 'Small business owners' is too broad. 'Dentists with 2+ practices' is better.",
+      "answerType": "multiple_choice"
+    },
+    
+    {
+      "topic": "Solution",
+      "question": "What is your solution?",
+      "tooltip": "What exactly are you offering to solve the above mentioned problem and how are you different from the others in the market.",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Solution",
+      "question": "What are the key features of your product/service? How do you want customers to percieve your product/service?",
+      "tooltip": "List 2-3 unique capabilities and the 'vibe' of your brand (e.g., 'Fast', 'Secure', 'Intuitive').",
+      "answerType": "multiple_choice"
+    },
+    {
+      "topic": "Alternatives",
+      "question": "What are the current alternatives or solutions your target audience uses?",
+      "tooltip": "What do people use now? Could be competitors or manual workarounds like 'Excel spreadsheets'.",
+      "answerType": "multiple_choice"
+    },
+        {
+      "topic": "Market Opportunity",
+      "question": "If every person/company who could ever use your product bought it, how big is that market? (TAM)",
+      "tooltip": "If every person or company in the world who could possibly use a product like yours bought it, how big is that market in numbers (users or revenue)? (TAM)",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Market Opportunity",
+      "question": "From that market, which customers can you actually reach today? (SAM)",
+      "tooltip" : "Out of all those people, who can you realistically reach with your current product and geography in the next 3–5 years? (SAM)",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Market Opportunity",
+      "question": "Of that reachable market, what share can you realistically win in 1–3 years and expected CAGR? (SOM)",
+      "tooltip" : "Now narrow it further: Who are the customers you can realistically y acquire in the next 12–18 months based on your team, pricing, and channels? (SOM)",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Traction",
+      "question": "What is your current monthly revenue?",
+      "tooltip": "Highlight your strongest proof of progress—revenue, users, retention, or partnerships with clear, recent numbers.",
+      "answerType": "multiple_choice"
+    },
+    {
+      "topic": "Traction",
+      "question": "How many active customers do you have?",
+      "tooltip": "Total count of paying customers or active free users. This proves market validation.",
+      "answerType": "multiple_choice"
+    },
+    {
+      "topic": "Traction",
+      "question": "What is your user growth rate month-over-month?",
+      "tooltip": "The percentage growth of your users or revenue each month (e.g., 'Growing 15% MoM').",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Team",
+      "question": "Who are the founders of your company and what are their backgrounds?",
+      "tooltip" : "Introduce your core team and highlight what makes them uniquely qualified to win experience, achievements, and strengths." ,
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Competition",
+      "question": "Who are your main competitors?",
+      "tooltip": "Show your top competitors and clearly highlight the unfair advantage that makes you win not just how you’re different.",
+      "answerType": "free_text"
+    },
+    {
+      "topic": "Go-To-Market Strategy",
+      "question": "How are you reaching to the potential market?",
+      "tooltip": "Your plan to acquire customers. Examples: 'Direct Sales', 'SEO/Content', 'Partnerships', 'Ads'.",
+      "answerType": "multiple_choice"
+    },
+    {
+      "topic": "The Ask",
+      "question": "How much money are you raising?",
+      "tooltip": "Clearly state how much you’re raising, how will it be allocated, and how it moves the business forward in the next 12–18 months.",
+      "answerType": "multiple_choice"
+    },
+    {
+      "topic": "The Ask",
+      "question": "How will you use the funds?",
+      "tooltip": "High-level split of the budget. Example: '40% Product Dev, 30% Marketing, 30% Hiring'.",
+      "answerType": "free_text"
+    }
+  ]
+}

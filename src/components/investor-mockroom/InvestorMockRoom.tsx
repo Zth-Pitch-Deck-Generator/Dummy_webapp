@@ -1,0 +1,135 @@
+// src/components/investor-mockroom/InvestorMockRoom.tsx
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Upload } from "lucide-react";
+import { AnalysisDisplay } from "./AnalysisDisplay";
+import { ChatInterface } from "./ChatInterface";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
+
+export function InvestorMockRoom() {
+  const [deckFile, setDeckFile] = useState<File | null>(null);
+  const [analysis, setAnalysis] = useState<{
+    keyElements: string[];
+    potentialQuestions: string[];
+  } | null>(null);
+  const [mockroomId, setMockroomId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fileName, setFileName] = useState("");
+
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error("File size exceeds 5MB", { description: "Please upload a PDF smaller than 5MB." });
+        event.target.value = "";
+        return;
+      }
+      setFileName(file.name);
+      setDeckFile(file);
+      setAnalysis(null);
+      setMockroomId(null);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!deckFile) return;
+
+    setIsLoading(true);
+    setAnalysis(null);
+    setMockroomId(null);
+
+    try {
+      // Get session for auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Authentication error. Please log in.");
+      }
+
+      // Use FormData for file upload
+      const formData = new FormData();
+      formData.append("deckFile", deckFile);
+
+      const res = await fetch("/api/investor-mockroom/upload", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: formData,
+      });
+
+      // Check if response is OK before parsing
+      if (!res.ok) {
+        // Try to parse error as JSON, fallback to text
+        let errorMessage = `Server responded with ${res.status}`;
+        try {
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await res.json();
+            errorMessage = errorData.error || errorData.message || errorMessage;
+          } else {
+            const errorText = await res.text();
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (parseError) {
+          // If parsing fails, use default error message
+          console.error("Failed to parse error response:", parseError);
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Parse successful response
+      const data = await res.json();
+      setAnalysis({ keyElements: data.keyElements, potentialQuestions: data.potentialQuestions });
+      setMockroomId(data.mockroomId);
+      toast.success("Analysis complete!");
+
+    } catch (error: any) {
+      console.error("Failed to analyze pitch deck:", error);
+      const errorMessage = error.message || "Please check the file or try again later.";
+      toast.error("Analysis Failed", { description: errorMessage });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-0 shadow-xl rounded-2xl">
+      <CardHeader className="text-center space-y-2 py-8">
+        <CardTitle className="font-bold text-3xl text-blue-900 tracking-tight">
+          Investor Mock Room
+        </CardTitle>
+        <CardDescription className="text-blue-700 text-lg">
+          Upload your pitch deck (PDF, max 5MB) to get feedback and practice your pitch.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col items-center gap-6 pb-8">
+        <div className="w-full flex flex-col items-center border-4 border-dashed border-blue-300 p-8 rounded-xl bg-white shadow-lg transition duration-300 hover:border-blue-600">
+          <Upload className="w-16 h-16 text-blue-400" />
+          <label htmlFor="deck-upload" className="cursor-pointer text-blue-800 font-medium mt-4 hover:underline">
+            {fileName || "Click to browse and upload your pitch deck."}
+            <Input id="deck-upload" type="file" className="sr-only" onChange={handleFileChange} accept=".pdf" />
+          </label>
+          <Button onClick={handleAnalyze} disabled={!deckFile || isLoading} className="mt-8 w-52 text-lg bg-blue-600 hover:bg-blue-700 transition duration-200 rounded-full shadow flex items-center justify-center">
+            {isLoading && <span className="animate-spin mr-2 w-5 h-5 rounded-full border-4 border-blue-300 border-t-blue-600" />}
+            {isLoading ? "Analyzing..." : "Analyze Deck"}
+          </Button>
+        </div>
+
+        {analysis && mockroomId && (
+          <div className="w-full">
+            <AnalysisDisplay
+              keyElements={analysis.keyElements}
+              potentialQuestions={analysis.potentialQuestions}
+            />
+            <ChatInterface mockroomId={mockroomId} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
