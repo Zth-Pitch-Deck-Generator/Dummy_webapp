@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "postinstall": "patch-package",
+    "postinstall": "patch-package && find node_modules/@langchain/core/dist -type f -name '*.js' -exec sed -i 's|import { pRetry } from \"../node_modules/.pnpm/p-retry@7.1.0/node_modules/p-retry/index.js\";|import pRetry from \"p-retry\";|g' {} + && find node_modules/@langchain/core/dist -type f -name '*.js' -exec sed -i 's|import { camelCase } from \"../node_modules/.pnpm/camelcase@9.0.0/node_modules/camelcase/index.js\";|import camelCase from \"camelcase\";|g' {} + && find node_modules/@langchain/core/dist -type f -name '*.js' -exec sed -i 's|import { decamelize } from \"../node_modules/.pnpm/decamelize@6.0.1/node_modules/decamelize/index.js\";|import decamelize from \"decamelize\";|g' {} +",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
