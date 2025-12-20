@@ -1,16 +1,27 @@
 // src/lib/auth.ts
 import { supabase } from './supabase.ts';
 
-export async function handleGoogleSignIn(redirectToRoute: string = '/create') {
-    // We strip any trailing slashes and ensure a clean URL structure
-    const baseOrigin = window.location.origin.replace(/\/$/, "");
-    const finalRedirect = `${baseOrigin}${redirectToRoute}`;
+/**
+ * Handles Google Sign-In with a dynamic redirect.
+ * @param nextRoute The path to return to after login (defaults to current path)
+ */
+export async function handleGoogleSignIn(nextRoute?: string) {
+    // 1. Get the current origin (e.g., https://smart-engine-deck-h7vd.onrender.com)
+    const baseOrigin = window.location.origin;
+    
+    // 2. Determine where to send them. 
+    // If nextRoute is provided, use it. Otherwise, use the current path they are on.
+    const targetPath = nextRoute || window.location.pathname;
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    // 3. Clean the path to prevent the /index.html 404 error
+    // If the path is just "/" or empty, we send them to "/create" as a landing spot.
+    const cleanPath = (targetPath === "/" || targetPath === "/index.html") ? "/create" : targetPath;
+
+    const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-            // This URL MUST be exactly what is in your Supabase Redirect URLs list
-            redirectTo: finalRedirect 
+            // This builds the full URL dynamically: https://...com/investor-mockroom
+            redirectTo: `${baseOrigin}${cleanPath}` 
         }
     });
 

@@ -26,55 +26,47 @@ export interface GeneratedSlide {
 // --------------------------------------------------
 
 const Index = () => {
-    // ----------------------------------------------------
-    // START: HOOKS AND AUTH LOGIC
-    // ----------------------------------------------------
     const navigate = useNavigate(); 
     const [user, setUser] = useState<any>(null); 
     const [isLoading, setIsLoading] = useState(true); 
 
-    // --- Session Checker and Listener ---
     useEffect(() => {
-        // 1. Check the initial session status
         supabase.auth.getSession().then(({ data: { session } }) => {
             setUser(session?.user ?? null);
             setIsLoading(false);
         });
 
-        // 2. Set up a listener for real-time auth changes (sign in/out)
-        const { data: authListener } = supabase.auth.onAuthStateChange(
-            (event, session) => {
-                setUser(session?.user ?? null);
-            }
-        );
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            setUser(session?.user ?? null);
+        });
 
-        return () => {
-            // Clean up the listener when the component unmounts
-            authListener?.subscription.unsubscribe();
-        };
+        return () => authListener?.subscription.unsubscribe();
     }, []);
 
-    // --- Conditional Redirect Handler (Used by all buttons) ---
-    // Modified to accept a target route (defaults to '/create')
+    // IMPROVED: Robust path handling
     const handleAuthRedirect = (route: string | unknown = '/create') => {
-        // Ensure route is a string (onClick passes an event object by default)
         const targetRoute = typeof route === 'string' ? route : '/create';
 
         if (user) {
-            // User is LOGGED IN, navigate directly to the target route
             navigate(targetRoute);
         } else {
-            // User is LOGGED OUT, start the Google sign-in process with the target route
+            // Pass the specific target to the engine
             handleGoogleSignIn(targetRoute); 
         }
     };
-    // ----------------------------------------------------
-    // END: HOOKS AND AUTH LOGIC
 
     return ( 
         <div className="min-h-screen bg-background">
-            {/* Header: Pass the handler for the 'Get Started' button */}
-            <Header handleAuthRedirect={handleAuthRedirect} />
+            <Header handleAuthRedirect={() => handleAuthRedirect('/create')} />
+
+            {/* Hero Buttons */}
+            <Button onClick={() => handleAuthRedirect('/create')}>
+                Create Pitch Deck
+            </Button>
+            
+            <Button onClick={() => handleAuthRedirect('/investor-mock-room')}>
+                Investor Mock Room
+            </Button>
 
             {/* Hero Section */}
             <section className="relative px-6 py-20 md:py-28 overflow-hidden">
