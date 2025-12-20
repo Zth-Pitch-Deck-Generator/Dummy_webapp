@@ -1,3 +1,4 @@
+//backend/middleware/auth.ts
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../supabase.js';
 

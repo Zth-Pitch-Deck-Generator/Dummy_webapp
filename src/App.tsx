@@ -8,26 +8,39 @@ import NotFound from "./pages/NotFound";
 import ProjectSetupPage from "./pages/ProjectSetupPage";
 import BasicPitchDeckFlow from "./pages/BasicPitchDeckFlow";
 import InvestorMockRoomPage from "./pages/InvestorMockRoomPage";
+import { useEffect } from "react";
+import { supabase } from "./lib/supabase";
 
 const queryClient = new QueryClient();
+const App = () => {
+  useEffect(() => {
+    // Listen for auth changes to handle the redirect hash automatically
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        console.log("User successfully authenticated in production");
+      }
+    });
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/create" element={<ProjectSetupPage />} />
-          <Route path="/create/basic-pitch-deck/:projectId" element={<BasicPitchDeckFlow />} />
-          <Route path="/investor-mock-room" element={<InvestorMockRoomPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/create" element={<ProjectSetupPage />} />
+            <Route path="/create/basic-pitch-deck/:projectId" element={<BasicPitchDeckFlow />} />
+            <Route path="/investor-mock-room" element={<InvestorMockRoomPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
-
