@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { QAData, ProjectData } from '@/pages/Index';
 import { supabase } from '@/lib/supabase'; // Updated import
-
+const API_BASE = import.meta.env.VITE_API_URL || '';
 interface ApiMessage {
   role: 'user' | 'model';
   content: string;
@@ -48,7 +48,7 @@ export default function useQASession(
 
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
-        const res = await fetch('/api/qa', {
+        const res = await fetch('${API_BASE}/api/qa', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ projectId, messages: [initialMessage] })
@@ -145,7 +145,7 @@ export default function useQASession(
 
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-      const res = await fetch('/api/qa', {
+      const res = await fetch('${API_BASE}/api/qa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ projectId, messages: updatedMessages })
@@ -191,7 +191,7 @@ export default function useQASession(
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-      const res = await fetch('/api/qa/session/complete', {
+      const res = await fetch('${API_BASE}/api/qa/session/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ projectId, messages: finalMessages })

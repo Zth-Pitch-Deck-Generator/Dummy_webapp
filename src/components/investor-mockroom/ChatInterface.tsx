@@ -44,7 +44,7 @@ export function ChatInterface({ mockroomId }: ChatInterfaceProps) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Authentication required.");
 
-      const res = await fetch("/api/investor-mockroom/chat", {
+      const res = await fetch("${import.meta.env.VITE_API_URL || ''}/api/investor-mockroom/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

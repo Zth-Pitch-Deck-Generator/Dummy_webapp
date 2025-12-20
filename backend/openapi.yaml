@@ -4,7 +4,10 @@ info:
   version: 1.0.0
 
 servers:
+  - url: https://smart-engine-deck.onrender.com/api
+    description: Production Server
   - url: http://localhost:3000/api
+    description: Local Development
 
 paths:
   /qa:

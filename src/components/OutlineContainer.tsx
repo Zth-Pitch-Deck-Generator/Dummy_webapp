@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 
 import OutlineView from "./outline-swot/Outline";
 import SwotView from "./outline-swot/Swot";
-
+const API_BASE = import.meta.env.VITE_API_URL || '';
 // --- Type Definitions (Define these once, preferably in a shared types.ts file) ---
 // If you have a types.ts, import them: import { OutlinePoint, Slide, SWOT } from '@/types';
 type OutlinePoint = {
@@ -78,7 +78,7 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
         // 1. Fetch Outline and any existing User Edits
         const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
         const token = session?.access_token;
-        const outlineRes = await fetch("/api/outline", {
+        const outlineRes = await fetch("${API_BASE}/api/outline", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ projectId }),
@@ -132,7 +132,7 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
 
         // 2. Attempt to Fetch Existing SWOT Review
         if (fetchedOutlineId) {
-          const swotRes = await fetch("/api/outline/eval", {
+          const swotRes = await fetch("${API_BASE}/api/outline/eval", {
             method: "POST",
             headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
             body: JSON.stringify({ outlineId: fetchedOutlineId }),
@@ -178,7 +178,7 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
     try {
       const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
       const token = session?.access_token;
-      const res = await fetch("/api/outline/eval", {
+      const res = await fetch("${API_BASE}/api/outline/eval", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ outlineId, regenerate: forceRegenerate }),
@@ -257,7 +257,7 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
 
       const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
       const token = session?.access_token;
-      const res = await fetch("/api/outline/edits", {
+      const res = await fetch("${API_BASE}/api/outline/edits", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
