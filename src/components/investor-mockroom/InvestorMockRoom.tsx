@@ -54,7 +54,8 @@ export function InvestorMockRoom() {
       const formData = new FormData();
       formData.append("deckFile", deckFile);
 
-      const res = await fetch("/api/investor-mockroom/upload", {
+      const API_BASE = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${API_BASE}/api/investor-mockroom/upload`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${session.access_token}`,

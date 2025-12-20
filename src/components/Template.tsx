@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { GeneratedSlide } from '@/pages/Index.tsx';
 import { supabase } from '@/lib/supabase';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 interface TemplateProps {
   onGenerate: (slides: GeneratedSlide[], url: string) => void;
@@ -103,7 +104,7 @@ const Template = ({ onGenerate, industry, productDescription }: TemplateProps) =
       const token = session?.access_token;
 
       // Step 1: Save the selected template to the project
-      const updateResponse = await fetch(`/api/projects/${projectId}`, {
+      const updateResponse = await fetch(`${API_BASE}/api/projects/${projectId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ templateId: selectedTemplate }),
@@ -114,7 +115,7 @@ const Template = ({ onGenerate, industry, productDescription }: TemplateProps) =
       }
 
       // Step 2: Trigger deck generation (sending product description)
-      const generateResponse = await fetch('/api/generate-deck', {
+      const generateResponse = await fetch(`${API_BASE}/api/generate-deck`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({

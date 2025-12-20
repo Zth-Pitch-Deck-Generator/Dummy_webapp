@@ -79,7 +79,7 @@ const ProjectSetup = ({ onComplete, flowType }: ProjectSetupProps) => {
         decktype: formData.deckSubtype,
       };
 
-      const res = await fetch("${import.meta.env.VITE_API_URL || ''}/api/projects", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/projects`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
