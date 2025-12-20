@@ -59,15 +59,6 @@ const Index = () => {
         <div className="min-h-screen bg-background">
             <Header handleAuthRedirect={() => handleAuthRedirect('/create')} />
 
-            {/* Hero Buttons */}
-            <Button onClick={() => handleAuthRedirect('/create')}>
-                Create Pitch Deck
-            </Button>
-            
-            <Button onClick={() => handleAuthRedirect('/investor-mock-room')}>
-                Investor Mock Room
-            </Button>
-
             {/* Hero Section */}
             <section className="relative px-6 py-20 md:py-28 overflow-hidden">
                 {/* Background Elements */}
@@ -104,7 +95,7 @@ const Index = () => {
                             <Button 
                                 size="lg" 
                                 className="btn-primary group px-8 py-4 text-base font-semibold shadow-lg hover:shadow-xl w-full sm:w-auto" 
-                                onClick={handleAuthRedirect} // <--- HANDLER APPLIED
+                                onClick={() => handleAuthRedirect('/create')} // <--- HANDLER APPLIED
                             >
                                 Create Pitch Deck
                                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
