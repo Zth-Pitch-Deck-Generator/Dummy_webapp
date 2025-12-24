@@ -1,3 +1,4 @@
+// backend/lib/aiAgent.ts
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
@@ -14,11 +15,11 @@ const gemini20Flash = new ChatGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY1,
 });
 
-// Gemini 2.5 Flash: For reasoning (Bridge Questions, MCQs)
+// Gemini 2.5 Flash: For reasoning (Validation, Bridge Questions, MCQs)
 const gemini25Flash = new ChatGoogleGenerativeAI({
-  model: "gemini-2.5-flash",
+  model: "gemini-2.5-flash", // Or 1.5-pro if 2.5 is unavailable
   maxOutputTokens: 2048,
-  temperature: 0.5,
+  temperature: 0.3, // Low temperature for strict validation
   apiKey: process.env.GEMINI_API_KEY2,
 });
 
@@ -33,112 +34,97 @@ const openai = new ChatOpenAI({
    2. AGENT FUNCTIONS
    ------------------------------------------------------------------ */
 
-// --- NEW: Generic JSON Generator (for SWOT) ---
+export interface ValidationResult {
+  isValid: boolean;
+  feedback?: string;
+}
+
+// --- NEW: Strict Relevance Validation ---
+export async function validateAnswerRelevance(
+  question: string, 
+  answer: string, 
+  context: string = ""
+): Promise<ValidationResult> {
+  const prompt = PromptTemplate.fromTemplate(`
+    You are a strict data entry validator for a startup pitch deck builder.
+    
+    Context about the startup (if available):
+    {context}
+
+    Question asked to founder: "{question}"
+    Founder's Answer: "{answer}"
+
+    Task: determine if the answer is RELEVANT and APPROPRIATE.
+    
+    Rules:
+    1. If the answer is gibberish, spam, or completely unrelated to the question, mark isValid: false.
+    2. If the answer is "I don't know" or "Not sure", mark isValid: true (we handle this logic elsewhere).
+    3. If the answer is too short to be meaningful (e.g., "adsf"), mark isValid: false.
+    4. If the answer contradicts the Context significantly (e.g., Context says "Bakery", Answer says "We build rockets"), mark isValid: false.
+    5. Otherwise, mark isValid: true.
+
+    Return strictly valid JSON:
+    {{
+      "isValid": boolean,
+      "feedback": "Short polite message explaining why it was rejected (only if isValid is false)"
+    }}
+  `);
+
+  const chain = prompt.pipe(gemini25Flash).pipe(new JsonOutputParser<ValidationResult>());
+
+  try {
+    const result = await chain.invoke({ question, answer, context });
+    return result;
+  } catch (error) {
+    console.error("Validation Error:", error);
+    // Fail safe: assume valid to avoid blocking user on API errors
+    return { isValid: true };
+  }
+}
+
+// --- Existing: Generic JSON Generator ---
 export async function geminiJson(promptText: string): Promise<any> {
   const prompt = PromptTemplate.fromTemplate(`
     {promptText}
-    
     Return ONLY valid JSON.
   `);
-  
   const chain = prompt.pipe(gemini20Flash).pipe(new JsonOutputParser());
   return await chain.invoke({ promptText });
 }
 
-
-// --- VALIDATION: Check if user answered ---
-export async function analyzeAnswer(question: string, userAnswer: string): Promise<string> {
-  const prompt = PromptTemplate.fromTemplate(`
-    You are a helpful startup analyst.
-    I asked the founder: "{question}"
-    The founder answered: "{userAnswer}"
-
-    Did the founder answer the question effectively?
-    - If they answered (even partially), return "ANSWERED".
-    - If they said "I don't know", "Not sure", "Skip", or nonsense, return "UNKNOWN".
-    - If they asked for help, return "HELP_NEEDED".
-    
-    Return ONLY the status string (no quotes, no extra text).
-  `);
-  
-  try {
-    const chain = prompt.pipe(gemini25Flash).pipe(new StringOutputParser());
-    const result = await chain.invoke({ question, userAnswer });
-    return result.trim();
-  } catch (error) {
-    console.error("Error in analyzeAnswer:", error);
-    return "ANSWERED"; // Fallback
-  }
-}
-
-// --- TEXT GENERATION: Enhance Question (Gemini 2.0 Flash) ---
+// --- Existing: Enhance Question ---
 export async function enhanceQuestion(originalQuestion: string, projectData: any): Promise<string> {
   const prompt = PromptTemplate.fromTemplate(`
-    Refine this question for a {stage} stage {industry} startup named "{name}".
-    Product Description: {description}
-    
+    Refine this question for a {stage} stage {industry} startup.
     Original Question: "{question}"
-    
-    Rules:
-    1. Keep it SHORT and PRECISE (max 20 words).
-    2. STRICTLY NO asterisks (*), bullets, or bold formatting.
-    3. Use "₹" (Rupee) ONLY if the question is explicitly about financial metrics.
-    4. Make it conversational but direct.
-    5. Tailor the question based on the product description and industry.
-    6. Return ONLY the plain text string of the question.
+    Rules: Keep it conversational but direct (max 20 words). No formatting.
+    Return ONLY the plain text string.
   `);
 
   const chain = prompt.pipe(gemini20Flash).pipe(new StringOutputParser());
-  
-  const result = await chain.invoke({ 
+  return (await chain.invoke({ 
     question: originalQuestion, 
     stage: projectData.stage || "seed", 
-    industry: projectData.industry || "technology", 
-    name: projectData.name || "your startup",
-    description: projectData.description || "No description provided"
-  });
-  
-  return result.trim();
+    industry: projectData.industry || "technology" 
+  })).trim();
 }
 
-// --- LOGIC/JSON: Generate Options (Gemini 2.5 Flash) ---
+// --- Existing: Generate Options ---
 export async function generateDynamicOptions(question: string, projectData: any): Promise<string[]> {
   const prompt = PromptTemplate.fromTemplate(`
     Generate 4 simple multiple-choice options for: "{question}"
-    
-    Context: 
-    - Industry: {industry}
-    - Stage: {stage}
-    - Product: {description}
-
-    Rules:
-    1. Use "₹" (Rupee) ONLY if the question implies financial values.
-    2. STRICTLY NO asterisks (*) or markdown.
-    3. Keep options short (max 10 words each).
-    4. Make options relevant to the product description and industry.
-    5. ALWAYS include "Other" as the last option.
-    6. Return ONLY a valid JSON array of strings.
-    
-    Example Output: ["Option A", "Option B", "Option C", "Other"]
+    Context: {industry}, {stage}.
+    Rules: No markdown. Short. ALWAYS include "Other" as last option.
+    Return JSON array of strings.
   `);
-
   const chain = prompt.pipe(gemini25Flash).pipe(new JsonOutputParser<string[]>());
-  
   try {
-    const res = await chain.invoke({ 
+    return await chain.invoke({ 
       question, 
       stage: projectData.stage || "seed", 
-      industry: projectData.industry || "technology",
-      description: projectData.description || "No description"
+      industry: projectData.industry || "technology" 
     });
-    
-    if (Array.isArray(res) && res.every(item => typeof item === 'string')) {
-      return res;
-    }
-    
-    return ["Yes", "No", "Other"];
-  } catch (e) {
-    console.error("Option generation error:", e);
+  } catch {
     return ["Yes", "No", "Other"];
   }
 }
@@ -148,76 +134,87 @@ interface BridgeQuestionOutput {
   choices: string[];
 }
 
-// --- LOGIC/JSON: Bridge Question (Gemini 2.5 Flash) ---
-export async function generateBridgeQuestion(
-  originalQuestion: string, 
-  projectData: any
-): Promise<BridgeQuestionOutput> {
-  // Escaped curly braces for JSON output
+// --- Existing: Bridge Question ---
+export async function generateBridgeQuestion(originalQuestion: string, projectData: any): Promise<BridgeQuestionOutput> {
   const prompt = PromptTemplate.fromTemplate(`
-    The user said "I don't know" to: "{question}".
-    
-    Context:
-    - Stage: {stage}
-    - Industry: {industry}
-    - Product: {description}
-    
-    Your goal: Extract relevant info by asking a simpler concept check related to their product.
-    
-    Rules:
-    1. Create a simpler multiple-choice question about a foundational concept.
-    2. Short and clear text (max 15 words).
-    3. STRICTLY NO asterisks (*) or formatting.
-    4. Generate 3-4 options that are relevant to their industry and product.
-    5. Return ONLY valid JSON with this exact structure:
-    
-    {{
-      "question": "Your simple bridge question here?",
-      "choices": ["Concept A", "Concept B", "Concept C", "None of these"]
-    }}
+    User said "I don't know" to: "{question}".
+    Create a simpler concept check question.
+    Return JSON: {{ "question": "...", "choices": ["..."] }}
   `);
-
   const chain = prompt.pipe(gemini25Flash).pipe(new JsonOutputParser<BridgeQuestionOutput>());
-  
   try {
-    const result = await chain.invoke({ 
+    return await chain.invoke({ 
       question: originalQuestion, 
       stage: projectData.stage || "seed",
       industry: projectData.industry || "technology",
       description: projectData.description || "No description"
     });
-    
-    if (
-      result && 
-      typeof result.question === 'string' && 
-      Array.isArray(result.choices) &&
-      result.choices.every((c: any) => typeof c === 'string')
-    ) {
-      return result;
-    }
-    
-    throw new Error("Invalid bridge question format");
-  } catch (e) {
-    console.error("Bridge question generation error:", e);
+  } catch {
     return {
-      question: "Which of these best describes your current status?",
-      choices: ["Just an idea", "Building product", "Selling to customers", "Other"]
+      question: "Which describes you best?",
+      choices: ["Idea Stage", "Building", "Growing", "Other"]
     };
   }
 }
 
-// --- REASONING: Generate Outline (OpenAI GPT-4o) ---
+// --- Existing: Generate Outline ---
 export async function generateOutline(systemPrompt: string, transcript: string): Promise<any> {
   const prompt = PromptTemplate.fromTemplate(`
     {systemPrompt}
-    
-    Transcript:
-    {transcript}
-    
+    Transcript: {transcript}
     Return strictly valid JSON.
   `);
-
   const chain = prompt.pipe(openai).pipe(new JsonOutputParser());
-  
-  return await chain.invoke({ systemPrompt, transcript }); // Passed both variables
+  return await chain.invoke({ systemPrompt, transcript });
+}
+
+export interface MarketEstimates {
+  tam: string;
+  sam: string;
+  som: string;
+  reasoning: string;
+}
+
+// --- NEW: Market Size Estimator ---
+export async function generateMarketEstimates(
+  context: string,
+  region: string = "Global"
+): Promise<MarketEstimates> {
+  const prompt = PromptTemplate.fromTemplate(`
+    You are a Venture Capital Analyst. Estimate the TAM, SAM, and SOM for a startup with this context:
+    "{context}"
+    
+    Target Region: {region}
+
+    Definitions:
+    - TAM (Total Addressable Market): Total market demand for the product.
+    - SAM (Serviceable Available Market): Segment of TAM within your geographical reach.
+    - SOM (Serviceable Obtainable Market): Portion of SAM you can capture.
+
+    Task:
+    1. Estimate specific dollar values (e.g., "$5B") based on general market data for this industry.
+    2. Provide a 1-sentence reasoning for the calculation.
+    
+    Return strictly valid JSON:
+    {{
+      "tam": "$X Billion",
+      "sam": "$Y Million",
+      "som": "$Z Million",
+      "reasoning": "Based on [Industry] market size of $X..."
+    }}
+  `);
+
+  const chain = prompt.pipe(gemini25Flash).pipe(new JsonOutputParser<MarketEstimates>());
+
+  try {
+    return await chain.invoke({ context, region });
+  } catch (error) {
+    console.error("Market Estimation Error:", error);
+    return {
+      tam: "Unknown",
+      sam: "Unknown",
+      som: "Unknown",
+      reasoning: "AI could not calculate estimates at this time."
+    };
+  }
 }

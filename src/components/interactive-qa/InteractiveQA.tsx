@@ -1,196 +1,331 @@
 // src/components/interactive-qa/InteractiveQA.tsx
 import { useState, useEffect } from 'react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Info, ArrowLeft, Loader2, HelpCircle } from 'lucide-react'; // Added Loader2
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, AlertCircle, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { QASidebar } from './QASidebar';
+import { QASessionState } from './types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import useQASession from './useQASession';
-import type { InteractiveQAProps } from './types';
-import qaConfig from '../../../backend/qa-configs/basic_pitch_deck.json';
 
-const InteractiveQA = ({ projectData, onComplete }: InteractiveQAProps) => {
-  const { currentQuestion, isLoading, handleSend, handlePrevious, getPreviousAnswer, questionCount, canGoBack } = useQASession(projectData, onComplete);
-  const [currentAnswer, setCurrentAnswer] = useState('');
+interface InteractiveQAProps {
+  projectId: string;
+  onComplete: () => void;
+}
+
+const InteractiveQA = ({ projectId, onComplete }: InteractiveQAProps) => {
+  const [session, setSession] = useState<QASessionState | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // Form State
+  const [textAnswer, setTextAnswer] = useState('');
   const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
+  const [otherText, setOtherText] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Initial Fetch
   useEffect(() => {
-    if (currentQuestion) {
-      const previousAnswer = getPreviousAnswer(currentQuestion.question);
-      if (previousAnswer) {
-        if (currentQuestion.answerType === 'multiple_choice') {
-          const choices = Array.isArray(previousAnswer.answer) ? previousAnswer.answer : [previousAnswer.answer];
-          const regularChoices = choices.filter(choice => currentQuestion.choices?.includes(choice) || choice === 'Other');
-          const otherChoices = choices.filter(choice => !currentQuestion.choices?.includes(choice) && choice !== 'Other');
+    fetchSession();
+  }, [projectId]);
 
-          setSelectedChoices(regularChoices);
-          if (otherChoices.length > 0) {
-            setSelectedChoices(prev => [...prev, 'Other']);
-            setCurrentAnswer(otherChoices.join(', '));
-          } else {
-            setCurrentAnswer('');
-          }
-        } else {
-          const answerText = Array.isArray(previousAnswer.answer) ? previousAnswer.answer.join(', ') : previousAnswer.answer;
-          setCurrentAnswer(answerText);
-          setSelectedChoices([]);
+  const fetchSession = async () => {
+    try {
+      // First try to get state, if 404 then start
+      let res = await fetch(`/api/qa/state/${projectId}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (res.status === 404) {
+        res = await fetch('/api/qa/start', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          },
+          body: JSON.stringify({ projectId })
+        });
+      }
+
+      const data = await res.json();
+      setSession(data);
+    } catch (error) {
+      console.error("Failed to load session", error);
+      toast.error("Failed to load session");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sync Form State when Question Changes
+  useEffect(() => {
+    if (!session) return;
+    const currentQ = session.sections[session.currentSectionIndex].questions[session.currentQuestionIndex];
+    
+    setValidationError(null);
+    setOtherText('');
+    
+    if (currentQ.answer) {
+      if (Array.isArray(currentQ.answer)) {
+        // Multiple Choice
+        setSelectedChoices(currentQ.answer);
+        if (currentQ.isOther && currentQ.answer.length > 0) {
+            // Logic to handle extraction of 'Other' text if we stored it mixed
+            // Ideally backend separates it, but here we just reset for simplicity or rely on isOther
+            // For this UI, if 'Other' is checked, we show the input. 
+            // If the answer was strictly the text, we might need to parse. 
+            // Simplifying: If saved answer is not in choices, it's 'Other'
         }
       } else {
-        setCurrentAnswer('');
-        setSelectedChoices([]);
-      }
-    }
-  }, [currentQuestion?.question]);
-
-  const isLikelyLastQuestion = () => {
-    const maxq = Number(qaConfig?.maxQuestions ?? 0);
-    const current = parseInt(String(questionCount).match(/\d+/)?.[0] ?? '0', 10);
-    return current === maxq && maxq > 0;
-  };
-
-  const handleSubmit = () => {
-    if (isLoading) return;
-    if (currentQuestion?.answerType === 'multiple_choice') {
-      const otherChoiceSelected = selectedChoices.includes('Other');
-      let finalChoices = selectedChoices.filter(c => c !== 'Other');
-      if (otherChoiceSelected && currentAnswer.trim()) finalChoices.push(currentAnswer.trim());
-      if (finalChoices.length > 0) {
-        handleSend(finalChoices);
-        setSelectedChoices([]);
-        setCurrentAnswer('');
+        // Free Text
+        setTextAnswer(currentQ.answer as string);
       }
     } else {
-      if (currentAnswer.trim()) {
-        handleSend(currentAnswer);
-        setCurrentAnswer('');
+      setTextAnswer('');
+      setSelectedChoices([]);
+    }
+  }, [session?.currentSectionIndex, session?.currentQuestionIndex]);
+
+  const handleJump = async (sectionIdx: number) => {
+    if (!session) return;
+    try {
+      setLoading(true);
+      const res = await fetch('/api/qa/jump', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+        },
+        body: JSON.stringify({ projectId, sectionIndex: sectionIdx, questionIndex: 0 })
+      });
+      const data = await res.json();
+      setSession(data);
+    } catch (e) {
+      toast.error("Navigation failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!session) return;
+    setSubmitting(true);
+    setValidationError(null);
+
+    const currentSection = session.sections[session.currentSectionIndex];
+    const currentQ = currentSection.questions[session.currentQuestionIndex];
+    
+    let finalAnswer: string | string[] = '';
+    let isOther = false;
+
+    if (currentQ.answerType === 'multiple_choice') {
+      finalAnswer = [...selectedChoices];
+      if (selectedChoices.includes('Other')) {
+        isOther = true;
+        // If "Other" is selected, we replace the string "Other" with the actual text?
+        // Or send it alongside. The backend schema supports `isOther`.
+        // Let's keep "Other" in the array but pass `isOther: true`. 
+        // Or better: Remove "Other" string and push the actual text?
+        // Let's stick to the requirement: "Selecting Other opens free-text".
+        if (!otherText.trim()) {
+            setValidationError("Please specify your 'Other' option.");
+            setSubmitting(false);
+            return;
+        }
+        // Replace "Other" tag with actual text for storage, or keep it distinct?
+        // Let's filter out "Other" and add the text.
+        finalAnswer = finalAnswer.filter(c => c !== 'Other');
+        finalAnswer.push(otherText);
+      }
+    } else {
+      finalAnswer = textAnswer;
+      if (!finalAnswer.trim()) {
+        setValidationError("Please provide an answer.");
+        setSubmitting(false);
+        return;
       }
     }
-  };
 
-  const handleChoiceClick = (choice: string) => {
-    setSelectedChoices(prev => prev.includes(choice) ? prev.filter(c => c !== choice) : [...prev, choice]);
-  };
+    try {
+      const res = await fetch('/api/qa/answer', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ projectId, answer: finalAnswer, isOther })
+      });
 
-  const renderInput = () => {
-    if (!currentQuestion) return null;
-    switch (currentQuestion.answerType) {
-      case 'multiple_choice':
-        const otherSelected = selectedChoices.includes('Other');
-        return (
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {currentQuestion.choices?.map(choice => (
-                <Button
-                  key={choice}
-                  variant={selectedChoices.includes(choice) ? 'default' : 'outline'}
-                  onClick={() => handleChoiceClick(choice)}
-                >
-                  {choice}
-                </Button>
-              ))}
-            </div>
-            {otherSelected && (
-              <Input
-                placeholder="Please specify"
-                value={currentAnswer}
-                onChange={e => setCurrentAnswer(e.target.value)}
-              />
-            )}
-          </div>
-        );
-      case 'free_text':
-      default:
-        return (
-          <Textarea
-            placeholder="Your answer..."
-            value={currentAnswer}
-            onChange={e => setCurrentAnswer(e.target.value)}
-            rows={4}
-          />
-        );
+      const data = await res.json();
+      
+      if (!res.ok) {
+        // Validation Error from Backend (AI)
+        if (data.message) {
+            setValidationError(data.message);
+        } else {
+            toast.error("Something went wrong");
+        }
+        return; 
+      }
+
+      setSession(data);
+      
+      // Check if completely done (Logic: last section completed)
+      const lastSection = data.sections[data.sections.length - 1];
+      if (lastSection.status === 'completed') {
+        onComplete(); // Trigger Market Analysis
+      }
+
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to submit answer");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const isSubmitDisabled = () => {
-    if (isLoading) return true;
-    if (currentQuestion?.answerType === 'multiple_choice') {
-      const otherSelected = selectedChoices.includes('Other');
-      if (otherSelected) return currentAnswer.trim() === '' && selectedChoices.length === 1;
-      return selectedChoices.length === 0;
-    }
-    return currentAnswer.trim() === '';
+  const toggleChoice = (choice: string) => {
+    setSelectedChoices(prev => {
+      if (prev.includes(choice)) return prev.filter(c => c !== choice);
+      return [...prev, choice];
+    });
   };
+
+  if (loading || !session) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh]">
+        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+        <p className="text-gray-500">Loading your session...</p>
+      </div>
+    );
+  }
+
+  const currentSection = session.sections[session.currentSectionIndex];
+  const currentQ = currentSection.questions[session.currentQuestionIndex];
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-6 text-center">
-        <h1 className="text-3xl font-bold text-gray-900">Interactive Q&amp;A Session</h1>
-        <p className="text-gray-500 mt-2">Smart Engine Deck will ask questions to understand your venture.</p>
-      </div>
+    <div className="flex h-full min-h-screen bg-gray-50/30">
+      {/* SIDEBAR */}
+      <QASidebar 
+        sections={session.sections} 
+        currentSectionIndex={session.currentSectionIndex}
+        onJump={handleJump}
+      />
 
-      <Card className="shadow-lg min-h-[400px] flex flex-col justify-center">
-        {/* LOADING ANIMATION STATE */}
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center p-8 space-y-4 animate-in fade-in zoom-in duration-300">
-            <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-            <p className="text-gray-500 font-medium animate-pulse">Smart Engine Deck is preparing the next question...</p>
-          </div>
-        ) : currentQuestion ? (
-          <>
-            <CardHeader>
-              <Label className="text-sm text-gray-500">Question {questionCount}</Label>
-              <CardTitle className="text-2xl">{currentQuestion.topic}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {currentQuestion.explanation && (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertTitle>Quick Explanation</AlertTitle>
-                  <AlertDescription>{currentQuestion.explanation}</AlertDescription>
-                </Alert>
+      {/* MAIN CONTENT */}
+      <div className="flex-1 p-8 max-w-4xl mx-auto flex flex-col justify-center">
+        <Card className="shadow-xl border-t-4 border-t-blue-600 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-bold text-blue-600 uppercase tracking-wider">
+                {currentSection.name}
+              </span>
+              <span className="text-xs text-gray-400">
+                Step {session.currentSectionIndex + 1} of {session.sections.length}
+              </span>
+            </div>
+            <CardTitle className="text-2xl md:text-3xl text-gray-900 leading-tight">
+              {currentQ.question}
+            </CardTitle>
+          </CardHeader>
+          
+          <CardContent className="pt-6 space-y-6">
+            {/* STATIC TOOLTIP */}
+            {currentQ.tooltip && (
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex gap-3 text-blue-800 text-sm">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <p>{currentQ.tooltip}</p>
+              </div>
+            )}
+
+            {/* INPUT AREA */}
+            <div className="mt-4">
+              {currentQ.answerType === 'multiple_choice' ? (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-3">
+                    {currentQ.choices?.map((choice) => (
+                      <Button
+                        key={choice}
+                        type="button"
+                        variant={selectedChoices.includes(choice) ? "default" : "outline"}
+                        className={`h-auto py-3 px-6 text-base rounded-full transition-all ${
+                          selectedChoices.includes(choice) 
+                            ? "bg-blue-600 hover:bg-blue-700 shadow-md transform scale-105" 
+                            : "hover:border-blue-300 hover:text-blue-600 bg-white"
+                        }`}
+                        onClick={() => toggleChoice(choice)}
+                      >
+                        {choice}
+                      </Button>
+                    ))}
+                  </div>
+                  
+                  {/* OTHER INPUT */}
+                  {selectedChoices.includes("Other") && (
+                    <div className="animate-in fade-in slide-in-from-top-2">
+                      <Input 
+                        placeholder="Please specify..." 
+                        value={otherText}
+                        onChange={(e) => setOtherText(e.target.value)}
+                        className="bg-white border-blue-200 focus:ring-blue-500 h-12 text-lg"
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Textarea 
+                  placeholder="Type your answer here..." 
+                  className="min-h-[150px] text-lg p-4 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 resize-none shadow-inner"
+                  value={textAnswer}
+                  onChange={(e) => setTextAnswer(e.target.value)}
+                />
               )}
-              
-              <div className="flex items-start gap-2">
-                <p className="text-gray-700 text-lg flex-1">{currentQuestion.question}</p>
-                {currentQuestion.tooltip && (
-                  <TooltipProvider>
-                    <Tooltip delayDuration={200}>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-5 h-5 text-gray-400 hover:text-blue-500 cursor-help flex-shrink-0 transition-colors mt-1" />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs bg-slate-900 text-white border-none">
-                        <p className="text-sm">{currentQuestion.tooltip}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
+            </div>
 
-              <div className="mt-4">
-                {renderInput()}
-              </div>
-            </CardContent>
-            <CardFooter className="flex items-center justify-between">
-              <Button
-                variant="ghost"
-                disabled={!canGoBack}
-                onClick={handlePrevious}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Previous</span>
-              </Button>
+            {/* ERROR MESSAGE */}
+            {validationError && (
+              <Alert variant="destructive" className="animate-in shake">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{validationError}</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
 
-              <Button onClick={handleSubmit} disabled={isSubmitDisabled()}>
-                {isLikelyLastQuestion() ? 'Submit Answer' : 'Next'}
-              </Button>
-            </CardFooter>
-          </>
-        ) : null}
-      </Card>
+          <CardFooter className="flex justify-between pt-6 border-t bg-gray-50/50 rounded-b-xl">
+             <Button 
+               variant="ghost" 
+               onClick={() => {
+                   // Logic for 'Back' could be implemented via Jump, 
+                   // or simply rely on Sidebar for navigation.
+                   // For strict linearity, maybe only sidebar?
+                   // Let's leave Sidebar as primary nav for now.
+               }}
+               className="text-gray-400 hover:text-gray-600 opacity-0 cursor-default" // Hidden but keeping space
+             >
+               Back
+             </Button>
+             
+             <Button 
+               size="lg" 
+               onClick={handleSubmit} 
+               disabled={submitting}
+               className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 px-8"
+             >
+               {submitting ? (
+                 <Loader2 className="w-5 h-5 animate-spin mr-2" />
+               ) : (
+                 <>
+                   Next <ArrowRight className="ml-2 w-5 h-5" />
+                 </>
+               )}
+             </Button>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 };

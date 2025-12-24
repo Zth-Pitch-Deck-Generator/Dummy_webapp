@@ -11,31 +11,72 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Settings, MessageSquare, Eye, FileText, CheckCircle, Circle, Presentation } from 'lucide-react';
+import { Settings, MessageSquare, BarChart3, FileText, Eye, CheckCircle, Circle, Presentation } from 'lucide-react';
 
+// Updated interface to include market-analysis and its completion state
 interface AppSidebarProps {
-  currentStep: string;
-  onStepChange: (step: 'setup' | 'qa' | 'outline' | 'template' | 'preview') => void;
+  currentStep: 'setup' | 'qa' | 'market-analysis' | 'outline' | 'template' | 'editor';
+  onStepChange: (step: 'setup' | 'qa' | 'market-analysis' | 'outline' | 'template' | 'editor') => void;
   projectData: ProjectData | null;
   qaDone: boolean;
+  marketAnalysisDone: boolean; // New prop
   outlineDone: boolean;
 }
 
-export function AppSidebar({ currentStep, onStepChange, projectData, qaDone, outlineDone }: AppSidebarProps) {
-  const [templateSelected, setTemplateSelected] = React.useState(false);
-
-  React.useEffect(() => {
-    if (currentStep === 'preview') {
-      setTemplateSelected(true);
-    }
-  }, [currentStep]);
+export function AppSidebar({ 
+  currentStep, 
+  onStepChange, 
+  projectData, 
+  qaDone, 
+  marketAnalysisDone,
+  outlineDone 
+}: AppSidebarProps) {
+  
+  // Logic to determine if we are in editor/preview mode
+  const isEditorMode = currentStep === 'editor';
 
   const steps = [
-    { id: 'setup', title: 'Project Setup', icon: Settings, completed: !!projectData },
-    { id: 'qa', title: 'Interactive Q&A', icon: MessageSquare, completed: qaDone, disabled: !projectData },
-    { id: 'outline', title: 'Outline', icon: FileText, completed: outlineDone, disabled: !qaDone },
-    { id: 'template', title: 'Template', icon: Eye, completed: templateSelected, disabled: !outlineDone },
-    { id: 'preview', title: 'Deck Preview', icon: Presentation, completed: false, disabled: !templateSelected },
+    { 
+      id: 'setup', 
+      title: 'Project Setup', 
+      icon: Settings, 
+      completed: !!projectData 
+    },
+    { 
+      id: 'qa', 
+      title: 'Interactive Q&A', 
+      icon: MessageSquare, 
+      completed: qaDone, 
+      disabled: !projectData 
+    },
+    { 
+      id: 'market-analysis', 
+      title: 'Market Analysis', 
+      icon: BarChart3, 
+      completed: marketAnalysisDone, 
+      disabled: !qaDone 
+    },
+    { 
+      id: 'outline', 
+      title: 'Outline', 
+      icon: FileText, 
+      completed: outlineDone, 
+      disabled: !marketAnalysisDone 
+    },
+    { 
+      id: 'template', 
+      title: 'Template', 
+      icon: Eye, 
+      completed: isEditorMode, 
+      disabled: !outlineDone 
+    },
+    { 
+      id: 'editor', 
+      title: 'Deck Editor', 
+      icon: Presentation, 
+      completed: false, 
+      disabled: !isEditorMode 
+    },
   ];
 
   return (
@@ -49,8 +90,8 @@ export function AppSidebar({ currentStep, onStepChange, projectData, qaDone, out
           </div>
         </div>
         {projectData && (
-          <div className="mt-6 p-4 bg-background rounded-lg border border-border">
-            <p className="text-sm font-medium text-text-primary">{projectData.projectName}</p>
+          <div className="mt-6 p-4 bg-background rounded-lg border border-border animate-in fade-in slide-in-from-top-2">
+            <p className="text-sm font-medium text-text-primary truncate">{projectData.projectName}</p>
             <p className="text-xs text-text-secondary capitalize">{projectData.industry}</p>
           </div>
         )}
@@ -75,9 +116,9 @@ export function AppSidebar({ currentStep, onStepChange, projectData, qaDone, out
                       className={`
                         group flex items-center w-full text-left gap-x-3 p-3 rounded-lg transition-all duration-200
                         ${isActive
-                          ? 'bg-brand text-text-inverse shadow-sm'
+                          ? 'bg-brand text-text-inverse shadow-sm scale-[1.02]'
                           : step.disabled
-                            ? 'text-text-tertiary cursor-not-allowed'
+                            ? 'text-text-tertiary cursor-not-allowed opacity-60'
                             : 'text-text-secondary hover:bg-background hover:text-text-primary'
                         }
                       `}

@@ -1,0 +1,219 @@
+{
+  "name": "Section Flow Pitch Deck",
+  "description": "Strict section-based Q&A flow with 10 enforced sections.",
+  "sections": [
+    {
+      "id": "cover",
+      "name": "Cover",
+      "questions": [
+        {
+          "id": "cover_company_name",
+          "question": "What is your company's official name?",
+          "tooltip": "Enter the legal or trading name you want displayed on the title slide.",
+          "answerType": "free_text"
+        },
+        {
+          "id": "cover_tagline",
+          "question": "What is your company tagline or one-sentence pitch?",
+          "tooltip": "A catchy, short phrase that summarizes your value proposition (e.g., 'Airbnb for X').",
+          "answerType": "free_text"
+        }
+      ]
+    },
+    {
+      "id": "problem",
+      "name": "Problem / Opportunity",
+      "questions": [
+        {
+          "id": "problem_primary",
+          "question": "What is the primary problem or pain point you are solving?",
+          "tooltip": "Describe the specific pain your customers feel. Quantify it if possible (e.g., 'Time wasted', 'Money lost').",
+          "answerType": "free_text"
+        }
+      ]
+    },
+    {
+      "id": "audience",
+      "name": "Audience",
+      "questions": [
+        {
+          "id": "audience_target",
+          "question": "Who is your primary target customer?",
+          "tooltip": "Select the group that most urgently needs your product.",
+          "answerType": "multiple_choice",
+          "choices": [
+            "Small Business Owners (SMBs)",
+            "Enterprise / Large Corporations",
+            "Direct Consumers (Gen Z / Millennials)",
+            "Freelancers / Solopreneurs",
+            "Healthcare Providers",
+            "Educational Institutions",
+            "Government Agencies",
+            "Other"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "solution",
+      "name": "Solution",
+      "questions": [
+        {
+          "id": "solution_desc",
+          "question": "How does your product solve the problem described earlier?",
+          "tooltip": "Explain your solution simply. Focus on the benefits, not just the technology.",
+          "answerType": "free_text"
+        },
+        {
+          "id": "solution_features",
+          "question": "What are the key features or 'vibe' of your solution?",
+          "tooltip": "Select the attributes that make your product stand out.",
+          "answerType": "multiple_choice",
+          "choices": [
+            "Fast / Real-time",
+            "Affordable / Low Cost",
+            "AI-Powered / Smart",
+            "Secure / Private",
+            "Easy to Use / Intuitive",
+            "All-in-One Platform",
+            "Mobile-First",
+            "Other"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alternatives",
+      "name": "Alternatives",
+      "questions": [
+        {
+          "id": "alternatives_current",
+          "question": "How do people currently solve this problem without you?",
+          "tooltip": "Identify who or what you are replacing (e.g., competitors or manual 'Excel sheets').",
+          "answerType": "multiple_choice",
+          "choices": [
+            "Manual Processes (Spreadsheets/Pen & Paper)",
+            "Hiring Expensive Consultants",
+            "Legacy Software (Old/Slow)",
+            "Direct Competitor Products",
+            "Ignoring the Problem",
+            "In-house Custom Solutions",
+            "Other"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "traction",
+      "name": "Traction",
+      "questions": [
+        {
+          "id": "traction_revenue",
+          "question": "What is your current monthly revenue stage?",
+          "tooltip": "Be honest about your current financial traction. This builds credibility.",
+          "answerType": "multiple_choice",
+          "choices": [
+            "Pre-Revenue",
+            "<$1k Monthly Recurring Revenue (MRR)",
+            "$1k - $10k MRR",
+            "$10k - $50k MRR",
+            "$50k+ MRR",
+            "Other"
+          ]
+        },
+        {
+          "id": "traction_users",
+          "question": "How many active users or customers do you have?",
+          "tooltip": "Select the range that best represents your active user base.",
+          "answerType": "multiple_choice",
+          "choices": [
+            "Just getting started (0-10)",
+            "Early Adopters (10-100)",
+            "Growing (100-1,000)",
+            "Scaling (1,000-10,000)",
+            "Established (10,000+)",
+            "Other"
+          ]
+        },
+        {
+          "id": "traction_growth",
+          "question": "What is your approximate month-over-month growth rate?",
+          "tooltip": "Enter a percentage (e.g., '15%') or a brief description of your momentum.",
+          "answerType": "free_text"
+        }
+      ]
+    },
+    {
+      "id": "team",
+      "name": "Team",
+      "questions": [
+        {
+          "id": "team_members",
+          "question": "Who are the key founders and what is their relevant background?",
+          "tooltip": "List names and 1-2 key achievements or past companies (e.g., 'Jane Doe: Ex-Google, 10y Sales').",
+          "answerType": "free_text"
+        }
+      ]
+    },
+    {
+      "id": "competition",
+      "name": "Competition",
+      "questions": [
+        {
+          "id": "competition_names",
+          "question": "Who are your direct competitors?",
+          "tooltip": "List the specific companies you are competing against for market share.",
+          "answerType": "free_text"
+        }
+      ]
+    },
+    {
+      "id": "gtm",
+      "name": "Go-To-Market Strategy",
+      "questions": [
+        {
+          "id": "gtm_channels",
+          "question": "How will you acquire your customers?",
+          "tooltip": "Select your primary distribution channels.",
+          "answerType": "multiple_choice",
+          "choices": [
+            "Direct Sales / Outbound",
+            "Content Marketing / SEO",
+            "Social Media Ads",
+            "Strategic Partnerships",
+            "Referral Programs",
+            "App Store Optimization",
+            "Influencer Marketing",
+            "Other"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ask",
+      "name": "The Ask",
+      "questions": [
+        {
+          "id": "ask_amount",
+          "question": "How much capital are you raising in this round?",
+          "tooltip": "Select the range that matches your fundraising goal.",
+          "answerType": "multiple_choice",
+          "choices": [
+            "Bootstrapping (No external funding)",
+            "$50k - $250k (Pre-Seed)",
+            "$250k - $1M (Seed)",
+            "$1M - $3M (Late Seed/Pre-Series A)",
+            "$3M+ (Series A and beyond)",
+            "Other"
+          ]
+        },
+        {
+          "id": "ask_usage",
+          "question": "How do you plan to allocate these funds?",
+          "tooltip": "Briefly describe the split (e.g., '40% Engineering, 30% Sales, 30% Marketing').",
+          "answerType": "free_text"
+        }
+      ]
+    }
+  ]
+}

@@ -22,7 +22,6 @@ export const gemini25Flash = new ChatGoogleGenerativeAI({
 });
 
 // --- OpenAI Models ---
-
 export const openAIGPT4o = new ChatOpenAI({
   modelName: "gpt-4o",
   temperature: 0.7,

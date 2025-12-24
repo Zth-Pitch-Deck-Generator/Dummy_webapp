@@ -1,54 +1,36 @@
 // src/components/interactive-qa/types.ts
-// src/features/interactive-qa/types.ts
-import { ProjectData, QAData } from '@/pages/Index';
 
-export type AIMessage = {
+export interface QuestionState {
   id: string;
-  type: 'model';
   question: string;
-  answerType: 'free_text' | 'multiple_choice';
+  answer: string | string[] | null;
   choices?: string[];
-  timestamp: number;
-};
+  isOther?: boolean;
+  tooltip?: string;
+  answerType?: 'free_text' | 'multiple_choice';
+}
 
-export type UserMessage = {
+export interface SectionState {
   id: string;
-  type: 'user';
-  content: string;
-  timestamp: number;
-};
+  name: string;
+  status: 'pending' | 'active' | 'completed';
+  questions: QuestionState[];
+}
 
-export type Message = AIMessage | UserMessage;
-
-export type { QAData };
+export interface QASessionState {
+  projectId: string;
+  currentSectionIndex: number;
+  currentQuestionIndex: number;
+  sections: SectionState[];
+  marketAnalysis: {
+    tam: string | null;
+    sam: string | null;
+    som: string | null;
+    isComplete: boolean;
+  };
+}
 
 export interface InteractiveQAProps {
-  projectData: ProjectData;
-  onComplete: (qaData: QAData) => void;
+  projectId: string; // Changed from projectData to just ID for fetching
+  onComplete: () => void;
 }
-// The value for an answer can be a single string or an array of strings
-export type QAAnswer = string | string[];
-
-// Defines the structure for a choice in a question
-export interface QAChoiceOption {
-  value: string;
-  label: string;
-}
-
-// Defines a single question in the Q&A session
-export interface QAQuestion {
-  id: string;
-  text: string;
-  type: 'text' | 'single-choice' | 'multiple-choice';
-  placeholder?: string;
-  options?: QAChoiceOption[];
-}
-
-// Defines the entire configuration for a Q&A session
-export interface QASession {
-  id: string;
-  title: string;
-  description: string;
-  questions: QAQuestion[];
-}
-
