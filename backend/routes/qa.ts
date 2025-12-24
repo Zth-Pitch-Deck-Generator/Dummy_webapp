@@ -6,37 +6,44 @@ import { z } from "zod";
 import fs from "fs/promises";
 import path from "path";
 import { QASessionState, SectionState } from "../types/qa.js";
-import { 
-  validateAnswerRelevance, 
+import {
+  validateAnswerRelevance,
   generateMarketEstimates,
-  MarketEstimates 
+  MarketEstimates,
 } from "../lib/aiAgent.js";
 
 const router = Router();
-const CONFIG_PATH = path.join(process.cwd(), 'backend', 'qa-configs', 'section_flow_deck.json');
+const CONFIG_PATH = path.join(
+  process.cwd(),
+  "backend",
+  "qa-configs",
+  "section_flow_deck.json"
+);
 const getSessionKey = (projectId: string) => `session:${projectId}:qa_state`;
 
 // --- HELPER: Extract Context from State ---
 // Grabs the Company Name and Problem Statement to help AI validate & estimate market
 const getValidationContext = (state: QASessionState): string => {
   let context = "";
-  
+
   // Try to find Company Name (Cover section)
-  const coverSection = state.sections.find(s => s.id === 'cover');
-  const nameQ = coverSection?.questions.find(q => q.id.includes('name'));
+  const coverSection = state.sections.find((s) => s.id === "cover");
+  const nameQ = coverSection?.questions.find((q) => q.id.includes("name"));
   if (nameQ?.answer) context += `Company Name: ${nameQ.answer}. `;
 
   // Try to find Problem Statement
-  const problemSection = state.sections.find(s => s.id === 'problem');
+  const problemSection = state.sections.find((s) => s.id === "problem");
   const probQ = problemSection?.questions[0];
   if (probQ?.answer) context += `Core Problem: ${probQ.answer}. `;
 
   // Try to find Target Audience (Audience section)
-  const audienceSection = state.sections.find(s => s.id === 'audience');
+  const audienceSection = state.sections.find((s) => s.id === "audience");
   const audQ = audienceSection?.questions[0];
   if (audQ?.answer) {
-      const ans = Array.isArray(audQ.answer) ? audQ.answer.join(', ') : audQ.answer;
-      context += `Target Audience: ${ans}. `;
+    const ans = Array.isArray(audQ.answer)
+      ? audQ.answer.join(", ")
+      : audQ.answer;
+    context += `Target Audience: ${ans}. `;
   }
 
   return context;
@@ -64,24 +71,26 @@ const startHandler: RequestHandler = async (req: Request, res: Response) => {
     }
 
     // Load Config
-    const configRaw = await fs.readFile(CONFIG_PATH, 'utf-8');
+    const configRaw = await fs.readFile(CONFIG_PATH, "utf-8");
     const config = JSON.parse(configRaw);
 
     // Build Initial State
-    const sections: SectionState[] = config.sections.map((s: any, index: number) => ({
-      id: s.id,
-      name: s.name,
-      status: index === 0 ? 'active' : 'pending',
-      questions: s.questions.map((q: any) => ({
-        id: q.id,
-        question: q.question,
-        tooltip: q.tooltip,
-        answerType: q.answerType,
-        answer: null,
-        choices: q.choices || [],
-        isOther: false
-      }))
-    }));
+    const sections: SectionState[] = config.sections.map(
+      (s: any, index: number) => ({
+        id: s.id,
+        name: s.name,
+        status: index === 0 ? "active" : "pending",
+        questions: s.questions.map((q: any) => ({
+          id: q.id,
+          question: q.question,
+          tooltip: q.tooltip,
+          answerType: q.answerType,
+          answer: null,
+          choices: q.choices || [],
+          isOther: false,
+        })),
+      })
+    );
 
     const initialState: QASessionState = {
       projectId,
@@ -89,7 +98,7 @@ const startHandler: RequestHandler = async (req: Request, res: Response) => {
       currentQuestionIndex: 0,
       sections,
       marketAnalysis: { tam: null, sam: null, som: null, isComplete: false },
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
     };
 
     await redis.set(key, JSON.stringify(initialState));
@@ -107,12 +116,14 @@ const startHandler: RequestHandler = async (req: Request, res: Response) => {
 const getStateHandler: RequestHandler = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
-    if (!projectId) return void res.status(400).json({ error: "Missing projectId" });
+    if (!projectId)
+      return void res.status(400).json({ error: "Missing projectId" });
 
     const key = getSessionKey(projectId);
     const stateStr = await redis.get(key);
 
-    if (!stateStr) return void res.status(404).json({ error: "Session not found" });
+    if (!stateStr)
+      return void res.status(404).json({ error: "Session not found" });
 
     return void res.json(JSON.parse(stateStr));
   } catch (error: any) {
@@ -131,7 +142,7 @@ const getStateHandler: RequestHandler = async (req: Request, res: Response) => {
 const answerSchema = z.object({
   projectId: z.string().uuid(),
   answer: z.union([z.string(), z.array(z.string())]),
-  isOther: z.boolean().optional() // For tracking if "Other" text input was used
+  isOther: z.boolean().optional(), // For tracking if "Other" text input was used
 });
 
 const answerHandler: RequestHandler = async (req: Request, res: Response) => {
@@ -140,26 +151,34 @@ const answerHandler: RequestHandler = async (req: Request, res: Response) => {
     const key = getSessionKey(projectId);
 
     const stateStr = await redis.get(key);
-    if (!stateStr) return void res.status(404).json({ error: "Session expired" });
+    if (!stateStr)
+      return void res.status(404).json({ error: "Session expired" });
 
     const state: QASessionState = JSON.parse(stateStr);
-    
+
     const currentSection = state.sections[state.currentSectionIndex];
     const currentQ = currentSection.questions[state.currentQuestionIndex];
-    
+
     // --- AI VALIDATION START ---
     // We only strictly validate free-text answers that are longer than 2 chars.
     // Multiple choice answers are generally considered valid by selection.
-    if (typeof answer === 'string' && answer.length > 2) {
-       const context = getValidationContext(state);
-       const validation = await validateAnswerRelevance(currentQ.question, answer, context);
-       
-       if (!validation.isValid) {
-         return void res.status(400).json({ 
-           error: "Invalid Answer", 
-           message: validation.feedback || "Your answer doesn't seem relevant to the question. Please try again." 
-         });
-       }
+    // Only validate if answer is longer than 20 chars to allow quick testing
+    if (typeof answer === "string" && answer.length > 20) {
+      const context = getValidationContext(state);
+      const validation = await validateAnswerRelevance(
+        currentQ.question,
+        answer,
+        context
+      );
+
+      if (!validation.isValid) {
+        return void res.status(400).json({
+          error: "Invalid Answer",
+          message:
+            validation.feedback ||
+            "Your answer doesn't seem relevant to the question. Please try again.",
+        });
+      }
     }
     // --- AI VALIDATION END ---
 
@@ -168,18 +187,20 @@ const answerHandler: RequestHandler = async (req: Request, res: Response) => {
     currentQ.isOther = isOther || false;
 
     // 2. Logic: Move to next question or section
-    const isLastQuestionInSection = state.currentQuestionIndex >= currentSection.questions.length - 1;
-    const isLastSection = state.currentSectionIndex >= state.sections.length - 1;
+    const isLastQuestionInSection =
+      state.currentQuestionIndex >= currentSection.questions.length - 1;
+    const isLastSection =
+      state.currentSectionIndex >= state.sections.length - 1;
 
     if (isLastQuestionInSection) {
       // Mark section complete
-      state.sections[state.currentSectionIndex].status = 'completed';
+      state.sections[state.currentSectionIndex].status = "completed";
 
       if (!isLastSection) {
         // Move to next section
         state.currentSectionIndex++;
         state.currentQuestionIndex = 0;
-        state.sections[state.currentSectionIndex].status = 'active';
+        state.sections[state.currentSectionIndex].status = "active";
       } else {
         // End of QA flow
         // Frontend will detect completion and redirect to Market Analysis
@@ -193,7 +214,6 @@ const answerHandler: RequestHandler = async (req: Request, res: Response) => {
     await redis.set(key, JSON.stringify(state));
 
     return void res.json(state);
-
   } catch (error: any) {
     console.error("Answer Error:", error);
     return void res.status(500).json({ error: error.message });
@@ -207,32 +227,39 @@ const answerHandler: RequestHandler = async (req: Request, res: Response) => {
 const jumpSchema = z.object({
   projectId: z.string().uuid(),
   sectionIndex: z.number().min(0),
-  questionIndex: z.number().min(0)
+  questionIndex: z.number().min(0),
 });
 
 const jumpHandler: RequestHandler = async (req: Request, res: Response) => {
   try {
-    const { projectId, sectionIndex, questionIndex } = jumpSchema.parse(req.body);
+    const { projectId, sectionIndex, questionIndex } = jumpSchema.parse(
+      req.body
+    );
     const key = getSessionKey(projectId);
     const stateStr = await redis.get(key);
-    if (!stateStr) return void res.status(404).json({ error: "Session not found" });
+    if (!stateStr)
+      return void res.status(404).json({ error: "Session not found" });
 
     const state: QASessionState = JSON.parse(stateStr);
 
     const targetSection = state.sections[sectionIndex];
-    
+
     // Security: User cannot jump to a 'pending' section (one they haven't reached yet)
     // Exception: If they are simply navigating within the *current* active section
-    if (targetSection.status === 'pending' && sectionIndex !== state.currentSectionIndex) {
-         return void res.status(403).json({ error: "Cannot jump to locked section" });
+    if (
+      targetSection.status === "pending" &&
+      sectionIndex !== state.currentSectionIndex
+    ) {
+      return void res
+        .status(403)
+        .json({ error: "Cannot jump to locked section" });
     }
-    
+
     state.currentSectionIndex = sectionIndex;
     state.currentQuestionIndex = questionIndex;
-    
+
     await redis.set(key, JSON.stringify(state));
     return void res.json(state);
-
   } catch (error: any) {
     return void res.status(500).json({ error: error.message });
   }
@@ -248,7 +275,7 @@ const jumpHandler: RequestHandler = async (req: Request, res: Response) => {
  */
 const estimateSchema = z.object({
   projectId: z.string().uuid(),
-  region: z.string().optional()
+  region: z.string().optional(),
 });
 
 const estimateHandler: RequestHandler = async (req: Request, res: Response) => {
@@ -256,16 +283,20 @@ const estimateHandler: RequestHandler = async (req: Request, res: Response) => {
     const { projectId, region } = estimateSchema.parse(req.body);
     const key = getSessionKey(projectId);
     const stateStr = await redis.get(key);
-    
-    if (!stateStr) return void res.status(404).json({ error: "Session not found" });
+
+    if (!stateStr)
+      return void res.status(404).json({ error: "Session not found" });
     const state: QASessionState = JSON.parse(stateStr);
 
     // Build Context from Q&A History
     const context = getValidationContext(state);
 
     // Call AI Agent
-    const estimates = await generateMarketEstimates(context, region || "Global");
-    
+    const estimates = await generateMarketEstimates(
+      context,
+      region || "Global"
+    );
+
     return void res.json(estimates);
   } catch (e: any) {
     console.error("Estimate Error:", e);
@@ -281,24 +312,30 @@ const saveMarketSchema = z.object({
   projectId: z.string().uuid(),
   tam: z.string(),
   sam: z.string(),
-  som: z.string()
+  som: z.string(),
 });
 
-const saveMarketHandler: RequestHandler = async (req: Request, res: Response) => {
+const saveMarketHandler: RequestHandler = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const { projectId, tam, sam, som } = saveMarketSchema.parse(req.body);
     const key = getSessionKey(projectId);
     const stateStr = await redis.get(key);
-    
-    if (!stateStr) return void res.status(404).json({ error: "Session not found" });
+
+    if (!stateStr)
+      return void res.status(404).json({ error: "Session not found" });
     const state: QASessionState = JSON.parse(stateStr);
 
     // Update State
     state.marketAnalysis = {
-      tam, sam, som,
-      isComplete: true
+      tam,
+      sam,
+      som,
+      isComplete: true,
     };
-    
+
     await redis.set(key, JSON.stringify(state));
     return void res.json(state);
   } catch (e: any) {

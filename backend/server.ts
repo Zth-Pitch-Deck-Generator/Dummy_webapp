@@ -1,5 +1,5 @@
 // backend/server.ts
-import express, { Request, Response, NextFunction } from "express"; // Import types
+import express, { Request, Response, NextFunction } from "express"; 
 import cors from "cors";
 import "dotenv/config";
 import projectsRouter from "./routes/projects.js";
@@ -16,15 +16,34 @@ import { requestLogger } from "./middleware/requestLogger.js";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// --- CORS CONFIGURATION ---
+// Allow common local frontend ports dynamically
+const allowedOrigins = [
+  'http://localhost:8080',
+  'http://localhost:8081',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL // Allow the production URL if set
+].filter(Boolean);
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`Blocked by CORS: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   optionsSuccessStatus: 200,
   credentials: true
 };
 
 app.use(cors(corsOptions));
 
-// Request logging middleware (should be early in the chain, before body parsing for file uploads)
+// Request logging middleware
 app.use(requestLogger);
 
 app.use(express.json({ limit: '20mb' }));
@@ -47,14 +66,12 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-/* --- THE FIX: Enhanced Error Handling Middleware --- */
-// This middleware ensures that ANY unhandled error in the application
-// will still return a clean JSON response.
+/* Error Handling Middleware */
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack); // Log the full error for debugging
+  console.error(err.stack); 
   res.status(500).json({
     error: 'An unexpected server error occurred.',
-    message: err.message // Provide the error message
+    message: err.message 
   });
 });
 

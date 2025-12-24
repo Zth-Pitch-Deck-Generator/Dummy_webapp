@@ -58,9 +58,9 @@ export async function validateAnswerRelevance(
     
     Rules:
     1. If the answer is gibberish, spam, or completely unrelated to the question, mark isValid: false.
-    2. If the answer is "I don't know" or "Not sure", mark isValid: true (we handle this logic elsewhere).
-    3. If the answer is too short to be meaningful (e.g., "adsf"), mark isValid: false.
-    4. If the answer contradicts the Context significantly (e.g., Context says "Bakery", Answer says "We build rockets"), mark isValid: false.
+    2. If the answer is "I don't know" or "Not sure", mark isValid: true.
+    3. If the answer is extremely short (e.g. "asdf", "no"), mark isValid: false. However, allow concise valid answers (e.g. "SaaS", "B2B").
+    4. If the answer contradicts the Context significantly, mark isValid: false.
     5. Otherwise, mark isValid: true.
 
     Return strictly valid JSON:
@@ -175,46 +175,61 @@ export interface MarketEstimates {
   reasoning: string;
 }
 
-// --- NEW: Market Size Estimator ---
+// --- UPDATED: Robust Market Size Estimator ---
 export async function generateMarketEstimates(
   context: string,
   region: string = "Global"
 ): Promise<MarketEstimates> {
   const prompt = PromptTemplate.fromTemplate(`
-    You are a Venture Capital Analyst. Estimate the TAM, SAM, and SOM for a startup with this context:
-    "{context}"
+    You are a Venture Capital Analyst. Estimate the TAM, SAM, and SOM for a startup.
     
+    Startup Context: "{context}"
     Target Region: {region}
 
     Definitions:
-    - TAM (Total Addressable Market): Total market demand for the product.
-    - SAM (Serviceable Available Market): Segment of TAM within your geographical reach.
-    - SOM (Serviceable Obtainable Market): Portion of SAM you can capture.
+    - TAM: Total Addressable Market (Total demand).
+    - SAM: Serviceable Available Market (Segment within reach).
+    - SOM: Serviceable Obtainable Market (Realistic capture).
 
     Task:
-    1. Estimate specific dollar values (e.g., "$5B") based on general market data for this industry.
-    2. Provide a 1-sentence reasoning for the calculation.
+    1. Estimate specific dollar values (e.g., "$5B") based on general market data.
+    2. Provide a 1-sentence reasoning.
     
-    Return strictly valid JSON:
+    IMPORTANT OUTPUT RULES:
+    - Return ONLY valid JSON.
+    - Do NOT wrap in markdown code blocks (like \`\`\`json).
+    - Do NOT include any text outside the JSON object.
+    
+    JSON Format:
     {{
       "tam": "$X Billion",
       "sam": "$Y Million",
       "som": "$Z Million",
-      "reasoning": "Based on [Industry] market size of $X..."
+      "reasoning": "Reasoning here..."
     }}
   `);
 
-  const chain = prompt.pipe(gemini25Flash).pipe(new JsonOutputParser<MarketEstimates>());
+  // We intentionally do NOT pipe to JsonOutputParser immediately.
+  // We want the raw string to clean it first.
+  const chain = prompt.pipe(gemini25Flash);
 
   try {
-    return await chain.invoke({ context, region });
+    const response = await chain.invoke({ context, region });
+    let text = response.content.toString();
+
+    // Manual Cleaning to prevent JSON parse errors
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+    // Use LangChain's parser on the cleaned text, or standard JSON.parse
+    return JSON.parse(text) as MarketEstimates;
+
   } catch (error) {
     console.error("Market Estimation Error:", error);
     return {
       tam: "Unknown",
       sam: "Unknown",
       som: "Unknown",
-      reasoning: "AI could not calculate estimates at this time."
+      reasoning: "AI could not calculate estimates at this time. Please enter manually."
     };
   }
 }

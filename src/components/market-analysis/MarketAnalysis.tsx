@@ -1,11 +1,11 @@
-// src/components/market-analysis/MarketAnalysis.tsx
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Wand2, CheckCircle, ArrowRight } from 'lucide-react';
+import { Loader2, Wand2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase'; // <--- IMPORT SUPABASE
 
 interface MarketAnalysisProps {
   projectId: string;
@@ -24,17 +24,27 @@ export default function MarketAnalysis({ projectId, onComplete }: MarketAnalysis
   const [region, setRegion] = useState('Global');
   const [aiReasoning, setAiReasoning] = useState<string | null>(null);
 
+  // Helper to get token
+  const getAuthHeader = async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ? `Bearer ${data.session.access_token}` : '';
+  };
+
   const handleEstimate = async () => {
     setLoading(true);
     try {
+      const token = await getAuthHeader();
       const res = await fetch('/api/qa/market-analysis/estimate', {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': token // <--- USE TOKEN
         },
         body: JSON.stringify({ projectId, region })
       });
+      
+      if (!res.ok) throw new Error("Estimation failed");
+
       const data = await res.json();
       
       setMetrics({
@@ -43,7 +53,7 @@ export default function MarketAnalysis({ projectId, onComplete }: MarketAnalysis
         som: data.som
       });
       setAiReasoning(data.reasoning);
-      setMode('manual'); // Switch to manual so they can edit the AI estimation
+      setMode('manual'); 
     } catch (e) {
       toast.error("Failed to generate estimates");
     } finally {
@@ -59,16 +69,20 @@ export default function MarketAnalysis({ projectId, onComplete }: MarketAnalysis
 
     setLoading(true);
     try {
-      await fetch('/api/qa/market-analysis/save', {
+      const token = await getAuthHeader();
+      const res = await fetch('/api/qa/market-analysis/save', {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': token // <--- USE TOKEN
         },
         body: JSON.stringify({ projectId, ...metrics })
       });
+
+      if (!res.ok) throw new Error("Save failed");
+
       toast.success("Market Analysis Saved");
-      onComplete(); // Triggers redirect to Outline
+      onComplete(); 
     } catch (e) {
       toast.error("Failed to save data");
     } finally {

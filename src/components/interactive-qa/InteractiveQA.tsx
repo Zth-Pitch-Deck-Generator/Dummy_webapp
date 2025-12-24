@@ -1,4 +1,3 @@
-// src/components/interactive-qa/InteractiveQA.tsx
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { Loader2, AlertCircle, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { QASidebar } from './QASidebar';
 import { QASessionState } from './types';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { supabase } from '@/lib/supabase'; // <--- ADD THIS IMPORT
 
 interface InteractiveQAProps {
   projectId: string;
@@ -32,11 +31,17 @@ const InteractiveQA = ({ projectId, onComplete }: InteractiveQAProps) => {
     fetchSession();
   }, [projectId]);
 
+  const getAuthHeader = async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ? `Bearer ${data.session.access_token}` : '';
+  };
+
   const fetchSession = async () => {
     try {
+      const token = await getAuthHeader();
       // First try to get state, if 404 then start
       let res = await fetch(`/api/qa/state/${projectId}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': token }
       });
       
       if (res.status === 404) {
@@ -44,11 +49,13 @@ const InteractiveQA = ({ projectId, onComplete }: InteractiveQAProps) => {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}` 
+            'Authorization': token 
           },
           body: JSON.stringify({ projectId })
         });
       }
+
+      if (!res.ok) throw new Error("Failed to fetch session");
 
       const data = await res.json();
       setSession(data);
@@ -72,13 +79,6 @@ const InteractiveQA = ({ projectId, onComplete }: InteractiveQAProps) => {
       if (Array.isArray(currentQ.answer)) {
         // Multiple Choice
         setSelectedChoices(currentQ.answer);
-        if (currentQ.isOther && currentQ.answer.length > 0) {
-            // Logic to handle extraction of 'Other' text if we stored it mixed
-            // Ideally backend separates it, but here we just reset for simplicity or rely on isOther
-            // For this UI, if 'Other' is checked, we show the input. 
-            // If the answer was strictly the text, we might need to parse. 
-            // Simplifying: If saved answer is not in choices, it's 'Other'
-        }
       } else {
         // Free Text
         setTextAnswer(currentQ.answer as string);
@@ -93,11 +93,12 @@ const InteractiveQA = ({ projectId, onComplete }: InteractiveQAProps) => {
     if (!session) return;
     try {
       setLoading(true);
+      const token = await getAuthHeader();
       const res = await fetch('/api/qa/jump', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          'Authorization': token 
         },
         body: JSON.stringify({ projectId, sectionIndex: sectionIdx, questionIndex: 0 })
       });
@@ -125,18 +126,11 @@ const InteractiveQA = ({ projectId, onComplete }: InteractiveQAProps) => {
       finalAnswer = [...selectedChoices];
       if (selectedChoices.includes('Other')) {
         isOther = true;
-        // If "Other" is selected, we replace the string "Other" with the actual text?
-        // Or send it alongside. The backend schema supports `isOther`.
-        // Let's keep "Other" in the array but pass `isOther: true`. 
-        // Or better: Remove "Other" string and push the actual text?
-        // Let's stick to the requirement: "Selecting Other opens free-text".
         if (!otherText.trim()) {
             setValidationError("Please specify your 'Other' option.");
             setSubmitting(false);
             return;
         }
-        // Replace "Other" tag with actual text for storage, or keep it distinct?
-        // Let's filter out "Other" and add the text.
         finalAnswer = finalAnswer.filter(c => c !== 'Other');
         finalAnswer.push(otherText);
       }
@@ -150,11 +144,12 @@ const InteractiveQA = ({ projectId, onComplete }: InteractiveQAProps) => {
     }
 
     try {
+      const token = await getAuthHeader();
       const res = await fetch('/api/qa/answer', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': token
         },
         body: JSON.stringify({ projectId, answer: finalAnswer, isOther })
       });
@@ -162,7 +157,6 @@ const InteractiveQA = ({ projectId, onComplete }: InteractiveQAProps) => {
       const data = await res.json();
       
       if (!res.ok) {
-        // Validation Error from Backend (AI)
         if (data.message) {
             setValidationError(data.message);
         } else {
@@ -176,7 +170,7 @@ const InteractiveQA = ({ projectId, onComplete }: InteractiveQAProps) => {
       // Check if completely done (Logic: last section completed)
       const lastSection = data.sections[data.sections.length - 1];
       if (lastSection.status === 'completed') {
-        onComplete(); // Trigger Market Analysis
+        onComplete(); 
       }
 
     } catch (error) {
@@ -207,7 +201,7 @@ const InteractiveQA = ({ projectId, onComplete }: InteractiveQAProps) => {
   const currentQ = currentSection.questions[session.currentQuestionIndex];
 
   return (
-    <div className="flex h-full min-h-screen bg-gray-50/30">
+    <div className="flex h-full min-h-[80vh] bg-gray-50/30">
       {/* SIDEBAR */}
       <QASidebar 
         sections={session.sections} 
@@ -295,20 +289,7 @@ const InteractiveQA = ({ projectId, onComplete }: InteractiveQAProps) => {
             )}
           </CardContent>
 
-          <CardFooter className="flex justify-between pt-6 border-t bg-gray-50/50 rounded-b-xl">
-             <Button 
-               variant="ghost" 
-               onClick={() => {
-                   // Logic for 'Back' could be implemented via Jump, 
-                   // or simply rely on Sidebar for navigation.
-                   // For strict linearity, maybe only sidebar?
-                   // Let's leave Sidebar as primary nav for now.
-               }}
-               className="text-gray-400 hover:text-gray-600 opacity-0 cursor-default" // Hidden but keeping space
-             >
-               Back
-             </Button>
-             
+          <CardFooter className="flex justify-end pt-6 border-t bg-gray-50/50 rounded-b-xl">
              <Button 
                size="lg" 
                onClick={handleSubmit} 
