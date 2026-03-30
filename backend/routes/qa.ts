@@ -5,6 +5,7 @@ import { redis } from "../lib/redis.js";
 import { z } from "zod";
 import fs from "fs/promises";
 import path from "path";
+import { supabase } from "../supabase.js";
 import { QASessionState, SectionState } from "../types/qa.js";
 import {
   validateAnswerRelevance,
@@ -328,15 +329,46 @@ const saveMarketHandler: RequestHandler = async (
       return void res.status(404).json({ error: "Session not found" });
     const state: QASessionState = JSON.parse(stateStr);
 
-    // Update State
+    // Update Redis State
     state.marketAnalysis = {
       tam,
       sam,
       som,
       isComplete: true,
     };
-
     await redis.set(key, JSON.stringify(state));
+
+    // --- NEW FIX: Compile Transcript and Save to Supabase ---
+    // The outline generator expects an array of { role: string, content: string }
+    const transcript: { role: string; content: string }[] = [];
+    
+    state.sections.forEach((section) => {
+      section.questions.forEach((q) => {
+        if (q.answer) {
+          // Add the AI's question
+          transcript.push({ role: "assistant", content: q.question });
+          
+          // Format and add the User's answer
+          const answerStr = Array.isArray(q.answer) ? q.answer.join(", ") : q.answer;
+          transcript.push({ role: "user", content: answerStr });
+        }
+      });
+    });
+
+    // Upsert the transcript into the qa_sessions table
+    const { error: dbError } = await supabase
+      .from("qa_sessions")
+      .upsert({
+        project_id: projectId,
+        transcript: transcript,
+      });
+
+    if (dbError) {
+      console.error("Supabase Transcript Save Error:", dbError);
+      return void res.status(500).json({ error: "Failed to save transcript to database" });
+    }
+    // --------------------------------------------------------
+
     return void res.json(state);
   } catch (e: any) {
     return void res.status(500).json({ error: e.message });

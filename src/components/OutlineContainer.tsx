@@ -78,7 +78,7 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
         // 1. Fetch Outline and any existing User Edits
         const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
         const token = session?.access_token;
-        const outlineRes = await fetch("${API_BASE}/api/outline", {
+        const outlineRes = await fetch(`${API_BASE}/api/outline`, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ projectId }),
@@ -132,7 +132,7 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
 
         // 2. Attempt to Fetch Existing SWOT Review
         if (fetchedOutlineId) {
-          const swotRes = await fetch("${API_BASE}/api/outline/eval", {
+          const swotRes = await fetch(`${API_BASE}/api/outline/eval`, {
             method: "POST",
             headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
             body: JSON.stringify({ outlineId: fetchedOutlineId }),
@@ -178,7 +178,7 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
     try {
       const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
       const token = session?.access_token;
-      const res = await fetch("${API_BASE}/api/outline/eval", {
+      const res = await fetch(`${API_BASE}/api/outline/eval`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ outlineId, regenerate: forceRegenerate }),
@@ -188,7 +188,7 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
         try {
           const errData = await res.json();
           msg = errData.error || msg;
-        } catch {}
+        } catch { }
         throw new Error(msg);
       }
       setReview(await res.json());
@@ -257,7 +257,7 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
 
       const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
       const token = session?.access_token;
-      const res = await fetch("${API_BASE}/api/outline/edits", {
+      const res = await fetch(`${API_BASE}/api/outline/edits`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
@@ -285,11 +285,11 @@ const OutlineContainer = ({ onAccept }: OutlineContainerProps) => {
 
   // Handler for the "Accept Outline & Proceed" button
   const handleAcceptAndSave = useCallback(async () => {
-      const saved = await saveUserEdits();
-      // Even if saving fails, you might want to proceed, or you might want to halt.
-      // For now, let's proceed to the next step (onAccept) regardless of save success.
-      // You could add a modal or toast here if saved is false.
-      onAccept(combinedOutline);
+    const saved = await saveUserEdits();
+    // Even if saving fails, you might want to proceed, or you might want to halt.
+    // For now, let's proceed to the next step (onAccept) regardless of save success.
+    // You could add a modal or toast here if saved is false.
+    onAccept(combinedOutline);
   }, [saveUserEdits, onAccept, combinedOutline]);
 
 

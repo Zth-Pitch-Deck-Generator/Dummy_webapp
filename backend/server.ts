@@ -61,6 +61,12 @@ app.use("/api/investor-mockroom", investorMockRoomRouter);
 app.use('/api/slides', slidesRouter);
 app.use('/api/compile-deck', compileDeckRouter);
 
+
+// Add this new root endpoint
+app.get("/", (_req, res) => {
+  res.status(200).send("ZTH Pitch Deck Builder API is running! 🚀 Please visit the frontend on port 8081.");
+});
+
 /* Health Check Endpoint */
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });

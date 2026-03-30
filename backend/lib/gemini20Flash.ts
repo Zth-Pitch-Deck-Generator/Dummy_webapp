@@ -8,7 +8,7 @@ if (!geminiApiKey) throw new Error("Missing Gemini API Key!");
 const genAI = new GoogleGenerativeAI(geminiApiKey);
 
 /**
- * Generates HTML+CSS slides using Gemini 2.0 Pro based on design and outline.
+ * Generates HTML+CSS slides using Gemini 2.0 Flash based on design and outline.
  * The function guarantees to only return a valid JSON array of slides.
  */
 export async function geminiHtmlSlides({
@@ -37,22 +37,31 @@ Instructions:
     - "html_content": Complete HTML (CSS inside <style> tag, 16:9 aspect ratio, highly visual and responsive design)
 - PERSONALIZE all visuals and content to match the product/service provided.
 - Make sure that the overall style strictly matches the design description.
+- CRITICAL: Keep HTML and CSS concise to fit within output limits! Do NOT use massive inline SVGs. Use standard Unicode emojis, simple CSS shapes, or short SVG paths for icons instead. 
 - IMPORTANT: Output ONLY a valid JSON array, no markdown, no commentary, no explanation, no \`\`\` or backticks.
 
 Example:
 [
   {
     "title": "Welcome",
-    "html_content": "<html>...<style>...</style>...</html>"
+    "html_content": "<div class='slide'>...<style>...</style></div>"
   },
   {
     "title": "Problem",
-    "html_content": "<html>...<style>...</style>...</html>"
+    "html_content": "<div class='slide'>...<style>...</style></div>"
   }
 ]
 `;
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  // Explicitly increase the token limit so the JSON doesn't get cut off
+  const model = genAI.getGenerativeModel({ 
+    model: "gemini-2.0-flash",
+    generationConfig: {
+      maxOutputTokens: 8192,
+      temperature: 0.4 // Slightly lower temperature for more predictable formatting
+    }
+  });
+
   const result = await model.generateContent(prompt);
   const response = result.response.text();
 
@@ -79,7 +88,7 @@ Example:
     return slides;
   } catch (err) {
     throw new Error(
-      `Could not parse Gemini Pro output: ${err instanceof Error ? err.message : String(err)}\nRaw output:\n${response}`
+      `Could not parse Gemini output: ${err instanceof Error ? err.message : String(err)}\nRaw output:\n${response}`
     );
   }
 }

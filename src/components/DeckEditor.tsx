@@ -194,12 +194,22 @@ const DeckEditor = ({
                   placeholder="Loading slide code..."
                 />
               ) : (
-                <iframe
-                  srcDoc={activeSlide?.html_content || ""}
-                  title="Slide Preview"
-                  className="w-full h-full border-0"
-                  sandbox="allow-scripts allow-same-origin"
-                />
+                <div className="w-full h-full bg-gray-100 flex items-center justify-center p-4 md:p-8 overflow-auto">
+                  <div 
+                    className="w-full shadow-2xl bg-white relative overflow-hidden flex-shrink-0 ring-1 ring-gray-200"
+                    style={{ 
+                      maxWidth: '1152px', // Standard comfortable preview width
+                      aspectRatio: '16/9' // Locks the slide to presentation format
+                    }}
+                  >
+                    <iframe
+                      srcDoc={activeSlide?.html_content || ""}
+                      title="Slide Preview"
+                      className="absolute inset-0 w-full h-full border-0"
+                      sandbox="allow-scripts allow-same-origin"
+                    />
+                  </div>
+                </div>
               )}
             </ResizablePanel>
           </ResizablePanelGroup>
